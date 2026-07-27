@@ -12,6 +12,7 @@ import asyncio
 from collections.abc import Callable
 from pathlib import Path
 
+from ..analysis.analyzer import Analyzer
 from ..safety.audit import AuditLog
 from ..safety.validator import Validator
 from ..tools.base import ToolAdapter
@@ -36,6 +37,7 @@ class Orchestrator:
         state_path: Path,
         confirm: Callable[[str], bool] | None = None,
         on_event: Callable[[str, str], None] | None = None,
+        analyzer: Analyzer | None = None,
     ) -> None:
         self.config = config
         self.state = state
@@ -44,6 +46,8 @@ class Orchestrator:
         self.planner = planner
         self.audit = audit
         self.state_path = state_path
+        # Enriches state with CVE matches and correlations after each step.
+        self.analyzer = analyzer
         # confirm() is called for actions above the auto threshold. In advisor
         # mode everything routes through it; in full-auto only high-risk does.
         self.confirm = confirm or (lambda _: False)
@@ -102,6 +106,13 @@ class Orchestrator:
             rationale=plan.rationale, exit_code=result.exit_code,
         ))
         self.audit.write("executed", command=command, exit_code=result.exit_code, notes=notes)
+
+        if self.analyzer is not None:
+            for f in self.analyzer.analyze(self.state):
+                self.emit("finding", f"[{f.severity.value}] {f.title}")
+                self.audit.write("finding", title=f.title, severity=f.severity.value,
+                                 host=f.host, cve=f.cve)
+
         self.state.save(self.state_path)
         return True
 

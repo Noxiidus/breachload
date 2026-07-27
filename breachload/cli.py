@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from .analysis.analyzer import Analyzer
 from .core.config import EngagementConfig
 from .core.llm import Planner
 from .core.orchestrator import Orchestrator
@@ -25,6 +26,7 @@ ENGAGEMENTS = Path("engagements")
 _STYLES = {
     "run": "bold cyan", "note": "green", "blocked": "bold red",
     "skipped": "yellow", "error": "bold red", "phase": "bold magenta",
+    "finding": "bold yellow",
 }
 
 
@@ -67,7 +69,8 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     console.print()
 
     orch = Orchestrator(cfg, state, registry, validator, planner, audit,
-                        state_path, confirm=_confirm, on_event=_emit)
+                        state_path, confirm=_confirm, on_event=_emit,
+                        analyzer=Analyzer.default())
     if phase:
         state.phase = Phase(phase)
         asyncio.run(orch.run_phase())

@@ -48,3 +48,6 @@ Each `Orchestrator.step()`:
 | `safety/audit.py` | Append-only JSONL trail |
 | `tools/base.py` | Adapter contract (`build_command` + `parse`) |
 | `tools/nmap.py` | Reference adapter (XML → struct) |
+| `analysis/cve.py` | Version → CVE matching from a local KB |
+| `analysis/correlator.py` | Cross-service leads (EternalBlue, cleartext, …) |
+| `analysis/analyzer.py` | Folds CVE + correlation into deduped findings |

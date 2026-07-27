@@ -21,11 +21,12 @@ Cover the discovery phase across infra and web.
 - ✅ OUTFILE mechanism for file-output tools
 - ⬜ `httpx`/service fingerprint enrichment
 
-## v0.3 — Analysis ⬜
+## v0.3 — Analysis 🚧
 Turn raw services into leads.
-- ⬜ Version → CVE mapping (local NVD/Vulners cache, offline-friendly)
-- ⬜ Cross-service correlator (e.g. SMBv1 + Windows → EternalBlue candidate)
-- ⬜ Finding synthesis with severity + remediation
+- ✅ Version → CVE mapping (local offline KB; pluggable for a fuller feed)
+- ✅ Cross-service correlator (EternalBlue candidate, cleartext/anon FTP, telnet)
+- ✅ Finding synthesis with severity + remediation, deduplicated
+- ⬜ Grow the KB / optional NVD feed import
 
 ## v0.4 — Exploitation & payloads ⬜
 Generation is unrestricted; delivery is scope- and confirm-gated.

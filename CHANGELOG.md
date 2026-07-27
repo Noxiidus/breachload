@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Analysis layer (`analysis/`): version→CVE mapping from a local, offline
+  knowledge base (`data/vuln_kb.json`) with a simple version-constraint matcher;
+  a cross-service correlator (MS17-010/EternalBlue candidate, cleartext FTP/
+  Telnet, anonymous FTP); and an `Analyzer` that folds both into findings,
+  deduplicated. Wired into the orchestrator to enrich state after each step.
 - Web-recon adapters: `whatweb` (HTTP fingerprinting → service product/techs),
   `ffuf` (content discovery → paths as notes + findings), `nuclei` (templated
   vuln scan → findings with mapped severity and CVE ids).

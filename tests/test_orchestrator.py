@@ -24,12 +24,12 @@ CANNED = {
     "nmap": ("<?xml version=\"1.0\"?><nmaprun><host>"
              f"<address addr=\"{HOST}\" addrtype=\"ipv4\"/><ports>"
              "<port protocol=\"tcp\" portid=\"80\"><state state=\"open\"/>"
-             "<service name=\"http\" product=\"Apache\" version=\"2.4.41\"/></port>"
+             "<service name=\"http\" product=\"Apache httpd\" version=\"2.4.49\"/></port>"
              "<port protocol=\"tcp\" portid=\"445\"><state state=\"open\"/>"
              "<service name=\"microsoft-ds\"/></port>"
              "</ports></host></nmaprun>"),
     "whatweb": f'[{{"target":"http://{HOST}","http_status":200,'
-               '"plugins":{"Apache":{"version":["2.4.41"]},"PHP":{"version":["7.4"]}}}]',
+               '"plugins":{"Apache":{"version":["2.4.49"]},"PHP":{"version":["7.4"]}}}]',
     "ffuf": '{"results":[{"input":{"FUZZ":"admin"},"status":200,"length":10,'
             f'"url":"http://{HOST}:80/admin","host":"{HOST}"}}]}}',
     "enum4linux-ng": f'{{"target":{{"host":"{HOST}","workgroup":"WG"}},'
@@ -51,7 +51,7 @@ def _stub_registry():
     return reg
 
 
-def _orchestrator(tmp_path: Path):
+def _orchestrator(tmp_path: Path, analyzer=None):
     cfg = EngagementConfig(name="e2e", targets=[f"{HOST}/32"])
     state = EngagementState(name="e2e")
     state.upsert_host(HOST)
@@ -64,7 +64,8 @@ def _orchestrator(tmp_path: Path):
     events: list[tuple[str, str]] = []
     orch = Orchestrator(cfg, state, reg, validator, planner, audit,
                         tmp_path / "state.json",
-                        on_event=lambda ev, msg: events.append((ev, msg)))
+                        on_event=lambda ev, msg: events.append((ev, msg)),
+                        analyzer=analyzer)
     return orch, state, events
 
 
@@ -95,6 +96,17 @@ def test_full_chain_populates_state(tmp_path):
     assert any("recon" in m for m in entered)
     assert any("enumeration" in m for m in entered)
     assert any("vuln" in m for m in entered)
+
+
+def test_analyzer_runs_in_chain(tmp_path):
+    from breachload.analysis.analyzer import Analyzer
+    orch, state, events = _orchestrator(tmp_path, analyzer=Analyzer.default())
+    asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
+
+    # Version-based CVE from the analyzer, in addition to nuclei's own match.
+    with_cve = [f for f in state.findings if "CVE-2021-41773" in f.cve]
+    assert len(with_cve) >= 2
+    assert any(ev == "finding" for ev, _ in events)
 
 
 def test_resume_does_not_repeat_actions(tmp_path):
