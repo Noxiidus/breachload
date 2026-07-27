@@ -49,6 +49,16 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ⬜ Flag detection & auto-capture
 - ⬜ Lightweight per-box reporting
 
+## v0.8 — Web dashboard ⬜
+Follow and steer an engagement from a browser while the engine runs in the
+terminal. Rides on the orchestrator's existing `on_event` seam.
+- ⬜ FastAPI backend + WebSocket event stream
+- ⬜ Live phase progress + command feed (what ran, why)
+- ⬜ Target map: host → service → finding tree, built live from state
+- ⬜ Findings panel with severity
+- ⬜ Confirmation gate in the UI (approve/deny risky actions with one click)
+- ⬜ Read-only remote view (engine on the box, dashboard on the laptop)
+
 ## v1.0 — Stable ⬜
 - ⬜ Frozen adapter API and safety-model contract
 - ⬜ Full test coverage on safety layer
