@@ -1,0 +1,20 @@
+# Example engagement definition.
+# The scope here is the ONLY thing breachload is allowed to touch.
+name: htb-lab
+mode: full-auto            # advisor | semi-auto | full-auto
+
+targets:
+  - 10.10.10.0/24         # CIDR — allowed network
+  - 10.10.11.55           # single host (also seeds a host record)
+  # - "*.target.example"  # wildcard domain
+
+exclude:
+  - 10.10.10.1            # gateway — never touch
+
+# Actions at or below this risk run without asking in full-auto mode.
+# CTF/HTB: "active" is reasonable. Real client engagement: keep at "recon"
+# so exploitation/intrusive steps always ask first.
+auto_threshold: active    # passive | recon | active | intrusive | exploit | destructive
+
+notes: |
+  Authorized lab practice. Rules of engagement: no DoS, no data destruction.

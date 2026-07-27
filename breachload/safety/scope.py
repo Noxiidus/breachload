@@ -1,0 +1,92 @@
+"""Scope enforcement — the hard boundary of an autonomous pentest agent.
+
+Every target an action touches is checked here, in deterministic code, BEFORE
+execution. The LLM is never trusted to respect scope on its own. An out-of-scope
+target is a hard block, not a warning.
+"""
+
+from __future__ import annotations
+
+import ipaddress
+import re
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Scope:
+    """Allowlist of targets. Anything not explicitly allowed is denied."""
+
+    networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = field(default_factory=list)
+    domains: list[str] = field(default_factory=list)          # exact or "*.example.com"
+    excluded: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = field(default_factory=list)
+
+    @classmethod
+    def from_config(cls, targets: list[str], exclude: list[str] | None = None) -> "Scope":
+        nets: list = []
+        doms: list[str] = []
+        for t in targets:
+            t = t.strip()
+            if not t:
+                continue
+            net = _try_network(t)
+            if net is not None:
+                nets.append(net)
+            else:
+                doms.append(t.lower())
+        exc = [n for e in (exclude or []) if (n := _try_network(e)) is not None]
+        return cls(networks=nets, domains=doms, excluded=exc)
+
+    def allows(self, target: str) -> bool:
+        """True only if target is inside an allowed net/domain and not excluded."""
+        ip = _try_ip(target)
+        if ip is not None:
+            if any(ip in n for n in self.excluded):
+                return False
+            return any(ip in n for n in self.networks)
+        return self._domain_allowed(target.lower())
+
+    def _domain_allowed(self, host: str) -> bool:
+        for pattern in self.domains:
+            if pattern.startswith("*."):
+                if host == pattern[2:] or host.endswith(pattern[1:]):
+                    return True
+            elif host == pattern:
+                return True
+        return False
+
+
+# --- host extraction from arbitrary command args ---------------------------
+
+_IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+_HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
+_URL_RE = re.compile(r"https?://([^/:\s]+)", re.I)
+
+
+def extract_targets(args: list[str]) -> set[str]:
+    """Pull every IP/host/URL-host out of a command's arguments.
+
+    Used to check a proposed command against scope before running it.
+    """
+    found: set[str] = set()
+    for arg in args:
+        for m in _URL_RE.findall(arg):
+            found.add(m)
+        for m in _IP_RE.findall(arg):
+            found.add(m)
+        for m in _HOST_RE.findall(arg):
+            found.add(m)
+    return found
+
+
+def _try_network(s: str):
+    try:
+        return ipaddress.ip_network(s, strict=False)
+    except ValueError:
+        return None
+
+
+def _try_ip(s: str):
+    try:
+        return ipaddress.ip_address(s)
+    except ValueError:
+        return None

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability in breachload
+    url: https://github.com/Noxiidus/breachload/security/advisories/new
+    about: Report scope bypasses or injection paths privately — do not open a public issue.

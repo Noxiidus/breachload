@@ -1,0 +1,36 @@
+name: Tool adapter request
+description: Request support for a new pentest tool
+labels: ["adapter", "enhancement"]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Tool name
+      placeholder: "e.g. ffuf, nuclei, enum4linux-ng"
+    validations:
+      required: true
+  - type: input
+    id: phase
+    attributes:
+      label: Which phase does it serve?
+      placeholder: "recon / enumeration / vuln / exploitation / post"
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk class
+      options: [PASSIVE, RECON, ACTIVE, INTRUSIVE, EXPLOIT, DESTRUCTIVE]
+    validations:
+      required: true
+  - type: input
+    id: output
+    attributes:
+      label: Machine-readable output?
+      description: Does it support JSON/XML output for structured parsing?
+      placeholder: "e.g. -oX -, -json, --output json"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Typical invocation, what state it should produce.

@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in breachload behaves incorrectly
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "0.1.0 or commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - core / orchestrator
+        - safety (scope / validator / audit)
+        - tool adapter
+        - planner / LLM
+        - CLI
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Command(s) and config. Redact any real target data.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: This report does not contain real engagement/target data or credentials
+          required: true

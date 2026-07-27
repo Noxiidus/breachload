@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a capability or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do that breachload doesn't support?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Related roadmap milestone
+      options:
+        - "v0.2 recon breadth"
+        - "v0.3 analysis"
+        - "v0.4 exploitation"
+        - "v0.5 post-exploitation"
+        - "v0.6 reporting"
+        - "v0.7 CTF mode"
+        - "unsure / other"
