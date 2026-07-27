@@ -13,6 +13,7 @@ from .core.config import EngagementConfig
 from .core.llm import Planner
 from .core.orchestrator import Orchestrator
 from .core.state import EngagementState, Phase
+from .exploit.generators import GenerationError, MsfvenomGenerator, PayloadSpec
 from .safety.audit import AuditLog
 from .safety.scope import Scope
 from .safety.validator import Validator
@@ -63,7 +64,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     audit = AuditLog(work / "audit.jsonl")
 
     mode = "online (Claude)" if planner.online else "offline (heuristic)"
-    label = f"phase={phase}" if phase else f"auto → {stop}"
+    label = f"phase={phase}" if phase else f"auto -> {stop}"
     console.print(f"[bold]breachload[/] — {cfg.name} | {label} | planner={mode}")
     console.print(state.summary())
     console.print()
@@ -91,6 +92,42 @@ def status(config: Path = typer.Argument(..., help="engagement YAML")):
         console.print("[yellow]no state yet — run a phase first[/]")
         raise typer.Exit(1)
     console.print(EngagementState.load(state_path).summary())
+
+
+@app.command()
+def payload(config: Path = typer.Argument(..., help="engagement YAML"),
+            payload: str = typer.Option(..., help="msfvenom payload type"),
+            lhost: str = typer.Option(..., help="your listener host (attacker IP)"),
+            lport: int = typer.Option(4444, help="listener port"),
+            fmt: str = typer.Option("elf", help="output format (-f): elf, exe, raw, python, ..."),
+            name: str = typer.Option(None, help="artifact filename")):
+    """Generate a payload artifact with msfvenom (offline — no target, no scope check)."""
+    cfg = EngagementConfig.load(config)
+    work = ENGAGEMENTS / cfg.name
+    state_path = work / "state.json"
+    if state_path.exists():
+        state = EngagementState.load(state_path)
+    else:
+        state = EngagementState(name=cfg.name)
+
+    spec = PayloadSpec(payload=payload, lhost=lhost, lport=lport, fmt=fmt)
+    gen = MsfvenomGenerator()
+    try:
+        artifact, result = asyncio.run(gen.generate(spec, work / "artifacts", name))
+    except GenerationError as exc:
+        console.print(f"[bold red]refused[/] {exc}")
+        raise typer.Exit(2) from exc
+
+    if result.exit_code != 0:
+        console.print(f"[bold red]msfvenom failed[/] (exit {result.exit_code})")
+        if result.stderr:
+            console.print(result.stderr.strip())
+        raise typer.Exit(1)
+
+    state.add_artifact(artifact)
+    state.save(state_path)
+    console.print(f"[bold green]artifact[/] {artifact.name} -> {artifact.path}")
+    console.print(f"  {artifact.description}")
 
 
 if __name__ == "__main__":

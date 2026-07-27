@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Exploit-side generation (`exploit/`): `Artifact` state model (generated
+  payloads/PoCs as first-class records) and an `msfvenom` payload generator.
+  Generation is offline and unrestricted — no target, no scope check — but still
+  refuses shell-metacharacter injection. New `breachload payload` CLI command
+  writes the artifact under `engagements/<name>/artifacts/` and records it in
+  state. (Delivery against a target — the scope- and confirmation-gated step —
+  is next.)
 - Analysis layer (`analysis/`): version→CVE mapping from a local, offline
   knowledge base (`data/vuln_kb.json`) with a simple version-constraint matcher;
   a cross-service correlator (MS17-010/EternalBlue candidate, cleartext FTP/

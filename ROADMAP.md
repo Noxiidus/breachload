@@ -28,10 +28,10 @@ Turn raw services into leads.
 - ✅ Finding synthesis with severity + remediation, deduplicated
 - ⬜ Grow the KB / optional NVD feed import
 
-## v0.4 — Exploitation & payloads ⬜
+## v0.4 — Exploitation & payloads 🚧
 Generation is unrestricted; delivery is scope- and confirm-gated.
-- ⬜ `Artifact` state model (generated payloads/PoCs as first-class records)
-- ⬜ `msfvenom` payload generator adapter (offline, no scope check)
+- ✅ `Artifact` state model (generated payloads/PoCs as first-class records)
+- ✅ `msfvenom` payload generator (offline, no scope check) + `payload` command
 - ⬜ Claude-authored PoC scripting for identified CVEs
 - ⬜ Delivery adapters (EXPLOIT risk class → confirmation gate)
 - ⬜ Kill-switch + hard rate limiting

@@ -100,6 +100,24 @@ class Finding(BaseModel):
     discovered_at: str = Field(default_factory=_now)
 
 
+class Artifact(BaseModel):
+    """A generated offensive artifact — payload, PoC, shellcode, script.
+
+    Generation is unrestricted (it produces a file, it does not touch a target),
+    so artifacts are first-class records independent of the scope-gated action
+    history. Delivery of an artifact against a target is a separate, gated step.
+    """
+    name: str
+    kind: str = "payload"            # payload | poc | shellcode | script
+    tool: str | None = None          # msfvenom, custom, ...
+    path: str | None = None          # where the artifact is stored on disk
+    format: str | None = None        # -f value, file type
+    platform: str | None = None      # target platform (linux, windows, ...)
+    description: str = ""
+    meta: dict[str, str] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=_now)
+
+
 class ActionRecord(BaseModel):
     """One decision+execution cycle, for audit and reporting."""
     phase: Phase
@@ -117,6 +135,7 @@ class EngagementState(BaseModel):
     hosts: dict[str, Host] = Field(default_factory=dict)  # keyed by address
     credentials: list[Credential] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
+    artifacts: list[Artifact] = Field(default_factory=list)
     history: list[ActionRecord] = Field(default_factory=list)
     created_at: str = Field(default_factory=_now)
 
@@ -130,6 +149,9 @@ class EngagementState(BaseModel):
 
     def add_finding(self, finding: Finding) -> None:
         self.findings.append(finding)
+
+    def add_artifact(self, artifact: Artifact) -> None:
+        self.artifacts.append(artifact)
 
     def record_action(self, action: ActionRecord) -> None:
         self.history.append(action)
@@ -167,4 +189,6 @@ class EngagementState(BaseModel):
             lines.append(f"  credentials: {len(self.credentials)} collected")
         if self.findings:
             lines.append(f"  findings: {len(self.findings)}")
+        if self.artifacts:
+            lines.append(f"  artifacts: {len(self.artifacts)}")
         return "\n".join(lines)

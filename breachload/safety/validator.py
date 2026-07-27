@@ -34,6 +34,15 @@ class Risk(IntEnum):
 _FORBIDDEN = (";", "|", "&", "$(", "`", ">", "<", "\n")
 
 
+def has_shell_metacharacters(command: list[str]) -> bool:
+    """True if any token contains a shell metacharacter (injection guard).
+
+    Reusable by offline generators that don't need scope checks but must still
+    refuse dangerous argv tokens.
+    """
+    return any(any(bad in token for bad in _FORBIDDEN) for token in command)
+
+
 @dataclass
 class Decision:
     allowed: bool
@@ -63,9 +72,8 @@ class Validator:
         if binary not in self.allowed_binaries:
             return Decision(False, False, f"binary '{binary}' not in allowlist", risk)
 
-        for token in command:
-            if any(bad in token for bad in _FORBIDDEN):
-                return Decision(False, False, f"forbidden shell metacharacter in '{token}'", risk)
+        if has_shell_metacharacters(command):
+            return Decision(False, False, "forbidden shell metacharacter in command", risk)
 
         targets = extract_targets(command[1:])
         out_of_scope = [t for t in targets if not self.scope.allows(t)]
