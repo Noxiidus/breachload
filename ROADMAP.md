@@ -15,9 +15,10 @@ Deterministic core proven end-to-end for recon.
 
 ## v0.2 — Recon & enumeration breadth 🚧
 Cover the discovery phase across infra and web.
-- 🚧 Adapters: ✅ `whatweb` · ✅ `ffuf` · ✅ `nuclei` · ⬜ `enum4linux-ng`
-- ⬜ Capability-based tool selection in the planner
-- ⬜ Phase transitions (recon → enumeration → vuln) driven by state
+- ✅ Adapters: `whatweb` · `ffuf` · `nuclei` · `enum4linux-ng`
+- ✅ Capability-based tool selection in the planner
+- ✅ Phase transitions (recon → enumeration → vuln) driven by state
+- ✅ OUTFILE mechanism for file-output tools
 - ⬜ `httpx`/service fingerprint enrichment
 
 ## v0.3 — Analysis ⬜

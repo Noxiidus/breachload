@@ -94,11 +94,65 @@ class Planner:
             return self._heuristic(state, tools)
 
     def _heuristic(self, state: EngagementState, tools: list[dict]) -> Plan:
-        """Zero-LLM planner: enough to drive recon end-to-end for testing."""
+        """Zero-LLM planner: capability- and state-driven, drives recon→enum→vuln.
+
+        Deterministic enough to walk an engagement end-to-end without the API,
+        and a clear reference for what the LLM planner is expected to do.
+        """
+        names = {t["name"] for t in tools}
+
         if state.phase == Phase.RECON:
             for host in state.hosts.values():
-                if not host.services:
+                if not host.services and not state.has_action("nmap", host.address):
                     return Plan("run", "nmap", host.address, {},
                                 "No services known yet; run a service scan.")
             return Plan("phase_complete", rationale="All hosts have been scanned.")
+
+        if state.phase == Phase.ENUM:
+            for host in state.hosts.values():
+                for svc in host.services.values():
+                    key = f"{host.address}:{svc.port}"
+                    if _is_http(svc):
+                        url = _svc_url(host.address, svc)
+                        if "whatweb" in names and not state.has_action("whatweb", key):
+                            return Plan("run", "whatweb", url, {},
+                                        "Fingerprint the web service.")
+                        if "ffuf" in names and not state.has_action("ffuf", key):
+                            return Plan("run", "ffuf", url, {},
+                                        "Discover hidden content on the web service.")
+                    if _is_smb(svc) and "enum4linux-ng" in names \
+                            and not state.has_action("enum4linux-ng", host.address):
+                        return Plan("run", "enum4linux-ng", host.address, {},
+                                    "Enumerate SMB shares, users, and null sessions.")
+            return Plan("phase_complete", rationale="Enumeration exhausted for known services.")
+
+        if state.phase == Phase.VULN:
+            for host in state.hosts.values():
+                for svc in host.services.values():
+                    key = f"{host.address}:{svc.port}"
+                    if _is_http(svc) and "nuclei" in names and not state.has_action("nuclei", key):
+                        return Plan("run", "nuclei", _svc_url(host.address, svc), {},
+                                    "Scan the web service for known vulnerabilities.")
+            return Plan("phase_complete", rationale="Vulnerability scan complete.")
+
         return Plan("phase_complete", rationale="No heuristic for this phase yet.")
+
+
+_HTTP_NAMES = ("http", "https", "http-proxy", "ssl/http", "http-alt")
+_HTTPS_PORTS = (443, 8443)
+_SMB_NAMES = ("microsoft-ds", "netbios-ssn", "smb")
+_SMB_PORTS = (139, 445)
+
+
+def _is_http(svc) -> bool:
+    return (svc.name or "").lower() in _HTTP_NAMES or svc.port in (80, 443, 8080, 8443, 8000)
+
+
+def _is_smb(svc) -> bool:
+    return (svc.name or "").lower() in _SMB_NAMES or svc.port in _SMB_PORTS
+
+
+def _svc_url(host: str, svc) -> str:
+    https = (svc.name or "").lower() in ("https", "ssl/http") or svc.port in _HTTPS_PORTS
+    scheme = "https" if https else "http"
+    return f"{scheme}://{host}:{svc.port}"

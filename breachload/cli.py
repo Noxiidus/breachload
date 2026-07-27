@@ -39,8 +39,9 @@ def _confirm(prompt: str) -> bool:
 
 @app.command()
 def run(config: Path = typer.Argument(..., help="engagement YAML"),
-        phase: str = typer.Option("recon", help="phase to run")):
-    """Run a phase of an engagement."""
+        phase: str = typer.Option(None, help="run only this phase (recon/enumeration/vuln)"),
+        stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase")):
+    """Run an engagement. By default auto-chains recon -> enumeration -> vuln."""
     cfg = EngagementConfig.load(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
@@ -52,7 +53,6 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
         for t in cfg.targets:
             if not any(c in t for c in "/*"):  # bare host/IP → seed a host record
                 state.upsert_host(t)
-    state.phase = Phase(phase)
 
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
@@ -61,13 +61,18 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     audit = AuditLog(work / "audit.jsonl")
 
     mode = "online (Claude)" if planner.online else "offline (heuristic)"
-    console.print(f"[bold]breachload[/] — {cfg.name} | phase={phase} | planner={mode}")
+    label = f"phase={phase}" if phase else f"auto → {stop}"
+    console.print(f"[bold]breachload[/] — {cfg.name} | {label} | planner={mode}")
     console.print(state.summary())
     console.print()
 
     orch = Orchestrator(cfg, state, registry, validator, planner, audit,
                         state_path, confirm=_confirm, on_event=_emit)
-    asyncio.run(orch.run_phase())
+    if phase:
+        state.phase = Phase(phase)
+        asyncio.run(orch.run_phase())
+    else:
+        asyncio.run(orch.run_engagement(stop_after=Phase(stop)))
 
     state.save(state_path)
     console.print()

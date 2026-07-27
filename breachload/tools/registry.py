@@ -7,6 +7,7 @@ place both enables it for the planner and authorizes its binary.
 from __future__ import annotations
 
 from .base import ToolAdapter
+from .enum4linux import Enum4linuxAdapter
 from .ffuf import FfufAdapter
 from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
@@ -19,7 +20,8 @@ def default_registry() -> dict[str, ToolAdapter]:
         WhatWebAdapter(),
         FfufAdapter(),
         NucleiAdapter(),
-        # Next adapters to add: enum4linux-ng, then exploit-side generators.
+        Enum4linuxAdapter(),
+        # Next: exploit-side generators (msfvenom + Artifact model).
     ]
     return {a.name: a for a in adapters}
 

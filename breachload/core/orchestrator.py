@@ -17,7 +17,11 @@ from ..safety.validator import Validator
 from ..tools.base import ToolAdapter
 from .config import EngagementConfig
 from .llm import Planner
-from .state import ActionRecord, EngagementState
+from .state import ActionRecord, EngagementState, Phase
+
+# The automatic progression. Exploitation and beyond are intentionally excluded:
+# they require human intent even in full-auto, so the chain stops before them.
+PHASE_ORDER = [Phase.RECON, Phase.ENUM, Phase.VULN]
 
 
 class Orchestrator:
@@ -101,8 +105,27 @@ class Orchestrator:
         self.state.save(self.state_path)
         return True
 
-    async def run_phase(self, max_steps: int = 20) -> None:
+    async def run_phase(self, max_steps: int = 50) -> None:
         for _ in range(max_steps):
             if not await self.step():
                 break
             await asyncio.sleep(0)
+
+    async def run_engagement(self, stop_after: Phase = Phase.VULN,
+                             max_steps: int = 50) -> None:
+        """Walk the phases automatically from the current one up to `stop_after`.
+
+        This is the "guide me from recon to findings" experience: each phase runs
+        to completion, then the next begins, all driven by state.
+        """
+        try:
+            start = PHASE_ORDER.index(self.state.phase)
+        except ValueError:
+            start = 0
+        for phase in PHASE_ORDER[start:]:
+            self.state.phase = phase
+            self.emit("phase", f"== entering {phase.value} ==")
+            self.state.save(self.state_path)
+            await self.run_phase(max_steps=max_steps)
+            if phase == stop_after:
+                break

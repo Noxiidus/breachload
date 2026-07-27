@@ -134,6 +134,16 @@ class EngagementState(BaseModel):
     def record_action(self, action: ActionRecord) -> None:
         self.history.append(action)
 
+    def has_action(self, tool: str, needle: str) -> bool:
+        """True if `tool` has already been run against a command containing `needle`.
+
+        Lets the planner avoid re-running the same tool on the same target.
+        """
+        for a in self.history:
+            if a.tool == tool and any(needle in tok for tok in a.command):
+                return True
+        return False
+
     # --- persistence --------------------------------------------------------
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
