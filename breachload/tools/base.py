@@ -53,7 +53,7 @@ class ToolAdapter(ABC):
         )
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             out, err = await proc.communicate()
             return ToolResult(-1, out.decode(errors="replace"),

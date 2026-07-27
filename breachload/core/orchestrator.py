@@ -9,15 +9,15 @@ The planner (LLM) only decides. Parsing and scope live in deterministic code.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from ..safety.audit import AuditLog
 from ..safety.validator import Validator
 from ..tools.base import ToolAdapter
 from .config import EngagementConfig
 from .llm import Planner
-from .state import ActionRecord, EngagementState, Phase
+from .state import ActionRecord, EngagementState
 
 
 class Orchestrator:

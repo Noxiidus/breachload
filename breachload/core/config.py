@@ -29,6 +29,6 @@ class EngagementConfig(BaseModel):
         return Risk[self.auto_threshold.upper()]
 
     @classmethod
-    def load(cls, path: Path) -> "EngagementConfig":
+    def load(cls, path: Path) -> EngagementConfig:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         return cls.model_validate(data)

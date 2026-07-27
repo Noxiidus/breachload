@@ -11,7 +11,7 @@ file per engagement. Swap for SQLite once the model stabilizes.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class Phase(StrEnum):
@@ -151,7 +151,8 @@ class EngagementState(BaseModel):
                 f"{s.key} {s.name or '?'} {s.product or ''} {s.version or ''}".strip()
                 for s in sorted(host.services.values(), key=lambda s: s.port)
             )
-            lines.append(f"  {host.address} [{host.os_guess or 'os?'}]: {svcs or 'no services yet'}")
+            os_ = host.os_guess or "os?"
+            lines.append(f"  {host.address} [{os_}]: {svcs or 'no services yet'}")
         if self.credentials:
             lines.append(f"  credentials: {len(self.credentials)} collected")
         if self.findings:

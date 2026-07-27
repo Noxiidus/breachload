@@ -75,6 +75,7 @@ class NmapAdapter(ToolAdapter):
                     version=svc_el.get("version") if svc_el is not None else None,
                 )
                 host.upsert_service(svc)
-                notes.append(f"{address} {svc.key} open: {svc.name or '?'} {svc.product or ''}".strip())
+                detail = f"{svc.name or '?'} {svc.product or ''}".strip()
+                notes.append(f"{address} {svc.key} open: {detail}")
 
         return notes or ["nmap: no open ports found"]

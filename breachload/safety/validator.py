@@ -70,7 +70,8 @@ class Validator:
         targets = extract_targets(command[1:])
         out_of_scope = [t for t in targets if not self.scope.allows(t)]
         if out_of_scope:
-            return Decision(False, False, f"out-of-scope target(s): {', '.join(out_of_scope)}", risk)
+            joined = ", ".join(out_of_scope)
+            return Decision(False, False, f"out-of-scope target(s): {joined}", risk)
 
         if risk > self.auto_threshold:
             return Decision(

@@ -21,7 +21,7 @@ class Scope:
     excluded: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = field(default_factory=list)
 
     @classmethod
-    def from_config(cls, targets: list[str], exclude: list[str] | None = None) -> "Scope":
+    def from_config(cls, targets: list[str], exclude: list[str] | None = None) -> Scope:
         nets: list = []
         doms: list[str] = []
         for t in targets:
@@ -58,8 +58,8 @@ class Scope:
 # --- host extraction from arbitrary command args ---------------------------
 
 _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-_HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
-_URL_RE = re.compile(r"https?://([^/:\s]+)", re.I)
+_HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b", re.IGNORECASE)
+_URL_RE = re.compile(r"https?://([^/:\s]+)", re.IGNORECASE)
 
 
 def extract_targets(args: list[str]) -> set[str]:
