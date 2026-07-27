@@ -32,8 +32,8 @@ Turn raw services into leads.
 Generation is unrestricted; delivery is scope- and confirm-gated.
 - ✅ `Artifact` state model (generated payloads/PoCs as first-class records)
 - ✅ `msfvenom` payload generator (offline, no scope check) + `payload` command
+- ✅ Delivery adapters (EXPLOIT risk class → confirmation gate) + `deliver` command
 - ⬜ Claude-authored PoC scripting for identified CVEs
-- ⬜ Delivery adapters (EXPLOIT risk class → confirmation gate)
 - ⬜ Kill-switch + hard rate limiting
 
 ## v0.5 — Post-exploitation ⬜
@@ -43,7 +43,7 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 
 ## v0.6 — Reporting 🚧
 - ✅ State → Markdown report (summary, hosts, findings, creds, artifacts, timeline)
-- ⬜ PDF export
+- ✅ PDF export (dependency-free)
 - ⬜ Reproduction steps pulled from the audit log
 
 ## v0.7 — CTF mode ⬜
@@ -51,15 +51,15 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ⬜ Flag detection & auto-capture
 - ⬜ Lightweight per-box reporting
 
-## v0.8 — Web dashboard ⬜
+## v0.8 — Web dashboard 🚧
 Follow and steer an engagement from a browser while the engine runs in the
 terminal. Rides on the orchestrator's existing `on_event` seam.
-- ⬜ FastAPI backend + WebSocket event stream
-- ⬜ Live phase progress + command feed (what ran, why)
-- ⬜ Target map: host → service → finding tree, built live from state
-- ⬜ Findings panel with severity
-- ⬜ Confirmation gate in the UI (approve/deny risky actions with one click)
-- ⬜ Read-only remote view (engine on the box, dashboard on the laptop)
+- ✅ FastAPI backend + WebSocket event stream
+- ✅ Live phase progress + command feed (what ran, why)
+- ✅ Findings panel with severity + host/service view (polls `/api/state`)
+- ✅ Confirmation gate in the UI (approve/deny risky actions)
+- ✅ Remote view (engine on the box, dashboard on the laptop) + `serve` command
+- ⬜ Live push of state deltas (replace polling with WS state events)
 
 ## v1.0 — Stable ⬜
 - ⬜ Frozen adapter API and safety-model contract

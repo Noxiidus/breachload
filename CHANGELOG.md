@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Web dashboard (`web/`, v0.8): FastAPI + WebSocket server that rides on the
+  orchestrator's `on_event` seam. Live event stream, host/service and findings
+  panels (polling `/api/state`), Markdown report at `/api/report`, and an
+  in-browser confirmation gate — risky actions surface a prompt the operator
+  approves/denies, bridged to the engine via an async `EventHub`. New
+  `breachload serve` command; requires the `web` extra (`pip install
+  'breachload[web]'`).
+- Artifact delivery (`exploit/delivery.py`, v0.4): fire a generated artifact at
+  a target — `script` (run a PoC against the target) and `upload` (curl the
+  artifact) methods. EXPLOIT-classed, so every delivery passes the scope
+  validator and confirmation gate. New `breachload deliver` command.
+- PDF export (`report/pdf.py`): dependency-free PDF writer renders the report
+  with the built-in Courier font. `breachload report --pdf`.
 - Reporting (`report/`): renders engagement state to a Markdown report —
   executive summary, host/service inventory, findings ordered by severity,
   credentials, generated artifacts, and an activity timeline. New

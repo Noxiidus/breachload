@@ -9,6 +9,7 @@ The planner (LLM) only decides. Parsing and scope live in deterministic code.
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Callable
 from pathlib import Path
 
@@ -97,7 +98,10 @@ class Orchestrator:
 
         if decision.needs_confirmation:
             prompt = f"[{decision.risk.name}] {' '.join(command)}\n  why: {plan.rationale}"
-            if not self.confirm(prompt):
+            approved = self.confirm(prompt)
+            if inspect.isawaitable(approved):   # supports async confirm (e.g. web UI)
+                approved = await approved
+            if not approved:
                 self.emit("skipped", f"User declined: {' '.join(command)}")
                 self._record(plan, command, approved=False)
                 return True
