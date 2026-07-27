@@ -14,6 +14,7 @@ from .core.llm import Planner
 from .core.orchestrator import Orchestrator
 from .core.state import EngagementState, Phase
 from .exploit.generators import GenerationError, MsfvenomGenerator, PayloadSpec
+from .report.engine import render_markdown
 from .safety.audit import AuditLog
 from .safety.scope import Scope
 from .safety.validator import Validator
@@ -129,6 +130,25 @@ def payload(config: Path = typer.Argument(..., help="engagement YAML"),
     state.save(state_path)
     console.print(f"[bold green]artifact[/] {artifact.name} -> {artifact.path}")
     console.print(f"  {artifact.description}")
+
+
+@app.command()
+def report(config: Path = typer.Argument(..., help="engagement YAML"),
+           output: Path = typer.Option(None, help="output path (default: <engagement>/report.md)")):
+    """Render a Markdown report from the current engagement state."""
+    cfg = EngagementConfig.load(config)
+    work = ENGAGEMENTS / cfg.name
+    state_path = work / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet — run a phase first[/]")
+        raise typer.Exit(1)
+
+    state = EngagementState.load(state_path)
+    markdown = render_markdown(state)
+    out_path = output or (work / "report.md")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(markdown, encoding="utf-8")
+    console.print(f"[bold green]report[/] {out_path}")
 
 
 if __name__ == "__main__":

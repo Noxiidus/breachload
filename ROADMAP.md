@@ -41,8 +41,8 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ⬜ Credential looting into the state model
 - ⬜ Lateral-movement suggestions from correlated state
 
-## v0.6 — Reporting ⬜
-- ⬜ Findings → Markdown report (Jinja2)
+## v0.6 — Reporting 🚧
+- ✅ State → Markdown report (summary, hosts, findings, creds, artifacts, timeline)
 - ⬜ PDF export
 - ⬜ Reproduction steps pulled from the audit log
 

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Reporting (`report/`): renders engagement state to a Markdown report —
+  executive summary, host/service inventory, findings ordered by severity,
+  credentials, generated artifacts, and an activity timeline. New
+  `breachload report` command writes `engagements/<name>/report.md`.
 - Exploit-side generation (`exploit/`): `Artifact` state model (generated
   payloads/PoCs as first-class records) and an `msfvenom` payload generator.
   Generation is offline and unrestricted — no target, no scope check — but still
@@ -40,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gates, on top of the orchestrator's `on_event` seam — _planned (v0.8)_
 
 ### Fixed
+- Payload generation reports a clean error when the generator binary (e.g.
+  msfvenom) is not installed, instead of crashing with a raw traceback.
 - Engagement `mode` (advisor / semi-auto / full-auto) now actually controls the
   confirmation threshold instead of being a decorative field: advisor confirms
   every action, semi-auto auto-runs only passive/recon, full-auto uses
