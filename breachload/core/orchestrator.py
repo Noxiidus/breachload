@@ -59,6 +59,13 @@ class Orchestrator:
             for a in self.registry.values()
         ]
 
+    def _record(self, plan, command: list[str], *, approved: bool = True,
+                exit_code: int | None = None) -> None:
+        self.state.record_action(ActionRecord(
+            phase=self.state.phase, tool=plan.tool or "?", command=command,
+            rationale=plan.rationale, approved=approved, exit_code=exit_code,
+        ))
+
     async def step(self) -> bool:
         """One decision+execution cycle. Returns False when the phase is done."""
         plan = self.planner.next_action(self.state, self._tool_catalog())
@@ -73,38 +80,46 @@ class Orchestrator:
             self.emit("error", f"Unknown tool proposed: {plan.tool}")
             return False
 
-        command = adapter.build_command(plan.target or "", **(plan.args or {}))
+        try:
+            command = adapter.build_command(plan.target or "", **(plan.args or {}))
+        except (TypeError, ValueError) as exc:
+            self.emit("error", f"Bad command for {plan.tool}: {exc}")
+            self._record(plan, [plan.tool], approved=False)
+            return True
+
         decision = self.validator.check(command, adapter.risk)
         self.audit.write("validate", command=command, decision=decision.__dict__)
 
         if not decision.allowed:
             self.emit("blocked", f"BLOCKED: {' '.join(command)} — {decision.reason}")
-            self.state.record_action(ActionRecord(
-                phase=self.state.phase, tool=plan.tool, command=command,
-                rationale=plan.rationale, approved=False,
-            ))
+            self._record(plan, command, approved=False)
             return True  # keep going; the planner may pick something else
 
         if decision.needs_confirmation:
             prompt = f"[{decision.risk.name}] {' '.join(command)}\n  why: {plan.rationale}"
             if not self.confirm(prompt):
                 self.emit("skipped", f"User declined: {' '.join(command)}")
-                self.state.record_action(ActionRecord(
-                    phase=self.state.phase, tool=plan.tool, command=command,
-                    rationale=plan.rationale, approved=False,
-                ))
+                self._record(plan, command, approved=False)
                 return True
 
         self.emit("run", f"$ {' '.join(command)}\n  why: {plan.rationale}")
-        result = await adapter.run(command)
-        notes = adapter.parse(result, self.state)
+        # A single tool failing (crash, timeout, unparseable output) must not
+        # abort the whole engagement — log it, record it, and move on. The record
+        # also stops the planner from re-proposing the same failing action.
+        try:
+            result = await adapter.run(command)
+            notes = adapter.parse(result, self.state)
+        except Exception as exc:  # noqa: BLE001 — deliberately broad: isolate tool failures
+            self.emit("error", f"{plan.tool} failed: {exc}")
+            self._record(plan, command, exit_code=-1)
+            self.audit.write("tool_error", command=command, error=str(exc))
+            self.state.save(self.state_path)
+            return True
+
         for n in notes:
             self.emit("note", n)
 
-        self.state.record_action(ActionRecord(
-            phase=self.state.phase, tool=plan.tool, command=command,
-            rationale=plan.rationale, exit_code=result.exit_code,
-        ))
+        self._record(plan, command, exit_code=result.exit_code)
         self.audit.write("executed", command=command, exit_code=result.exit_code, notes=notes)
 
         if self.analyzer is not None:

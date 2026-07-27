@@ -113,6 +113,17 @@ class TestFfuf:
         cmd = FfufAdapter().build_command("http://10.10.10.5")
         assert any("FUZZ" in tok for tok in cmd) and _no_shell_metachars(cmd)
 
+    def test_non_default_port_attaches_to_correct_service(self):
+        st = EngagementState(name="t")
+        host = st.upsert_host("10.10.10.5")
+        from breachload.core.state import Service
+        host.upsert_service(Service(port=8080, name="http-proxy"))
+        ffuf_8080 = ('{"results":[{"input":{"FUZZ":"api"},"status":200,"length":5,'
+                     '"url":"http://10.10.10.5:8080/api","host":"10.10.10.5"}]}')
+        FfufAdapter().parse(_result(ffuf_8080), st)
+        assert any("ffuf" in n for n in host.services["8080/tcp"].notes)
+        assert st.findings[0].service_key == "8080/tcp"
+
 
 class TestNuclei:
     def test_maps_severity_and_cve(self):

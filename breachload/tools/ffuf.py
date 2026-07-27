@@ -55,30 +55,31 @@ class FfufAdapter(ToolAdapter):
         if not results:
             return ["ffuf: no paths discovered"]
 
-        # Group by host so notes attach to the right service.
-        by_host: dict[str, list[str]] = {}
+        # Group by (host, port) — derived from each result URL — so notes attach
+        # to the exact web service, not all lumped onto port 80.
+        by_endpoint: dict[tuple[str, int], list[str]] = {}
         notes: list[str] = []
         for r in results:
-            url = r.get("url", "")
-            parsed = urlparse(url)
+            parsed = urlparse(r.get("url", ""))
             host_name = parsed.hostname or ""
             if not host_name:
                 continue
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
             status = r.get("status")
             path = parsed.path or "/"
-            by_host.setdefault(host_name, []).append(f"{path} [{status}]")
-            notes.append(f"{host_name} {path} [{status}] ({r.get('length')}b)")
+            by_endpoint.setdefault((host_name, port), []).append(f"{path} [{status}]")
+            notes.append(f"{host_name}:{port} {path} [{status}] ({r.get('length')}b)")
 
-        for host_name, paths in by_host.items():
+        for (host_name, port), paths in by_endpoint.items():
             host = state.upsert_host(host_name)
-            port = urlparse(_as_url(host_name)).port or 80
             svc = host.services.get(f"{port}/tcp")
             if svc is not None:
                 svc.notes.append(f"ffuf: {len(paths)} paths ({', '.join(paths[:10])})")
             state.add_finding(Finding(
-                title=f"{len(paths)} paths discovered on {host_name}",
+                title=f"{len(paths)} paths discovered on {host_name}:{port}",
                 severity=Severity.INFO,
                 host=host_name,
+                service_key=f"{port}/tcp",
                 description="Content discovery via ffuf.",
                 evidence="\n".join(paths[:50]),
             ))

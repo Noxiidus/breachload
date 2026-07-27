@@ -59,13 +59,14 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
 
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
-    validator = Validator(scope, allowed_binaries(registry), cfg.auto_risk)
+    validator = Validator(scope, allowed_binaries(registry), cfg.effective_threshold)
     planner = Planner()
     audit = AuditLog(work / "audit.jsonl")
 
-    mode = "online (Claude)" if planner.online else "offline (heuristic)"
+    planner_mode = "online (Claude)" if planner.online else "offline (heuristic)"
     label = f"phase={phase}" if phase else f"auto -> {stop}"
-    console.print(f"[bold]breachload[/] — {cfg.name} | {label} | planner={mode}")
+    console.print(f"[bold]breachload[/] — {cfg.name} | {label} | "
+                  f"mode={cfg.mode} | planner={planner_mode}")
     console.print(state.summary())
     console.print()
 

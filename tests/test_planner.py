@@ -52,6 +52,20 @@ class TestEnumPhase:
         assert plan.tool == "ffuf"  # moves on to the next tool
 
 
+class TestLlmFallback:
+    def test_api_error_falls_back_to_heuristic(self):
+        class _FakeClient:
+            class messages:
+                @staticmethod
+                def create(**kwargs):
+                    raise RuntimeError("api down")
+
+        planner = Planner()
+        planner._client = _FakeClient()
+        plan = planner.next_action(_state_with(Phase.RECON, []), _tools())
+        assert plan.tool == "nmap"   # fell back to the deterministic heuristic
+
+
 class TestVulnPhase:
     def test_http_service_gets_nuclei(self):
         st = _state_with(Phase.VULN, [Service(port=8080, name="http-proxy")])

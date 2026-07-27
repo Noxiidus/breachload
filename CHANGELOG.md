@@ -40,6 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gates, on top of the orchestrator's `on_event` seam — _planned (v0.8)_
 
 ### Fixed
+- Engagement `mode` (advisor / semi-auto / full-auto) now actually controls the
+  confirmation threshold instead of being a decorative field: advisor confirms
+  every action, semi-auto auto-runs only passive/recon, full-auto uses
+  `auto_threshold`.
+- ffuf now attaches discovered paths to the correct service port (it previously
+  assumed port 80, mislabelling services on 8080/8443/etc.).
+- The orchestrator isolates tool failures: a crashing/timed-out/unparseable
+  adapter no longer aborts the whole engagement — it is logged, recorded, and
+  the run continues (and the record stops the planner re-proposing it).
+- The Claude planner falls back to the heuristic on any API error (network, rate
+  limit, auth) instead of crashing the run.
 - `extract_targets` no longer misreads file-path arguments (e.g. a wordlist
   `common.txt`) as hostnames, which had blocked legitimate ffuf commands.
 - nmap address parsing used a truthiness test on an XML element (deprecated and

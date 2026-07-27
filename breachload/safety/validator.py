@@ -56,12 +56,13 @@ class Validator:
         self,
         scope: Scope,
         allowed_binaries: set[str],
-        auto_threshold: Risk = Risk.ACTIVE,
+        auto_threshold: Risk | None = Risk.ACTIVE,
     ) -> None:
         self.scope = scope
         self.allowed_binaries = allowed_binaries
         # Actions at or below this risk run automatically in full-auto mode;
-        # anything above requires explicit human confirmation.
+        # anything above requires explicit human confirmation. None means
+        # "confirm everything" (advisor mode).
         self.auto_threshold = auto_threshold
 
     def check(self, command: list[str], risk: Risk) -> Decision:
@@ -81,10 +82,12 @@ class Validator:
             joined = ", ".join(out_of_scope)
             return Decision(False, False, f"out-of-scope target(s): {joined}", risk)
 
-        if risk > self.auto_threshold:
+        if self.auto_threshold is None or risk > self.auto_threshold:
+            threshold = "none (advisor)" if self.auto_threshold is None \
+                else self.auto_threshold.name
             return Decision(
                 True, True,
-                f"risk {risk.name} above auto threshold {self.auto_threshold.name}",
+                f"risk {risk.name} above auto threshold {threshold}",
                 risk,
             )
         return Decision(True, False, "within scope and auto threshold", risk)

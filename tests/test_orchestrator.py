@@ -109,6 +109,22 @@ def test_analyzer_runs_in_chain(tmp_path):
     assert any(ev == "finding" for ev, _ in events)
 
 
+def test_tool_failure_is_isolated(tmp_path):
+    """A crashing adapter must not abort the run, and must be recorded once."""
+    orch, state, events = _orchestrator(tmp_path)
+
+    async def _boom(self, command, timeout=600.0):
+        raise RuntimeError("nmap segfaulted")
+    orch.registry["nmap"].run = types.MethodType(_boom, orch.registry["nmap"])
+
+    asyncio.run(orch.run_engagement(stop_after=Phase.VULN))  # must not raise
+
+    nmap_records = [a for a in state.history if a.tool == "nmap"]
+    assert len(nmap_records) == 1                 # recorded, not retried forever
+    assert nmap_records[0].exit_code == -1
+    assert any(ev == "error" for ev, _ in events)
+
+
 def test_resume_does_not_repeat_actions(tmp_path):
     orch, state, _ = _orchestrator(tmp_path)
     asyncio.run(orch.run_engagement(stop_after=Phase.VULN))

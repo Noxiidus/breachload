@@ -28,6 +28,20 @@ class EngagementConfig(BaseModel):
     def auto_risk(self) -> Risk:
         return Risk[self.auto_threshold.upper()]
 
+    @property
+    def effective_threshold(self) -> Risk | None:
+        """The confirmation threshold, combining `mode` and `auto_threshold`.
+
+        None means "confirm everything" (advisor). Otherwise actions at or below
+        the returned risk run without asking; anything above needs confirmation.
+        """
+        mode = self.mode.lower()
+        if mode == "advisor":
+            return None                 # nothing runs without a human yes
+        if mode == "semi-auto":
+            return Risk.RECON           # passive/recon auto; the rest asks
+        return self.auto_risk           # full-auto: use the configured threshold
+
     @classmethod
     def load(cls, path: Path) -> EngagementConfig:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))

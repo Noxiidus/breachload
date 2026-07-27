@@ -61,3 +61,34 @@ class TestValidator:
 
     def test_excluded_target_blocked(self):
         assert not self.v.check(["nmap", "10.10.10.1"], Risk.RECON).allowed
+
+
+class TestAdvisorThreshold:
+    """auto_threshold=None (advisor mode) must confirm even passive actions."""
+
+    def setup_method(self):
+        self.v = Validator(make_scope(), {"nmap"}, None)
+
+    def test_passive_needs_confirmation(self):
+        d = self.v.check(["nmap", "10.10.10.5"], Risk.PASSIVE)
+        assert d.allowed and d.needs_confirmation
+
+    def test_still_blocks_out_of_scope(self):
+        assert not self.v.check(["nmap", "8.8.8.8"], Risk.PASSIVE).allowed
+
+
+class TestModeThreshold:
+    """EngagementConfig.mode maps to an effective confirmation threshold."""
+
+    def _cfg(self, mode):
+        from breachload.core.config import EngagementConfig
+        return EngagementConfig(name="t", mode=mode, auto_threshold="active")
+
+    def test_advisor_is_none(self):
+        assert self._cfg("advisor").effective_threshold is None
+
+    def test_semi_auto_is_recon(self):
+        assert self._cfg("semi-auto").effective_threshold == Risk.RECON
+
+    def test_full_auto_uses_configured(self):
+        assert self._cfg("full-auto").effective_threshold == Risk.ACTIVE

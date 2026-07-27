@@ -70,13 +70,18 @@ class Planner:
             "phase": state.phase,
             "tools": tools,
         }, indent=2)
-        msg = self._client.messages.create(
-            model=self.model,
-            max_tokens=512,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user}],
-        )
-        text = msg.content[0].text.strip()
+        # Any API failure (network, rate limit, auth) falls back to the
+        # deterministic heuristic so the engagement keeps moving.
+        try:
+            msg = self._client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user}],
+            )
+            text = msg.content[0].text.strip()
+        except Exception:  # noqa: BLE001 — resilience: never let the planner crash the run
+            return self._heuristic(state, tools)
         return self._parse_plan(text, state, tools)
 
     def _parse_plan(self, text: str, state: EngagementState, tools: list[dict]) -> Plan:
