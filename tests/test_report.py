@@ -71,6 +71,12 @@ class TestRenderMarkdown:
         assert "nmap" in self.md and "exit 0" in self.md
         assert "blocked/skipped" in self.md   # the declined hydra action
 
+    def test_finding_includes_repro_from_history(self):
+        # The nmap command targeted 10.10.10.5 and succeeded, so it appears as a
+        # reproduction step under that host's finding.
+        assert "**Reproduce:**" in self.md
+        assert "nmap 10.10.10.5" in self.md
+
 
 class TestEmptyState:
     def test_minimal_report_no_crash(self):

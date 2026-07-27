@@ -14,11 +14,13 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..analysis.analyzer import Analyzer
+from ..analysis.flags import find_flags
 from ..safety.audit import AuditLog
 from ..safety.validator import Validator
-from ..tools.base import ToolAdapter
+from ..tools.base import ToolAdapter, ToolResult
 from .config import EngagementConfig
 from .llm import Planner
+from .ratelimit import RateLimiter
 from .state import ActionRecord, EngagementState, Phase
 
 # The automatic progression. Exploitation and beyond are intentionally excluded:
@@ -39,6 +41,8 @@ class Orchestrator:
         confirm: Callable[[str], bool] | None = None,
         on_event: Callable[[str, str], None] | None = None,
         analyzer: Analyzer | None = None,
+        rate_limiter: RateLimiter | None = None,
+        on_state: Callable[[EngagementState], None] | None = None,
     ) -> None:
         self.config = config
         self.state = state
@@ -49,10 +53,19 @@ class Orchestrator:
         self.state_path = state_path
         # Enriches state with CVE matches and correlations after each step.
         self.analyzer = analyzer
+        self.rate_limiter = rate_limiter
+        # Pushed the current state after each step (e.g. to the web dashboard).
+        self.on_state = on_state
         # confirm() is called for actions above the auto threshold. In advisor
         # mode everything routes through it; in full-auto only high-risk does.
         self.confirm = confirm or (lambda _: False)
         self.emit = on_event or (lambda ev, msg: None)
+        self._stop = False
+
+    def request_stop(self) -> None:
+        """Kill-switch: stop the engagement after the current action."""
+        self._stop = True
+        self.emit("stopped", "kill-switch engaged — halting after current action")
 
     def _tool_catalog(self) -> list[dict]:
         return [
@@ -69,6 +82,8 @@ class Orchestrator:
 
     async def step(self) -> bool:
         """One decision+execution cycle. Returns False when the phase is done."""
+        if self._stop:
+            return False
         plan = self.planner.next_action(self.state, self._tool_catalog())
         self.audit.write("plan", phase=self.state.phase, plan=plan.__dict__)
 
@@ -106,6 +121,9 @@ class Orchestrator:
                 self._record(plan, command, approved=False)
                 return True
 
+        if self.rate_limiter is not None:
+            await self.rate_limiter.wait()
+
         self.emit("run", f"$ {' '.join(command)}\n  why: {plan.rationale}")
         # A single tool failing (crash, timeout, unparseable output) must not
         # abort the whole engagement — log it, record it, and move on. The record
@@ -126,6 +144,9 @@ class Orchestrator:
         self._record(plan, command, exit_code=result.exit_code)
         self.audit.write("executed", command=command, exit_code=result.exit_code, notes=notes)
 
+        if self.config.ctf:
+            self._capture_flags(result, notes)
+
         if self.analyzer is not None:
             for f in self.analyzer.analyze(self.state):
                 self.emit("finding", f"[{f.severity.value}] {f.title}")
@@ -133,11 +154,20 @@ class Orchestrator:
                                  host=f.host, cve=f.cve)
 
         self.state.save(self.state_path)
+        if self.on_state is not None:
+            self.on_state(self.state)
         return True
+
+    def _capture_flags(self, result: ToolResult, notes: list[str]) -> None:
+        haystack = "\n".join([result.stdout or "", result.output_file or "", *notes])
+        for flag in find_flags(haystack):
+            if self.state.add_flag(flag):
+                self.emit("flag", f"captured {flag}")
+                self.audit.write("flag", flag=flag)
 
     async def run_phase(self, max_steps: int = 50) -> None:
         for _ in range(max_steps):
-            if not await self.step():
+            if self._stop or not await self.step():
                 break
             await asyncio.sleep(0)
 
@@ -153,6 +183,8 @@ class Orchestrator:
         except ValueError:
             start = 0
         for phase in PHASE_ORDER[start:]:
+            if self._stop:
+                break
             self.state.phase = phase
             self.emit("phase", f"== entering {phase.value} ==")
             self.state.save(self.state_path)

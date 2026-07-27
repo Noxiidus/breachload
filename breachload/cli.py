@@ -12,9 +12,11 @@ from .analysis.analyzer import Analyzer
 from .core.config import EngagementConfig
 from .core.llm import Planner
 from .core.orchestrator import Orchestrator
+from .core.ratelimit import RateLimiter
 from .core.state import ActionRecord, EngagementState, Phase
 from .exploit.delivery import deliver_artifact, method_by_name
 from .exploit.generators import GenerationError, MsfvenomGenerator, PayloadSpec
+from .exploit.poc import PocGenerator
 from .report.engine import render_markdown
 from .report.pdf import render_pdf
 from .safety.audit import AuditLog
@@ -119,9 +121,12 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     validator = Validator(scope, allowed_binaries(registry), cfg.effective_threshold)
     audit = AuditLog(work / "audit.jsonl")
     hub = EventHub()
+    rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
     orch = Orchestrator(cfg, state, registry, validator, Planner(), audit, state_path,
                         confirm=hub.request_confirm, on_event=hub.emit,
-                        analyzer=Analyzer.default())
+                        analyzer=Analyzer.default(), rate_limiter=rate,
+                        on_state=lambda st: hub.emit_state(st.dashboard_payload()))
+    hub.emit_state(state.dashboard_payload())   # seed the initial snapshot
 
     async def _boot():
         async def _run():
@@ -133,7 +138,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
             state.save(state_path)
         asyncio.create_task(_run())
 
-    web_app = create_app(hub, state_path, on_startup=_boot)
+    web_app = create_app(hub, state_path, on_startup=_boot, stopper=orch.request_stop)
     console.print(f"[bold]breachload[/] dashboard: http://{host}:{port}  (engagement: {cfg.name})")
     uvicorn.run(web_app, host=host, port=port, log_level="warning")
 
@@ -183,6 +188,40 @@ def payload(config: Path = typer.Argument(..., help="engagement YAML"),
     state.save(state_path)
     console.print(f"[bold green]artifact[/] {artifact.name} -> {artifact.path}")
     console.print(f"  {artifact.description}")
+
+
+@app.command()
+def poc(config: Path = typer.Argument(..., help="engagement YAML"),
+        index: int = typer.Option(None, help="finding index (0-based, see report order)"),
+        title: str = typer.Option(None, help="match a finding by title substring")):
+    """Generate a proof-of-concept script for a finding (Claude, or offline stub)."""
+    cfg = EngagementConfig.load(config)
+    work = ENGAGEMENTS / cfg.name
+    state_path = work / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet[/]")
+        raise typer.Exit(1)
+    state = EngagementState.load(state_path)
+
+    finding = _select_finding(state, index, title)
+    if finding is None:
+        console.print("[bold red]no matching finding[/] — use --index or --title")
+        raise typer.Exit(1)
+
+    gen = PocGenerator()
+    artifact = gen.generate(finding, work / "artifacts")
+    state.add_artifact(artifact)
+    state.save(state_path)
+    src = "Claude" if gen.online else "offline template"
+    console.print(f"[bold green]poc[/] {artifact.name} -> {artifact.path} ({src})")
+
+
+def _select_finding(state: EngagementState, index: int | None, title: str | None):
+    if index is not None and 0 <= index < len(state.findings):
+        return state.findings[index]
+    if title:
+        return next((f for f in state.findings if title.lower() in f.title.lower()), None)
+    return None
 
 
 @app.command()

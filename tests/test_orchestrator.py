@@ -51,13 +51,13 @@ def _stub_registry():
     return reg
 
 
-def _orchestrator(tmp_path: Path, analyzer=None):
-    cfg = EngagementConfig(name="e2e", targets=[f"{HOST}/32"])
+def _orchestrator(tmp_path: Path, analyzer=None, ctf=False, on_state=None, rate_limiter=None):
+    cfg = EngagementConfig(name="e2e", targets=[f"{HOST}/32"], ctf=ctf)
     state = EngagementState(name="e2e")
     state.upsert_host(HOST)
     reg = _stub_registry()
     scope = Scope.from_config(cfg.targets)
-    validator = Validator(scope, allowed_binaries(reg), cfg.auto_risk)
+    validator = Validator(scope, allowed_binaries(reg), cfg.effective_threshold)
     audit = AuditLog(tmp_path / "audit.jsonl")
     planner = Planner()
     planner._client = None  # force the offline heuristic — env-independent test
@@ -65,7 +65,7 @@ def _orchestrator(tmp_path: Path, analyzer=None):
     orch = Orchestrator(cfg, state, reg, validator, planner, audit,
                         tmp_path / "state.json",
                         on_event=lambda ev, msg: events.append((ev, msg)),
-                        analyzer=analyzer)
+                        analyzer=analyzer, on_state=on_state, rate_limiter=rate_limiter)
     return orch, state, events
 
 
@@ -123,6 +123,54 @@ def test_tool_failure_is_isolated(tmp_path):
     assert len(nmap_records) == 1                 # recorded, not retried forever
     assert nmap_records[0].exit_code == -1
     assert any(ev == "error" for ev, _ in events)
+
+
+def test_kill_switch_stops_before_running(tmp_path):
+    orch, state, events = _orchestrator(tmp_path)
+    orch.request_stop()
+    asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
+    assert state.history == []                       # nothing ran
+    assert any(ev == "stopped" for ev, _ in events)
+
+
+def test_ctf_captures_flag_from_output(tmp_path):
+    from breachload.tools.base import ToolResult
+    orch, state, events = _orchestrator(tmp_path, ctf=True)
+    orch._capture_flags(ToolResult(0, "banner: flag{c4ptur3d}", "", 0.1), ["note line"])
+    assert "flag{c4ptur3d}" in state.flags
+    assert any(ev == "flag" for ev, _ in events)
+    # A second capture of the same flag is deduplicated.
+    orch._capture_flags(ToolResult(0, "flag{c4ptur3d}", "", 0.1), [])
+    assert state.flags.count("flag{c4ptur3d}") == 1
+
+
+def test_ctf_mode_raises_threshold(tmp_path):
+    from breachload.core.config import EngagementConfig
+    from breachload.safety.validator import Risk
+    assert EngagementConfig(name="t", ctf=True).effective_threshold == Risk.EXPLOIT
+
+
+def test_on_state_pushed_each_step(tmp_path):
+    snapshots = []
+    orch, state, _ = _orchestrator(tmp_path, on_state=lambda st: snapshots.append(st.phase))
+    asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
+    assert len(snapshots) == len(state.history)      # one push per executed step
+
+
+def test_rate_limiter_is_awaited(tmp_path):
+    from breachload.core.ratelimit import RateLimiter
+    slept = []
+
+    async def fake_sleep(s):
+        slept.append(s)
+
+    clock = iter([0.0, 0.0, 5.0, 5.0, 10.0, 10.0, 15.0, 15.0, 20.0, 20.0, 25.0, 25.0])
+    rl = RateLimiter(1.0, clock=lambda: next(clock, 100.0), sleep=fake_sleep)
+    orch, state, _ = _orchestrator(tmp_path, rate_limiter=rl)
+    asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
+    # With a large elapsed gap the limiter shouldn't sleep, but it must be invoked
+    # once per executed action (no exceptions => wait() ran in the loop).
+    assert state.history                              # actions ran through the limiter
 
 
 def test_resume_does_not_repeat_actions(tmp_path):

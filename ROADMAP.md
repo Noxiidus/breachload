@@ -33,23 +33,23 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ✅ `Artifact` state model (generated payloads/PoCs as first-class records)
 - ✅ `msfvenom` payload generator (offline, no scope check) + `payload` command
 - ✅ Delivery adapters (EXPLOIT risk class → confirmation gate) + `deliver` command
-- ⬜ Claude-authored PoC scripting for identified CVEs
-- ⬜ Kill-switch + hard rate limiting
+- ✅ Claude-authored PoC scripting for identified CVEs (`poc` command)
+- ✅ Kill-switch + rate limiting
 
 ## v0.5 — Post-exploitation ⬜
 - ⬜ Privilege-escalation enumeration (linpeas-style parsing)
 - ⬜ Credential looting into the state model
 - ⬜ Lateral-movement suggestions from correlated state
 
-## v0.6 — Reporting 🚧
+## v0.6 — Reporting ✅
 - ✅ State → Markdown report (summary, hosts, findings, creds, artifacts, timeline)
 - ✅ PDF export (dependency-free)
-- ⬜ Reproduction steps pulled from the audit log
+- ✅ Reproduction steps pulled from the history
 
-## v0.7 — CTF mode ⬜
-- ⬜ Aggressive defaults, raised auto-threshold
-- ⬜ Flag detection & auto-capture
-- ⬜ Lightweight per-box reporting
+## v0.7 — CTF mode ✅
+- ✅ Aggressive defaults, raised auto-threshold (`ctf: true`)
+- ✅ Flag detection & auto-capture (into `state.flags`, `flag` events)
+- ✅ Flags shown live on the dashboard
 
 ## v0.8 — Web dashboard 🚧
 Follow and steer an engagement from a browser while the engine runs in the
@@ -59,7 +59,8 @@ terminal. Rides on the orchestrator's existing `on_event` seam.
 - ✅ Findings panel with severity + host/service view (polls `/api/state`)
 - ✅ Confirmation gate in the UI (approve/deny risky actions)
 - ✅ Remote view (engine on the box, dashboard on the laptop) + `serve` command
-- ⬜ Live push of state deltas (replace polling with WS state events)
+- ✅ Live push of state snapshots over WS (polling is only a fallback)
+- ✅ In-UI kill-switch (Stop button → `/api/stop`)
 
 ## v1.0 — Stable ⬜
 - ⬜ Frozen adapter API and safety-model contract

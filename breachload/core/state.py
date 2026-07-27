@@ -136,6 +136,7 @@ class EngagementState(BaseModel):
     credentials: list[Credential] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     artifacts: list[Artifact] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)   # CTF flags captured
     history: list[ActionRecord] = Field(default_factory=list)
     created_at: str = Field(default_factory=_now)
 
@@ -152,6 +153,13 @@ class EngagementState(BaseModel):
 
     def add_artifact(self, artifact: Artifact) -> None:
         self.artifacts.append(artifact)
+
+    def add_flag(self, flag: str) -> bool:
+        """Record a CTF flag if new. Returns True if it was newly added."""
+        if flag in self.flags:
+            return False
+        self.flags.append(flag)
+        return True
 
     def record_action(self, action: ActionRecord) -> None:
         self.history.append(action)
@@ -175,6 +183,32 @@ class EngagementState(BaseModel):
     def load(cls, path: Path) -> EngagementState:
         return cls.model_validate(json.loads(path.read_text(encoding="utf-8")))
 
+    def dashboard_payload(self) -> dict:
+        """Compact, dashboard-friendly view (no history) for live WS pushes."""
+        return {
+            "name": self.name,
+            "phase": self.phase.value,
+            "hosts": {
+                addr: {
+                    "os_guess": h.os_guess,
+                    "services": {
+                        k: {"port": s.port, "protocol": s.protocol, "name": s.name}
+                        for k, s in h.services.items()
+                    },
+                }
+                for addr, h in self.hosts.items()
+            },
+            "findings": [
+                {"title": f.title, "severity": f.severity.value, "host": f.host}
+                for f in self.findings
+            ],
+            "flags": self.flags,
+            "counts": {
+                "credentials": len(self.credentials),
+                "artifacts": len(self.artifacts),
+            },
+        }
+
     def summary(self) -> str:
         """Compact, LLM-friendly view of what we know. No raw output."""
         lines = [f"Engagement '{self.name}' — phase: {self.phase}"]
@@ -191,4 +225,6 @@ class EngagementState(BaseModel):
             lines.append(f"  findings: {len(self.findings)}")
         if self.artifacts:
             lines.append(f"  artifacts: {len(self.artifacts)}")
+        if self.flags:
+            lines.append(f"  flags: {len(self.flags)} ({', '.join(self.flags[:5])})")
         return "\n".join(lines)

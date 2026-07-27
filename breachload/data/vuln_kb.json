@@ -8,6 +8,15 @@
     {"match": ["proftpd"], "range": "==1.3.5", "cve": "CVE-2015-3306", "severity": "critical", "name": "ProFTPD mod_copy RCE"},
     {"match": ["samba"], "range": ">=3.5.0,<4.6.4", "cve": "CVE-2017-7494", "severity": "critical", "name": "Samba SambaCry RCE"},
     {"match": ["exim"], "range": ">=4.87,<=4.91", "cve": "CVE-2019-10149", "severity": "critical", "name": "Exim RCE (return of the WIZard)"},
-    {"match": ["nginx"], "range": ">=0.8.41,<=1.4.0", "cve": "CVE-2013-2028", "severity": "high", "name": "nginx chunked transfer stack overflow"}
+    {"match": ["nginx"], "range": ">=0.8.41,<=1.4.0", "cve": "CVE-2013-2028", "severity": "high", "name": "nginx chunked transfer stack overflow"},
+    {"match": ["openssh"], "range": ">=8.5,<9.8", "cve": "CVE-2024-6387", "severity": "high", "name": "OpenSSH regreSSHion RCE"},
+    {"match": ["sudo"], "range": ">=1.8.2,<1.9.5", "cve": "CVE-2021-3156", "severity": "high", "name": "sudo Baron Samedit heap overflow"},
+    {"match": ["apache", "tomcat"], "range": ">=9.0.0,<9.0.31", "cve": "CVE-2020-1938", "severity": "high", "name": "Apache Tomcat Ghostcat (AJP)"},
+    {"match": ["vsftpd"], "range": "==3.0.3", "cve": "CVE-2021-30047", "severity": "medium", "name": "vsftpd 3.0.3 DoS"},
+    {"match": ["webmin"], "range": "==1.920", "cve": "CVE-2019-15107", "severity": "critical", "name": "Webmin password_change RCE"},
+    {"match": ["php"], "range": ">=8.1.0,<8.1.29", "cve": "CVE-2024-4577", "severity": "critical", "name": "PHP-CGI argument injection RCE"},
+    {"match": ["heartbleed", "openssl"], "range": ">=1.0.1,<1.0.1g", "cve": "CVE-2014-0160", "severity": "high", "name": "OpenSSL Heartbleed"},
+    {"match": ["log4j"], "range": ">=2.0,<2.15.0", "cve": "CVE-2021-44228", "severity": "critical", "name": "Log4Shell JNDI RCE"},
+    {"match": ["grafana"], "range": ">=8.0.0,<8.3.1", "cve": "CVE-2021-43798", "severity": "high", "name": "Grafana path traversal"}
   ]
 }

@@ -80,11 +80,11 @@ def _findings(state: EngagementState) -> list[str]:
     out = ["## Findings", ""]
     ordered = sorted(state.findings, key=lambda f: _SEVERITY_ORDER.index(f.severity))
     for f in ordered:
-        out += _finding_block(f)
+        out += _finding_block(f, state)
     return out
 
 
-def _finding_block(f: Finding) -> list[str]:
+def _finding_block(f: Finding, state: EngagementState) -> list[str]:
     loc = " · ".join(x for x in (f.host, f.service_key) if x)
     out = [f"### [{f.severity.value.upper()}] {f.title}", ""]
     if loc:
@@ -97,8 +97,28 @@ def _finding_block(f: Finding) -> list[str]:
         out += ["", f"**Remediation:** {f.remediation}"]
     if f.evidence:
         out += ["", "```", f.evidence.strip()[:1500], "```"]
+    repro = _repro_steps(f, state)
+    if repro:
+        out += ["", "**Reproduce:**", "", "```"] + repro + ["```"]
     out.append("")
     return out
+
+
+def _repro_steps(f: Finding, state: EngagementState) -> list[str]:
+    """Successful commands from the history that targeted this finding's host."""
+    if not f.host:
+        return []
+    steps = [
+        " ".join(a.command)
+        for a in state.history
+        if a.approved and a.exit_code in (0, None)
+        and any(f.host in token for token in a.command)
+    ]
+    # De-duplicate while preserving order, cap the list.
+    seen: dict[str, None] = {}
+    for s in steps:
+        seen.setdefault(s, None)
+    return list(seen)[:5]
 
 
 def _credentials(state: EngagementState) -> list[str]:

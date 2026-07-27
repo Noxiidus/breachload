@@ -21,6 +21,7 @@ class EventHub:
         self._pending: dict[str, asyncio.Future] = {}
         self._log: list[dict] = []
         self._replay_limit = replay_limit
+        self._last_state: dict | None = None
 
     # --- subscription -------------------------------------------------------
     def subscribe(self) -> asyncio.Queue:
@@ -39,10 +40,22 @@ class EventHub:
     def emit(self, event: str, message: str) -> None:
         self._publish({"type": "event", "event": event, "message": message})
 
+    def emit_state(self, payload: dict) -> None:
+        """Push a full state snapshot. Not logged for replay (only the latest is kept)."""
+        self._last_state = payload
+        self._broadcast({"type": "state", "state": payload})
+
+    @property
+    def last_state(self) -> dict | None:
+        return self._last_state
+
     def _publish(self, record: dict) -> None:
         self._log.append(record)
         if len(self._log) > self._replay_limit:
             self._log = self._log[-self._replay_limit:]
+        self._broadcast(record)
+
+    def _broadcast(self, record: dict) -> None:
         for queue in list(self._subscribers):
             queue.put_nowait(record)
 

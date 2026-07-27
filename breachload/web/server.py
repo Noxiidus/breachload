@@ -30,6 +30,7 @@ def create_app(
     hub: EventHub,
     state_path: Path,
     on_startup: Callable[[], Awaitable[None]] | None = None,
+    stopper: Callable[[], None] | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -40,6 +41,7 @@ def create_app(
     app = FastAPI(title="breachload dashboard", lifespan=lifespan)
     app.state.hub = hub
     app.state.state_path = Path(state_path)
+    app.state.stopper = stopper
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:
@@ -55,6 +57,13 @@ def create_app(
         state = _load_state(app.state.state_path)
         return render_markdown(state) if state else "# No state yet\n"
 
+    @app.post("/api/stop")
+    async def api_stop() -> JSONResponse:
+        if app.state.stopper is None:
+            return JSONResponse({"ok": False, "reason": "no running engagement"}, status_code=409)
+        app.state.stopper()
+        return JSONResponse({"ok": True})
+
     @app.websocket("/ws")
     async def ws_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
@@ -62,6 +71,8 @@ def create_app(
         queue = hub.subscribe()
         for record in hub.log:          # replay history for late joiners
             await websocket.send_json(record)
+        if hub.last_state is not None:  # bring a late joiner up to date
+            await websocket.send_json({"type": "state", "state": hub.last_state})
 
         async def _pump() -> None:
             while True:

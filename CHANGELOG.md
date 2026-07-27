@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Kill-switch: `Orchestrator.request_stop()` halts the engagement after the
+  current action; surfaced as a Stop button on the dashboard (`POST /api/stop`).
+- Rate limiting: `min_action_interval` in the engagement config throttles
+  target-facing actions (`core/ratelimit.py`, injectable clock/sleep).
+- CTF mode (`ctf: true`): aggressive auto-threshold (runs up to exploitation) and
+  automatic flag capture — tool output is scanned for common flag formats
+  (`analysis/flags.py`) into `state.flags`; a `flag` event fires on capture.
+- Claude-authored PoC generator (`exploit/poc.py`): turns a finding into a PoC
+  script artifact (offline template stub when no API key). New `breachload poc`.
+- Live dashboard updates: the engine pushes compact state snapshots over the
+  WebSocket (`hub.emit_state`), so panels update without polling; polling remains
+  a fallback. Late joiners get the latest snapshot on connect.
+- Report reproduction steps: each finding lists the successful commands from the
+  history that targeted its host.
+- Ten more entries in the CVE knowledge base (regreSSHion, Log4Shell, sudo
+  Baron Samedit, Ghostcat, PHP-CGI, Heartbleed, Grafana, Webmin, …).
 - Web dashboard (`web/`, v0.8): FastAPI + WebSocket server that rides on the
   orchestrator's `on_event` seam. Live event stream, host/service and findings
   panels (polling `/api/state`), Markdown report at `/api/report`, and an

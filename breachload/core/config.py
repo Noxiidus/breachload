@@ -22,6 +22,10 @@ class EngagementConfig(BaseModel):
     # CTF: ACTIVE or higher. Real engagement: keep at RECON and confirm the rest.
     auto_threshold: str = "active"
     mode: str = "full-auto"          # advisor | semi-auto | full-auto
+    ctf: bool = False                # CTF mode: aggressive defaults + flag capture
+    # Minimum seconds between executed actions (0 = no throttle). Keeps the agent
+    # from hammering a target.
+    min_action_interval: float = 0.0
     notes: str = ""
 
     @property
@@ -30,11 +34,13 @@ class EngagementConfig(BaseModel):
 
     @property
     def effective_threshold(self) -> Risk | None:
-        """The confirmation threshold, combining `mode` and `auto_threshold`.
+        """The confirmation threshold, combining `ctf`, `mode` and `auto_threshold`.
 
         None means "confirm everything" (advisor). Otherwise actions at or below
         the returned risk run without asking; anything above needs confirmation.
         """
+        if self.ctf:
+            return Risk.EXPLOIT         # CTF: run right up to exploitation
         mode = self.mode.lower()
         if mode == "advisor":
             return None                 # nothing runs without a human yes
