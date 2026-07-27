@@ -66,15 +66,21 @@ def extract_targets(args: list[str]) -> set[str]:
     """Pull every IP/host/URL-host out of a command's arguments.
 
     Used to check a proposed command against scope before running it.
+
+    Hostnames are matched only when a whole argument *is* a hostname — this
+    avoids misreading file paths like ``wordlists/common.txt`` as targets. URLs
+    and bare IPs are still matched anywhere in an argument (a real target can be
+    embedded in a URL, and an embedded IP is worth flagging).
     """
     found: set[str] = set()
     for arg in args:
+        token = arg.strip()
         for m in _URL_RE.findall(arg):
             found.add(m)
         for m in _IP_RE.findall(arg):
             found.add(m)
-        for m in _HOST_RE.findall(arg):
-            found.add(m)
+        if _HOST_RE.fullmatch(token):
+            found.add(token)
     return found
 
 

@@ -13,9 +13,9 @@ Deterministic core proven end-to-end for recon.
 - ✅ Orchestrator loop + Claude planner with offline fallback
 - ✅ CLI: `run`, `status`
 
-## v0.2 — Recon & enumeration breadth ⬜
+## v0.2 — Recon & enumeration breadth 🚧
 Cover the discovery phase across infra and web.
-- ⬜ Adapters: `whatweb`, `ffuf`, `nuclei`, `enum4linux-ng`
+- 🚧 Adapters: ✅ `whatweb` · ✅ `ffuf` · ✅ `nuclei` · ⬜ `enum4linux-ng`
 - ⬜ Capability-based tool selection in the planner
 - ⬜ Phase transitions (recon → enumeration → vuln) driven by state
 - ⬜ `httpx`/service fingerprint enrichment

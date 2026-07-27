@@ -8,10 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Web-recon adapters (whatweb, ffuf, nuclei) — _planned_
+- Web-recon adapters: `whatweb` (HTTP fingerprinting → service product/techs),
+  `ffuf` (content discovery → paths as notes + findings), `nuclei` (templated
+  vuln scan → findings with mapped severity and CVE ids).
+- Adapter tests parsing captured sample outputs into state (22 tests total).
 - Exploit-side: msfvenom payload generator + Artifact state model — _planned_
 - Web dashboard (FastAPI + WebSocket) for live follow-along and confirmation
   gates, on top of the orchestrator's `on_event` seam — _planned (v0.8)_
+
+### Fixed
+- `extract_targets` no longer misreads file-path arguments (e.g. a wordlist
+  `common.txt`) as hostnames, which had blocked legitimate ffuf commands.
+- nmap address parsing used a truthiness test on an XML element (deprecated and
+  wrong for empty elements); now an explicit `is not None` check.
 
 ## [0.1.0] - 2026-07-27
 

@@ -7,13 +7,19 @@ place both enables it for the planner and authorizes its binary.
 from __future__ import annotations
 
 from .base import ToolAdapter
+from .ffuf import FfufAdapter
 from .nmap import NmapAdapter
+from .nuclei import NucleiAdapter
+from .whatweb import WhatWebAdapter
 
 
 def default_registry() -> dict[str, ToolAdapter]:
     adapters: list[ToolAdapter] = [
         NmapAdapter(),
-        # Next adapters to add: whatweb, ffuf, nuclei, enum4linux-ng.
+        WhatWebAdapter(),
+        FfufAdapter(),
+        NucleiAdapter(),
+        # Next adapters to add: enum4linux-ng, then exploit-side generators.
     ]
     return {a.name: a for a in adapters}
 

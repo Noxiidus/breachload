@@ -47,7 +47,9 @@ class NmapAdapter(ToolAdapter):
             return [f"nmap XML parse error: {exc}"]
 
         for host_el in root.findall("host"):
-            addr_el = host_el.find("address[@addrtype='ipv4']") or host_el.find("address")
+            addr_el = host_el.find("address[@addrtype='ipv4']")
+            if addr_el is None:
+                addr_el = host_el.find("address")
             if addr_el is None:
                 continue
             address = addr_el.get("addr", "")
