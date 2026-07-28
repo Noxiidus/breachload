@@ -49,6 +49,7 @@ breachload status engagements/example.yaml         # current known state
 breachload suggest engagements/example.yaml        # rule-based next steps (no API key)
 breachload payloads --tag smb                      # browse the offline payload library
 breachload gtfo find                               # offline GTFOBins privesc lookup
+breachload loot engagements/example.yaml --scan linpeas.txt   # privesc + creds from shell loot
 breachload doctor                                  # which tools/wordlists are installed
 breachload flag engagements/example.yaml --scan loot/user.txt   # capture a flag
 breachload report engagements/example.yaml --pdf   # Markdown (+ PDF) report

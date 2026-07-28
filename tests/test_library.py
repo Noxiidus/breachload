@@ -89,6 +89,33 @@ class TestSuggestionEngine:
         assert any("SMB" in s.title for s in out)
         assert isinstance(out[0], Suggestion)
 
+    def test_lateral_movement_when_credentials_exist(self):
+        from breachload.core.state import Credential
+        st = EngagementState(name="t")
+        h = st.upsert_host("10.10.10.5")
+        h.upsert_service(Service(port=22, name="ssh"))
+        st.credentials.append(Credential(username="bob", secret="Winter2024", kind="password"))
+        out = SuggestionEngine().suggest(st, lhost="10.10.14.9")
+        lateral = next((s for s in out if "Lateral movement" in s.title), None)
+        assert lateral is not None
+        blob = "\n".join(lateral.actions)
+        assert "bob" in blob and "ssh bob@10.10.10.5" in blob
+
+    def test_pass_the_hash_for_hash_credentials(self):
+        from breachload.core.state import Credential
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.9").upsert_service(Service(port=445, name="microsoft-ds"))
+        st.credentials.append(Credential(username="admin", secret="aad3b...:31d6c...", kind="hash"))
+        out = SuggestionEngine().suggest(st)
+        lateral = next(s for s in out if "Lateral movement" in s.title)
+        assert any("pass-the-hash" in a for a in lateral.actions)
+
+    def test_no_lateral_without_credentials(self):
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.5").upsert_service(Service(port=22, name="ssh"))
+        out = SuggestionEngine().suggest(st)
+        assert not any("Lateral movement" in s.title for s in out)
+
     def test_matched_chain_outranks_other_suggestions(self):
         st = EngagementState(name="t")
         host = st.upsert_host("10.10.10.9")

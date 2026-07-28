@@ -13,13 +13,13 @@ Deterministic core proven end-to-end for recon.
 - ✅ Orchestrator loop + Claude planner with offline fallback
 - ✅ CLI: `run`, `status`
 
-## v0.2 — Recon & enumeration breadth 🚧
+## v0.2 — Recon & enumeration breadth ✅
 Cover the discovery phase across infra and web.
-- ✅ Adapters: `whatweb` · `ffuf` · `nuclei` · `enum4linux-ng`
+- ✅ Adapters: `whatweb` · `ffuf` · `nuclei` · `enum4linux-ng` · `httpx`
 - ✅ Capability-based tool selection in the planner
 - ✅ Phase transitions (recon → enumeration → vuln) driven by state
 - ✅ OUTFILE mechanism for file-output tools
-- ⬜ `httpx`/service fingerprint enrichment
+- ✅ `httpx`/service fingerprint enrichment
 
 ## v0.3 — Analysis ✅
 Turn raw services into leads.
@@ -36,10 +36,12 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ✅ Claude-authored PoC scripting for identified CVEs (`poc` command)
 - ✅ Kill-switch + rate limiting
 
-## v0.5 — Post-exploitation ⬜
-- ⬜ Privilege-escalation enumeration (linpeas-style parsing)
-- ⬜ Credential looting into the state model
-- ⬜ Lateral-movement suggestions from correlated state
+## v0.5 — Post-exploitation ✅
+- ✅ Privilege-escalation enumeration — `sudo -l` / SUID / linpeas parsing into
+  findings, cross-referenced with GTFOBins (`loot` command)
+- ✅ Credential looting into the state model (passwords, hashes, keys, URL creds)
+- ✅ Lateral-movement suggestions from correlated state (credential reuse,
+  pass-the-hash, SSH/RDP with looted creds)
 
 ## v0.6 — Reporting ✅
 - ✅ State → Markdown report (summary, hosts, findings, creds, artifacts, timeline)

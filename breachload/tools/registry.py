@@ -19,6 +19,7 @@ from importlib.metadata import entry_points
 from .base import ToolAdapter
 from .enum4linux import Enum4linuxAdapter
 from .ffuf import FfufAdapter
+from .httpx import HttpxAdapter
 from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
 from .whatweb import WhatWebAdapter
@@ -31,6 +32,7 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
     adapters: list[ToolAdapter] = [
         NmapAdapter(),
         WhatWebAdapter(),
+        HttpxAdapter(),
         FfufAdapter(),
         NucleiAdapter(),
         Enum4linuxAdapter(),

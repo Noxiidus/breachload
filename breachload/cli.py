@@ -12,6 +12,7 @@ from rich.markup import escape
 from .analysis.analyzer import Analyzer
 from .analysis.flags import find_flags
 from .analysis.gtfobins import known_binaries, lookup
+from .analysis.postexploit import loot as postexploit_loot
 from .analysis.suggest import SuggestionEngine
 from .core.config import EngagementConfig
 from .core.environment import check_tools, check_wordlists
@@ -334,6 +335,42 @@ def flag(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(f"[bold green]captured[/] {len(new)} flag(s): {', '.join(new)}")
     else:
         console.print("[yellow]no new flags found[/]")
+
+
+@app.command()
+def loot(config: Path = typer.Argument(..., help="engagement YAML"),
+         scan: Path = typer.Option(None, help="file to parse (linpeas / sudo -l / SUID sweep)"),
+         text: str = typer.Option(None, help="text to parse")):
+    """Parse post-exploitation output into findings + credentials (privesc, loot)."""
+    cfg = EngagementConfig.load(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = (EngagementState.load(state_path) if state_path.exists()
+             else EngagementState(name=cfg.name))
+
+    blob = ""
+    if scan and Path(scan).is_file():
+        blob += Path(scan).read_text(encoding="utf-8", errors="replace")
+    if text:
+        blob += "\n" + text
+    if not blob.strip():
+        console.print("[yellow]nothing to parse — pass --scan <file> or --text[/]")
+        raise typer.Exit(1)
+
+    findings, creds = postexploit_loot(blob)
+    existing_titles = {f.title for f in state.findings}
+    existing_creds = {(c.username, c.secret, c.kind) for c in state.credentials}
+    new_f = [f for f in findings if f.title not in existing_titles]
+    new_c = [c for c in creds if (c.username, c.secret, c.kind) not in existing_creds]
+    for f in new_f:
+        state.add_finding(f)
+    state.credentials.extend(new_c)
+    state.save(state_path)
+
+    console.print(f"[bold green]loot[/] +{len(new_f)} findings, +{len(new_c)} credentials")
+    for f in new_f:
+        console.print(f"  [{f.severity.value}] {f.title}")
+    for c in new_c:
+        console.print(f"  cred: {c.username or '?'} / {c.secret or '?'} ({c.kind})")
 
 
 @app.command()

@@ -85,3 +85,15 @@ class TestUtilityCommands:
         assert result.exit_code == 0 and "flag{pwned_it}" in result.output
         state = EngagementState.load(tmp_path / "t" / "state.json")
         assert "flag{pwned_it}" in state.flags
+
+    def test_loot_parses_findings_and_creds(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        from breachload.core.state import EngagementState
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        loot_text = "(root) NOPASSWD: /usr/bin/find\npassword=Sup3rSecret"
+        result = runner.invoke(app, ["loot", str(cfg), "--text", loot_text])
+        assert result.exit_code == 0
+        state = EngagementState.load(tmp_path / "t" / "state.json")
+        assert any("find" in f.title for f in state.findings)
+        assert any(c.secret == "Sup3rSecret" for c in state.credentials)

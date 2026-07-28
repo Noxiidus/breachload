@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Post-exploitation (`analysis/postexploit.py`, `loot` command): parse collected
+  shell output (`sudo -l`, a SUID sweep, linpeas, config files) into findings and
+  credentials. Passwordless-sudo and known-SUID binaries become privesc findings
+  cross-referenced with GTFOBins; passwords, hashes, private keys and URL creds
+  are looted into the state model.
+- Lateral-movement suggestions: when credentials exist, `suggest`/`auto` propose
+  reuse across hosts and services (credential spray, pass-the-hash, SSH/RDP with
+  the looted creds).
+- `httpx` adapter: HTTP service fingerprint enrichment (status, title, web
+  server, detected technologies) folded into the matching service.
+
+### Fixed
+- Credential looting no longer misreads `NOPASSWD:` from sudo output as a
+  password (a negative-lookbehind guard; `DB_PASSWORD=` still parses).
+
 ## [0.3.0] - 2026-07-28
 
 ### Added

