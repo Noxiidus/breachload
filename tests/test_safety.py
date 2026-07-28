@@ -37,6 +37,28 @@ class TestExtractTargets:
         assert "10.10.10.5" in found
         assert "sub.target.example" in found
 
+    def test_extracts_smb_unc_authority(self):
+        # A host must not slip past scope by hiding in an SMB/UNC path.
+        assert "evil.example" in extract_targets(["-L", "//evil.example/share"])
+        assert "evil.example" in extract_targets(["\\\\evil.example\\c$"])
+        assert "10.10.10.5" in extract_targets(["//10.10.10.5/share"])
+
+    def test_extracts_host_port(self):
+        assert "evil.example" in extract_targets(["evil.example:445"])
+        assert "10.10.10.5" in extract_targets(["10.10.10.5:8080"])
+
+    def test_does_not_flag_file_paths(self):
+        # Slashes in paths and non-host // sequences must not become targets.
+        assert extract_targets(["wordlists/common.txt"]) == set()
+        assert extract_targets(["-w", "path//double/x"]) == set()
+
+    def test_out_of_scope_smb_target_is_blocked(self):
+        from breachload.safety.validator import Risk, Validator
+        scope = Scope.from_config(["10.10.10.0/24"])
+        v = Validator(scope, {"smbclient"}, Risk.ACTIVE)
+        decision = v.check(["smbclient", "-N", "-L", "//evil.example/share"], Risk.ACTIVE)
+        assert not decision.allowed and "out-of-scope" in decision.reason
+
 
 class TestValidator:
     def setup_method(self):

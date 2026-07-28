@@ -197,6 +197,10 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
         asyncio.create_task(_run())
 
     web_app = create_app(hub, state_path, on_startup=_boot, stopper=orch.request_stop)
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        console.print("[bold red]warning:[/] binding beyond localhost — the confirm/stop "
+                      "endpoints are unauthenticated; anyone who can reach this port can "
+                      "approve risky actions.")
     console.print(f"[bold]breachload[/] dashboard: http://{host}:{port}  (engagement: {cfg.name})")
     uvicorn.run(web_app, host=host, port=port, log_level="warning")
 
@@ -252,6 +256,24 @@ def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
         for action in s.actions:
             console.print("    " + action, markup=False)   # actions contain [ ] { } # verbatim
         console.print()
+
+
+@app.command(name="kb-import")
+def kb_import(nvd: Path = typer.Argument(..., help="NVD 2.0 JSON feed"),
+              output: Path = typer.Option("breachload_kb.json", help="KB file to write")):
+    """Convert an NVD 2.0 feed into a breachload KB file (grow the CVE knowledge base).
+
+    Point BREACHLOAD_KB at the output file to have the analyzer use these CVEs:
+      export BREACHLOAD_KB=$(pwd)/breachload_kb.json
+    """
+    import json as _json
+
+    from .analysis.nvd import parse_nvd
+    data = _json.loads(Path(nvd).read_text(encoding="utf-8"))
+    entries = parse_nvd(data)
+    Path(output).write_text(_json.dumps({"entries": entries}, indent=2), encoding="utf-8")
+    console.print(f"[bold green]imported[/] {len(entries)} usable CVE entries -> {output}")
+    console.print(f"[dim]use them:  export BREACHLOAD_KB={Path(output).resolve()}[/]")
 
 
 @app.command()

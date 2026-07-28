@@ -21,12 +21,12 @@ Cover the discovery phase across infra and web.
 - ✅ OUTFILE mechanism for file-output tools
 - ⬜ `httpx`/service fingerprint enrichment
 
-## v0.3 — Analysis 🚧
+## v0.3 — Analysis ✅
 Turn raw services into leads.
 - ✅ Version → CVE mapping (local offline KB; pluggable for a fuller feed)
 - ✅ Cross-service correlator (EternalBlue candidate, cleartext/anon FTP, telnet)
 - ✅ Finding synthesis with severity + remediation, deduplicated
-- ⬜ Grow the KB / optional NVD feed import
+- ✅ NVD 2.0 feed import (`kb-import`) + `BREACHLOAD_KB` extension point
 
 ## v0.4 — Exploitation & payloads 🚧
 Generation is unrestricted; delivery is scope- and confirm-gated.
@@ -62,10 +62,10 @@ terminal. Rides on the orchestrator's existing `on_event` seam.
 - ✅ Live push of state snapshots over WS (polling is only a fallback)
 - ✅ In-UI kill-switch (Stop button → `/api/stop`)
 
-## v1.0 — Stable ⬜
+## v1.0 — Stable 🚧
+- ✅ Documented plugin interface for third-party adapters (`breachload.tools`)
 - ⬜ Frozen adapter API and safety-model contract
 - ⬜ Full test coverage on safety layer
-- ⬜ Documented plugin interface for third-party adapters
 
 See open work on the [issue tracker](https://github.com/Noxiidus/breachload/issues)
 and the [project board](https://github.com/Noxiidus/breachload/projects).

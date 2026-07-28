@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- NVD import: `breachload kb-import` converts an NVD 2.0 feed into the KB schema
+  (`analysis/nvd.py`); point `BREACHLOAD_KB` at the result to grow the CVE
+  knowledge base the analyzer uses.
+- Plugin interface: third-party `ToolAdapter`s are discovered from the
+  `breachload.tools` entry-point group (`tools/registry.py`). Broken plugins are
+  logged and skipped; a plugin can never shadow a built-in adapter.
+- `WALKTHROUGH.md`: an end-to-end, no-API-key runbook for a single box.
+
+### Security
+- Fixed a scope-enforcement gap: a hostname hidden in an SMB/UNC path
+  (`//host/share`, `\\host\share`) or carrying a port (`host:port`) was not
+  extracted and could pass the scope gate. `extract_targets` now catches these,
+  with tests. (Bare-IP and whole-argument hostnames were already covered.)
+- `serve` warns when bound beyond localhost, since the confirm/stop endpoints are
+  unauthenticated.
+
 ## [0.2.0]
 
 ### Added

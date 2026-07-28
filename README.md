@@ -60,6 +60,10 @@ breachload payload engagements/example.yaml --payload linux/x64/shell_reverse_tc
 breachload deliver engagements/example.yaml --artifact <name> --target 10.10.10.5
 ```
 
+See [WALKTHROUGH.md](WALKTHROUGH.md) for a full box, start to finish. Grow the CVE
+KB from an NVD feed with `breachload kb-import`, and add your own scanners via the
+`breachload.tools` entry-point group (see the walkthrough).
+
 ## Autonomy & the safety layer
 
 `auto_threshold` in the engagement YAML sets what runs without asking in

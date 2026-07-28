@@ -12,9 +12,11 @@ typical service version strings. It is not a full PEP 440 / SemVer implementatio
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from importlib import resources
+from pathlib import Path
 
 from ..core.state import EngagementState, Finding, Severity
 
@@ -69,10 +71,20 @@ class CveMatcher:
 
     @classmethod
     def default(cls) -> CveMatcher:
+        """Bundled KB, plus any extra feed pointed to by the ``BREACHLOAD_KB``
+        environment variable (e.g. one produced by ``breachload kb-import``)."""
         raw = json.loads(
             resources.files("breachload.data").joinpath("vuln_kb.json").read_text(encoding="utf-8")
         )
-        entries = [
+        entries = cls._parse(raw)
+        extra = os.environ.get("BREACHLOAD_KB")
+        if extra and Path(extra).is_file():
+            entries += cls._parse(json.loads(Path(extra).read_text(encoding="utf-8")))
+        return cls(entries)
+
+    @staticmethod
+    def _parse(raw: dict) -> list[CveEntry]:
+        return [
             CveEntry(
                 match=[t.lower() for t in e["match"]],
                 range=e["range"], cve=e["cve"],
@@ -80,7 +92,6 @@ class CveMatcher:
             )
             for e in raw.get("entries", [])
         ]
-        return cls(entries)
 
     def findings_for(self, state: EngagementState) -> list[Finding]:
         out: list[Finding] = []
