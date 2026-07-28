@@ -64,8 +64,9 @@ terminal. Rides on the orchestrator's existing `on_event` seam.
 
 ## v1.0 — Stable 🚧
 - ✅ Documented plugin interface for third-party adapters (`breachload.tools`)
-- ⬜ Frozen adapter API and safety-model contract
-- ⬜ Full test coverage on safety layer
+- ✅ Frozen adapter API and safety-model contract (`CONTRACT.md`)
+- ✅ Full test coverage on safety layer (100%)
+- ⬜ Beta soak on live HTB/CTF boxes before tagging 1.0.0
 
 See open work on the [issue tracker](https://github.com/Noxiidus/breachload/issues)
 and the [project board](https://github.com/Noxiidus/breachload/projects).

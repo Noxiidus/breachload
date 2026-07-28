@@ -30,6 +30,16 @@ class TestScope:
         assert s.allows("target.example")
         assert not s.allows("target.evil.com")
 
+    def test_exact_domain_match(self):
+        s = Scope.from_config(["shop.example.com"])
+        assert s.allows("shop.example.com")
+        assert not s.allows("other.example.com")
+
+    def test_blank_targets_are_ignored(self):
+        s = Scope.from_config(["", "  ", "10.0.0.0/24"])
+        assert s.allows("10.0.0.5")
+        assert len(s.networks) == 1
+
 
 class TestExtractTargets:
     def test_extracts_ip_host_url(self):
@@ -83,6 +93,10 @@ class TestValidator:
 
     def test_excluded_target_blocked(self):
         assert not self.v.check(["nmap", "10.10.10.1"], Risk.RECON).allowed
+
+    def test_empty_command_blocked(self):
+        d = self.v.check([], Risk.RECON)
+        assert not d.allowed and d.reason == "empty command"
 
 
 class TestAdvisorThreshold:

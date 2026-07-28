@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-28
+
 ### Added
+- Stable-contract documentation (`CONTRACT.md`): the `ToolAdapter` API, the
+  safety model (`Risk`, `Scope`, `Validator`), and the data schemas are now a
+  versioned surface — no breaking change without a major bump.
+- 100% test coverage of the safety layer (`scope`, `validator`, `audit`);
+  `pytest-cov` added to the dev extra.
 - NVD import: `breachload kb-import` converts an NVD 2.0 feed into the KB schema
   (`analysis/nvd.py`); point `BREACHLOAD_KB` at the result to grow the CVE
   knowledge base the analyzer uses.
