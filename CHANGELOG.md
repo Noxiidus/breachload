@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Startup banner (`banner.py`): pure-ASCII `breachload` wordmark with a "by
+  Noxidus" line, shown on interactive runs. Suppressible via `--no-banner` or
+  `BREACHLOAD_NO_BANNER=1`; never printed to pipes or scripts.
 - Post-exploitation (`analysis/postexploit.py`, `loot` command): parse collected
   shell output (`sudo -l`, a SUID sweep, linpeas, config files) into findings and
   credentials. Passwordless-sudo and known-SUID binaries become privesc findings

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 from pathlib import Path
 
 import typer
@@ -14,6 +16,7 @@ from .analysis.flags import find_flags
 from .analysis.gtfobins import known_binaries, lookup
 from .analysis.postexploit import loot as postexploit_loot
 from .analysis.suggest import SuggestionEngine
+from .banner import print_banner
 from .core.config import EngagementConfig
 from .core.environment import check_tools, check_wordlists
 from .core.llm import Planner
@@ -41,6 +44,17 @@ _STYLES = {
     "skipped": "yellow", "error": "bold red", "phase": "bold magenta",
     "finding": "bold yellow",
 }
+
+
+@app.callback()
+def _root(no_banner: bool = typer.Option(
+        False, "--no-banner", help="suppress the startup banner")):
+    """breachload — autonomous, safety-gated pentest copilot."""
+    # Show the banner only for interactive runs, so piped/scripted output and the
+    # test harness stay clean. Also suppressible via --no-banner or the env var.
+    if (not no_banner and sys.stdout.isatty()
+            and os.environ.get("BREACHLOAD_NO_BANNER") != "1"):
+        print_banner(console)
 
 
 def _emit(event: str, msg: str) -> None:
