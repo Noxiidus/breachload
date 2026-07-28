@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Offline payload/technique library (`data/payloads.json`, `exploit/library.py`):
+  35 curated HTB/CTF entries — reverse shells, TTY upgrades, webshells, msfvenom
+  specs, file transfer, privilege-escalation checks, and per-service quick wins.
+  Placeholder templates ({LHOST}/{LPORT}/{TARGET}/{PORT}) render offline, no API
+  key required. New `breachload payloads` command (list / filter / `--show`).
+- Rule-based suggestion engine (`analysis/suggest.py`) — "autopilot without an
+  LLM": reads the current state (open services + findings) and prints a
+  prioritized, copy-paste-ready plan drawn from the library. New `breachload
+  suggest` command. CVE findings come first (with the PoC command), then
+  per-service quick wins, then post-shell privilege-escalation steps.
 - Kill-switch: `Orchestrator.request_stop()` halts the engagement after the
   current action; surfaced as a Stop button on the dashboard (`POST /api/stop`).
 - Rate limiting: `min_action_interval` in the engagement config throttles
@@ -73,6 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gates, on top of the orchestrator's `on_event` seam — _planned (v0.8)_
 
 ### Fixed
+- CLI output is ASCII-safe and does not pass tool/payload text through Rich
+  markup, so payloads containing `[ ] { }` and non-cp1250 characters no longer
+  crash the Windows console.
 - Payload generation reports a clean error when the generator binary (e.g.
   msfvenom) is not installed, instead of crashing with a raw traceback.
 - Engagement `mode` (advisor / semi-auto / full-auto) now actually controls the

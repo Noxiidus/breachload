@@ -29,8 +29,9 @@ breachload/
   safety/      scope, validator, audit
   tools/       adapters (run + parse -> struct); nmap is the reference
   analysis/    cve mapping, cross-service correlation   (planned)
-  analysis/    version->CVE mapping, cross-service correlator
-  exploit/     payload generation (msfvenom) + delivery (confirm-gated)
+  analysis/    version->CVE mapping, correlator, rule-based suggestion engine
+  exploit/     payload generation + delivery + offline payload library
+  data/        vuln knowledge base + offline payload/technique library
   report/      findings -> markdown / pdf
   web/         FastAPI + WebSocket dashboard (on_event seam)
 engagements/   per-engagement scope + state + audit log
@@ -44,6 +45,8 @@ export ANTHROPIC_API_KEY=...        # optional; omit for offline heuristic mode
 
 breachload run engagements/example.yaml            # auto-chain recon -> enum -> vuln
 breachload status engagements/example.yaml         # current known state
+breachload suggest engagements/example.yaml        # rule-based next steps (no API key)
+breachload payloads --tag smb                      # browse the offline payload library
 breachload report engagements/example.yaml --pdf   # Markdown (+ PDF) report
 breachload serve engagements/example.yaml          # run with a live web dashboard
 

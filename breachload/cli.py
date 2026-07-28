@@ -7,8 +7,10 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 
 from .analysis.analyzer import Analyzer
+from .analysis.suggest import SuggestionEngine
 from .core.config import EngagementConfig
 from .core.llm import Planner
 from .core.orchestrator import Orchestrator
@@ -16,6 +18,7 @@ from .core.ratelimit import RateLimiter
 from .core.state import ActionRecord, EngagementState, Phase
 from .exploit.delivery import deliver_artifact, method_by_name
 from .exploit.generators import GenerationError, MsfvenomGenerator, PayloadSpec
+from .exploit.library import PayloadLibrary
 from .exploit.poc import PocGenerator
 from .report.engine import render_markdown
 from .report.pdf import render_pdf
@@ -141,6 +144,59 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     web_app = create_app(hub, state_path, on_startup=_boot, stopper=orch.request_stop)
     console.print(f"[bold]breachload[/] dashboard: http://{host}:{port}  (engagement: {cfg.name})")
     uvicorn.run(web_app, host=host, port=port, log_level="warning")
+
+
+@app.command()
+def payloads(category: str = typer.Option(None, help="filter by category"),
+             tag: str = typer.Option(None, help="filter by tag (shell, http, smb, privesc, ...)"),
+             platform: str = typer.Option(None, help="filter by platform (linux/windows)"),
+             show: str = typer.Option(None, "--show", help="render a single payload by id"),
+             lhost: str = typer.Option("LHOST", help="substitute for {LHOST}"),
+             lport: int = typer.Option(4444, help="substitute for {LPORT}"),
+             target: str = typer.Option("TARGET", help="substitute for {TARGET}")):
+    """Browse the offline payload/technique library (no config, no API needed)."""
+    lib = PayloadLibrary.default()
+    if show:
+        p = lib.get(show)
+        if p is None:
+            console.print(f"[bold red]no such payload:[/] {show}")
+            raise typer.Exit(1)
+        console.print(f"[bold]{escape(p.name)}[/]  ({p.category} / {p.platform})")
+        # markup=False: payload bodies contain [ ] { } that must print verbatim.
+        console.print(p.render(LHOST=lhost, LPORT=lport, TARGET=target), markup=False)
+        if p.notes:
+            console.print(escape(p.notes), style="dim")
+        return
+    entries = lib.filter(category=category, tag=tag, platform=platform)
+    console.print(f"[bold]breachload payload library[/] - {len(entries)} entries "
+                  f"| categories: {', '.join(lib.categories())}")
+    for p in entries:
+        console.print(f"  [cyan]{p.id:<18}[/] [dim]{p.category:<14}[/] {escape(p.name)}")
+    console.print("\n[dim]render one with:  breachload payloads --show <id> "
+                  "--lhost <ip> --lport <port>[/]")
+
+
+@app.command()
+def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
+            lhost: str = typer.Option("LHOST", help="your listener host for rendered payloads"),
+            lport: int = typer.Option(4444, help="listener port")):
+    """Rule-based next-step plan from the current state (works with no API key)."""
+    cfg = EngagementConfig.load(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet — run a phase first[/]")
+        raise typer.Exit(1)
+    state = EngagementState.load(state_path)
+    suggestions = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
+    if not suggestions:
+        console.print("[yellow]nothing to suggest yet — run more recon[/]")
+        return
+    console.print(f"[bold]breachload - suggested next steps[/] ({len(suggestions)})\n")
+    for s in suggestions:
+        console.print(f"[bold cyan]> {escape(s.title)}[/]  [dim]{escape(s.why)}[/]")
+        for action in s.actions:
+            console.print("    " + action, markup=False)   # actions contain [ ] { } # verbatim
+        console.print()
 
 
 @app.command()
