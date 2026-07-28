@@ -52,6 +52,32 @@ class TestCveMatcher:
         findings = CveMatcher.default().findings_for(self._state("nginx", "2.4.49"))
         assert not any("CVE-2021-41773" in f.cve for f in findings)
 
+    def test_every_kb_entry_is_reachable(self):
+        # Guards against dead KB entries: for each entry, build a service whose
+        # product carries all match tokens and whose version satisfies the range,
+        # then assert the CVE actually fires. Catches unmatchable tokens and
+        # version ranges that the comparator cannot represent.
+        matcher = CveMatcher.default()
+        for entry in matcher.entries:
+            version = _satisfying_version(entry.range)
+            assert satisfies(version, entry.range), \
+                f"{entry.cve}: no representable version satisfies {entry.range!r}"
+            product = " ".join(entry.match)
+            state = self._state(product, version, name="svc")
+            cves = [c for f in matcher.findings_for(state) for c in f.cve]
+            assert entry.cve in cves, f"{entry.cve} unreachable via product={product!r} v={version}"
+
+
+def _satisfying_version(spec: str) -> str:
+    """Derive a version that satisfies `spec` (for constraints used in the KB)."""
+    lower = None
+    for part in spec.split(","):
+        op = part[:2] if part[:2] in ("==", ">=", "<=") else part[:1]
+        ref = part[len(op):].strip()
+        if op in ("==", ">="):
+            lower = ref
+    return lower or "0.0.1"   # no lower bound (only < / <=): a tiny version works
+
 
 class TestCorrelator:
     def _host_state(self, os_guess, services) -> EngagementState:

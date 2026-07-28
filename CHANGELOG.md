@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0]
+
 ### Added
+- Attack-chain templates (`data/chains.json`, `analysis/chains.py`): known
+  machine profiles (MS17-010 EternalBlue, anonymous FTP, Tomcat manager, SMB
+  quick wins, path-traversal→RCE) matched against the state and surfaced as
+  top-priority, ready-to-run playbooks in `suggest`/`auto`. Fully offline.
+- Offline GTFOBins lookup (`data/gtfobins.json`, `analysis/gtfobins.py`): map a
+  SUID/`sudo`-allowed binary to a concrete privesc command. New `breachload gtfo`.
+- Environment detection (`core/environment.py`): new `breachload doctor` reports
+  which tools and wordlists are installed, so it's clear what will run vs. skip.
+- Flag capture from arbitrary output: new `breachload flag --scan/--text` records
+  flags (e.g. from a pasted `user.txt`), and `deliver` scans delivery output for
+  flags automatically. `deliver --listen` prints the matching listener command.
 - `breachload auto` — one-shot autopilot: runs the recon -> enum -> vuln chain,
   then prints the rule-based attack plan and writes a report (Markdown + PDF), in
   a single command. No API key required. State seeding shared via a helper
@@ -87,6 +100,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gates, on top of the orchestrator's `on_event` seam — _planned (v0.8)_
 
 ### Fixed
+- Removed dead CVE knowledge-base entries whose `match` tokens can never appear
+  in a service banner (`heartbleed`, `log4j`, `sudo`) or whose version range was
+  unrepresentable by the numeric comparator (`<1.0.1g`); corrected the Tomcat and
+  Webmin tokens to the real nmap product names. A new test asserts every KB entry
+  is reachable, so dead entries can't creep back in.
 - CLI output is ASCII-safe and does not pass tool/payload text through Rich
   markup, so payloads containing `[ ] { }` and non-cp1250 characters no longer
   crash the Windows console.

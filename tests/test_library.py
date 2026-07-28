@@ -62,9 +62,12 @@ class TestSuggestionEngine:
         priorities = [s.priority for s in self.sug]
         assert priorities == sorted(priorities)   # already ordered
 
-    def test_critical_cve_finding_is_first(self):
-        assert "Apache RCE" in self.sug[0].title
-        assert any("breachload poc" in a for a in self.sug[0].actions)
+    def test_critical_cve_finding_leads_the_non_chain_steps(self):
+        # Matched chains outrank everything; among the rest, the critical CVE
+        # finding comes first (with its PoC command).
+        non_chain = [s for s in self.sug if not s.title.startswith("Chain:")]
+        assert "Apache RCE" in non_chain[0].title
+        assert any("breachload poc" in a for a in non_chain[0].actions)
 
     def test_service_suggestions_present(self):
         titles = " ".join(s.title for s in self.sug)
@@ -85,3 +88,12 @@ class TestSuggestionEngine:
         out = SuggestionEngine().suggest(st)
         assert any("SMB" in s.title for s in out)
         assert isinstance(out[0], Suggestion)
+
+    def test_matched_chain_outranks_other_suggestions(self):
+        st = EngagementState(name="t")
+        host = st.upsert_host("10.10.10.9")
+        host.os_guess = "Windows 7"
+        host.upsert_service(Service(port=445, name="microsoft-ds"))
+        out = SuggestionEngine().suggest(st, lhost="10.10.14.9")
+        assert out[0].title.startswith("Chain:")     # chain sits above ad-hoc steps
+        assert out[0].priority < 0

@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from ..core.state import EngagementState, Service, Severity
 from ..exploit.library import PayloadLibrary
+from .chains import ChainMatcher
 
 _SEV_PRIORITY = {
     Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 3,
@@ -30,12 +31,15 @@ class Suggestion:
 
 
 class SuggestionEngine:
-    def __init__(self, library: PayloadLibrary | None = None) -> None:
+    def __init__(self, library: PayloadLibrary | None = None,
+                 chains: ChainMatcher | None = None) -> None:
         self.library = library or PayloadLibrary.default()
+        self.chains = chains or ChainMatcher.default()
 
     def suggest(self, state: EngagementState, lhost: str = "LHOST",
                 lport: int = 4444) -> list[Suggestion]:
         out: list[Suggestion] = []
+        out += self._from_chains(state, lhost, lport)
         out += self._from_findings(state)
         for host in state.hosts.values():
             for svc in host.services.values():
@@ -45,6 +49,18 @@ class SuggestionEngine:
         return out
 
     # --- rules --------------------------------------------------------------
+    def _from_chains(self, state: EngagementState, lhost: str, lport: int) -> list[Suggestion]:
+        out = []
+        for chain in self.chains.match(state):
+            target = self.chains.target_for(chain, state)
+            out.append(Suggestion(
+                priority=chain.priority - 10,   # matched chains outrank ad-hoc steps
+                title=f"Chain: {chain.name}",
+                why="matched attack-chain template",
+                actions=chain.render_steps(TARGET=target, LHOST=lhost, LPORT=lport),
+            ))
+        return out
+
     def _from_findings(self, state: EngagementState) -> list[Suggestion]:
         out = []
         for idx, f in enumerate(state.findings):

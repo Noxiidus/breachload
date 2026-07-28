@@ -10,8 +10,11 @@ from rich.console import Console
 from rich.markup import escape
 
 from .analysis.analyzer import Analyzer
+from .analysis.flags import find_flags
+from .analysis.gtfobins import known_binaries, lookup
 from .analysis.suggest import SuggestionEngine
 from .core.config import EngagementConfig
+from .core.environment import check_tools, check_wordlists
 from .core.llm import Planner
 from .core.orchestrator import Orchestrator
 from .core.ratelimit import RateLimiter
@@ -252,6 +255,66 @@ def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def doctor():
+    """Check which external tools and wordlists are available on this machine."""
+    console.print("[bold]breachload environment check[/]\n")
+    tools = check_tools()
+    present = sum(t.present for t in tools)
+    by_role: dict[str, list] = {}
+    for t in tools:
+        by_role.setdefault(t.role, []).append(t)
+    for role, items in by_role.items():
+        line = "  ".join(
+            (f"[green]+[/] {t.name}" if t.present else f"[red]-[/] [dim]{t.name}[/]") for t in items
+        )
+        console.print(f"[bold]{role:<12}[/] {line}")
+    console.print("\n[bold]wordlists[/]")
+    for path, ok in check_wordlists():
+        console.print(f"  {'[green]+[/]' if ok else '[red]-[/]'} {path}")
+    console.print(f"\n{present}/{len(tools)} tools available. Missing tools are "
+                  "skipped gracefully; suggestions still list them.")
+
+
+@app.command()
+def gtfo(binary: str = typer.Argument(..., help="binary found as SUID or via `sudo -l`")):
+    """Offline GTFOBins privilege-escalation lookup (find, vim, python3, tar, ...)."""
+    entry = lookup(binary)
+    if not entry:
+        console.print(f"[yellow]no GTFOBins entry for[/] {binary}")
+        console.print(f"[dim]known: {', '.join(known_binaries())}[/]")
+        raise typer.Exit(1)
+    console.print(f"[bold]{binary}[/] - privilege escalation\n")
+    for vector, cmd in entry.items():
+        console.print(f"[cyan]{vector}[/]")
+        console.print("  " + cmd.replace("\n", "\n  "), markup=False)
+        console.print()
+
+
+@app.command()
+def flag(config: Path = typer.Argument(..., help="engagement YAML"),
+         scan: Path = typer.Option(None, help="file to scan for flags (e.g. loot/user.txt)"),
+         text: str = typer.Option(None, help="text to scan for flags")):
+    """Record CTF flags found in a file or text (e.g. paste your user.txt / root.txt)."""
+    cfg = EngagementConfig.load(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = (EngagementState.load(state_path) if state_path.exists()
+             else EngagementState(name=cfg.name))
+
+    blob = ""
+    if scan and Path(scan).is_file():
+        blob += Path(scan).read_text(encoding="utf-8", errors="replace")
+    if text:
+        blob += "\n" + text
+    new = [f for f in find_flags(blob) if state.add_flag(f)]
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state.save(state_path)
+    if new:
+        console.print(f"[bold green]captured[/] {len(new)} flag(s): {', '.join(new)}")
+    else:
+        console.print("[yellow]no new flags found[/]")
+
+
+@app.command()
 def status(config: Path = typer.Argument(..., help="engagement YAML")):
     """Show current known state for an engagement."""
     cfg = EngagementConfig.load(config)
@@ -337,7 +400,9 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
             artifact: str = typer.Option(..., help="artifact name (see `status`)"),
             target: str = typer.Option(..., help="target host or URL (must be in scope)"),
             method: str = typer.Option("script", help="delivery method: script | upload"),
-            interpreter: str = typer.Option("python3", help="interpreter for the script method")):
+            interpreter: str = typer.Option("python3", help="interpreter for the script method"),
+            listen: bool = typer.Option(False, "--listen",
+                                        help="print the matching listener command first")):
     """Deliver a generated artifact to a target (EXPLOIT — scope- and confirm-gated)."""
     cfg = EngagementConfig.load(config)
     work = ENGAGEMENTS / cfg.name
@@ -352,6 +417,10 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(f"[bold red]no such artifact:[/] {artifact}")
         raise typer.Exit(1)
 
+    if listen:
+        lport = art.meta.get("lport", "4444")
+        console.print(f"[bold]start a listener first:[/]  nc -lvnp {lport}\n")
+
     dm = method_by_name(method, interpreter=interpreter)
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     validator = Validator(scope, {dm.binary}, cfg.effective_threshold)
@@ -363,6 +432,11 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
         approved=result.status not in ("blocked", "declined"),
         exit_code=result.run.exit_code if result.run else None,
     ))
+    # Delivery output can carry a flag (e.g. a shell that read user.txt).
+    if result.run:
+        for captured in find_flags(result.run.stdout):
+            if state.add_flag(captured):
+                console.print(f"[bold green]flag[/] {captured}")
     state.save(state_path)
 
     style = "bold green" if result.ok else "bold red"

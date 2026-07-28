@@ -59,3 +59,29 @@ class TestAutoCommand:
         assert result.exit_code == 0, result.output
         pdf = tmp_path / "t" / "report.pdf"
         assert pdf.exists() and pdf.read_bytes().startswith(b"%PDF-1.4")
+
+
+class TestUtilityCommands:
+    def test_doctor_runs(self):
+        result = runner.invoke(app, ["doctor"])
+        assert result.exit_code == 0
+        assert "environment" in result.output and "nmap" in result.output
+
+    def test_gtfo_known_binary(self):
+        result = runner.invoke(app, ["gtfo", "find"])
+        assert result.exit_code == 0
+        assert "suid" in result.output
+
+    def test_gtfo_unknown_binary(self):
+        result = runner.invoke(app, ["gtfo", "no-such-bin"])
+        assert result.exit_code == 1
+
+    def test_flag_records_from_text(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        from breachload.core.state import EngagementState
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        result = runner.invoke(app, ["flag", str(cfg), "--text", "root: flag{pwned_it}"])
+        assert result.exit_code == 0 and "flag{pwned_it}" in result.output
+        state = EngagementState.load(tmp_path / "t" / "state.json")
+        assert "flag{pwned_it}" in state.flags

