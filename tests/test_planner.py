@@ -33,23 +33,36 @@ class TestReconPhase:
 
 
 class TestEnumPhase:
-    def test_http_service_gets_whatweb_first(self):
+    def _ran(self, st, tool, url="http://10.10.10.5:80"):
+        from breachload.core.state import ActionRecord
+        st.record_action(ActionRecord(phase=Phase.ENUM, tool=tool, command=[tool, url]))
+
+    def test_http_service_gets_httpx_first(self):
         st = _state_with(Phase.ENUM, [Service(port=80, name="http")])
         plan = Planner()._heuristic(st, _tools())
-        assert plan.tool == "whatweb" and "10.10.10.5:80" in plan.target
+        assert plan.tool == "httpx" and "10.10.10.5:80" in plan.target
+
+    def test_http_progresses_httpx_then_whatweb_then_ffuf(self):
+        st = _state_with(Phase.ENUM, [Service(port=80, name="http")])
+        self._ran(st, "httpx")
+        assert Planner()._heuristic(st, _tools()).tool == "whatweb"
+        self._ran(st, "whatweb")
+        assert Planner()._heuristic(st, _tools()).tool == "ffuf"
 
     def test_smb_service_gets_enum4linux(self):
         st = _state_with(Phase.ENUM, [Service(port=445, name="microsoft-ds")])
         plan = Planner()._heuristic(st, _tools())
         assert plan.tool == "enum4linux-ng"
 
-    def test_skips_already_run_tools(self):
-        from breachload.core.state import ActionRecord
-        st = _state_with(Phase.ENUM, [Service(port=80, name="http")])
-        st.record_action(ActionRecord(phase=Phase.ENUM, tool="whatweb",
-                                      command=["whatweb", "http://10.10.10.5:80"]))
+    def test_multiport_web_no_prefix_collision(self):
+        # Regression: enumerating :8080 must not mark :80 as done. has_action's
+        # trailing-digit guard keeps the two ports distinct.
+        st = _state_with(Phase.ENUM, [Service(port=8080, name="http")])
+        for tool in ("httpx", "whatweb", "ffuf"):
+            self._ran(st, tool, url="http://10.10.10.5:8080")
+        st.hosts["10.10.10.5"].upsert_service(Service(port=80, name="http"))
         plan = Planner()._heuristic(st, _tools())
-        assert plan.tool == "ffuf"  # moves on to the next tool
+        assert plan.tool == "httpx" and "10.10.10.5:80" in plan.target
 
 
 class TestLlmFallback:
@@ -76,3 +89,28 @@ class TestVulnPhase:
         st = _state_with(Phase.VULN, [Service(port=445, name="microsoft-ds")])
         plan = Planner()._heuristic(st, _tools())
         assert plan.action == "phase_complete"
+
+
+class TestHasActionBoundary:
+    """A numeric needle must not be a false prefix of a longer number."""
+
+    def _state_with_nmap_on(self, target):
+        from breachload.core.state import ActionRecord
+        st = EngagementState(name="t")
+        st.record_action(ActionRecord(phase=Phase.RECON, tool="nmap",
+                                      command=["nmap", "-sV", target]))
+        return st
+
+    def test_port_not_a_prefix_of_longer_port(self):
+        st = self._state_with_nmap_on("http://10.10.10.5:8080")
+        assert st.has_action("nmap", "10.10.10.5:8080")
+        assert not st.has_action("nmap", "10.10.10.5:80")
+
+    def test_host_not_a_prefix_of_longer_host(self):
+        st = self._state_with_nmap_on("10.10.10.50")
+        assert st.has_action("nmap", "10.10.10.50")
+        assert not st.has_action("nmap", "10.10.10.5")
+
+    def test_exact_match_still_works(self):
+        st = self._state_with_nmap_on("10.10.10.5")
+        assert st.has_action("nmap", "10.10.10.5")

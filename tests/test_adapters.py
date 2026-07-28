@@ -140,6 +140,18 @@ class TestNuclei:
         NucleiAdapter().parse(_result("garbage\n" + NUCLEI_JSONL), st)
         assert len(st.findings) == 2
 
+    def test_cve_id_as_string_is_not_split_into_chars(self):
+        # Some templates emit classification.cve-id as a bare string, not a list.
+        import json
+        line = json.dumps({
+            "info": {"name": "Bug", "severity": "high",
+                     "classification": {"cve-id": "CVE-2024-1234"}},
+            "matched-at": "http://10.10.10.5", "host": "10.10.10.5",
+        })
+        st = EngagementState(name="t")
+        NucleiAdapter().parse(_result(line), st)
+        assert st.findings[0].cve == ["CVE-2024-1234"]
+
 
 class TestRegistry:
     def test_all_adapters_registered_and_authorized(self):

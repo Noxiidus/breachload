@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server, detected technologies) folded into the matching service.
 
 ### Fixed
+- Pre-live-run review pass:
+  - `has_action` (planner de-duplication) matched a numeric needle as a prefix of
+    a longer one, so enumerating `host:8080` marked `host:80` as already done (and
+    host `10.10.10.5` shadowed `10.10.10.50`). A trailing-digit guard keeps them
+    distinct — a real correctness bug on boxes with multiple web ports.
+  - nuclei's `classification.cve-id` is sometimes a bare string, not a list; it
+    was iterated character by character into a bogus CVE list. Now normalized.
+  - the `httpx` adapter was registered but never selected by the offline heuristic
+    planner, so its enrichment never ran without an LLM. Wired into enumeration
+    (httpx → whatweb → ffuf).
+  - a `build_command` failure recorded the attempt without its target, so a
+    misbehaving planner could re-propose the same failing action; the target is
+    now recorded so it isn't retried.
 - Credential looting no longer misreads `NOPASSWD:` from sudo output as a
   password (a negative-lookbehind guard; `DB_PASSWORD=` still parses).
 

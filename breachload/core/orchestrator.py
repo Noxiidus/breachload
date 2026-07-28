@@ -100,7 +100,9 @@ class Orchestrator:
             command = adapter.build_command(plan.target or "", **(plan.args or {}))
         except (TypeError, ValueError) as exc:
             self.emit("error", f"Bad command for {plan.tool}: {exc}")
-            self._record(plan, [plan.tool], approved=False)
+            # Include the target so has_action() records this attempt and the
+            # planner doesn't re-propose the same failing action in a loop.
+            self._record(plan, [plan.tool, plan.target or ""], approved=False)
             return True
 
         decision = self.validator.check(command, adapter.risk)

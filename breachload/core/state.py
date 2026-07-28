@@ -11,6 +11,7 @@ file per engagement. Swap for SQLite once the model stabilizes.
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -167,10 +168,14 @@ class EngagementState(BaseModel):
     def has_action(self, tool: str, needle: str) -> bool:
         """True if `tool` has already been run against a command containing `needle`.
 
-        Lets the planner avoid re-running the same tool on the same target.
+        Lets the planner avoid re-running the same tool on the same target. The
+        match rejects a trailing digit so a numeric needle isn't a false prefix of
+        a longer one — e.g. host:port ``10.10.10.5:80`` must not match
+        ``10.10.10.5:8080``, nor host ``10.10.10.5`` match ``10.10.10.50``.
         """
+        pattern = re.compile(re.escape(needle) + r"(?!\d)")
         for a in self.history:
-            if a.tool == tool and any(needle in tok for tok in a.command):
+            if a.tool == tool and any(pattern.search(tok) for tok in a.command):
                 return True
         return False
 

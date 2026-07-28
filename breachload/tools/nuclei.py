@@ -63,7 +63,10 @@ class NucleiAdapter(ToolAdapter):
             matched = m.get("matched-at") or m.get("host") or ""
             host_name = urlparse(_as_url(matched)).hostname or matched
             title = info.get("name") or m.get("template-id") or "nuclei match"
-            cve_ids = (info.get("classification", {}) or {}).get("cve-id") or []
+            # classification.cve-id may be a list or a single string — normalize,
+            # so we never iterate over the characters of a bare CVE string.
+            raw_cve = (info.get("classification", {}) or {}).get("cve-id") or []
+            cve_ids = [raw_cve] if isinstance(raw_cve, str) else list(raw_cve)
 
             if host_name:
                 state.upsert_host(host_name)

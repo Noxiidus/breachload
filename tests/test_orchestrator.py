@@ -28,6 +28,8 @@ CANNED = {
              "<port protocol=\"tcp\" portid=\"445\"><state state=\"open\"/>"
              "<service name=\"microsoft-ds\"/></port>"
              "</ports></host></nmaprun>"),
+    "httpx": f'{{"host":"{HOST}","port":"80","scheme":"http","url":"http://{HOST}",'
+             '"status_code":200,"title":"Home","webserver":"Apache/2.4.49","tech":["PHP"]}',
     "whatweb": f'[{{"target":"http://{HOST}","http_status":200,'
                '"plugins":{"Apache":{"version":["2.4.49"]},"PHP":{"version":["7.4"]}}}]',
     "ffuf": '{"results":[{"input":{"FUZZ":"admin"},"status":200,"length":10,'
@@ -79,7 +81,7 @@ def test_full_chain_populates_state(tmp_path):
 
     # Every phase's tools ran, in order, exactly once each.
     tools_run = [a.tool for a in state.history]
-    assert tools_run == ["nmap", "whatweb", "ffuf", "enum4linux-ng", "nuclei"]
+    assert tools_run == ["nmap", "httpx", "whatweb", "ffuf", "enum4linux-ng", "nuclei"]
 
     # Findings from ffuf (paths), enum4linux (null session), nuclei (critical CVE).
     titles = " ".join(f.title.lower() for f in state.findings)

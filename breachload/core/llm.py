@@ -119,6 +119,9 @@ class Planner:
                     key = f"{host.address}:{svc.port}"
                     if _is_http(svc):
                         url = _svc_url(host.address, svc)
+                        if "httpx" in names and not state.has_action("httpx", key):
+                            return Plan("run", "httpx", url, {},
+                                        "Fingerprint the web service (httpx).")
                         if "whatweb" in names and not state.has_action("whatweb", key):
                             return Plan("run", "whatweb", url, {},
                                         "Fingerprint the web service.")
