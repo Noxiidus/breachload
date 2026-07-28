@@ -43,6 +43,7 @@ engagements/   per-engagement scope + state + audit log
 pip install -e .                    # add [web] for the dashboard: pip install -e '.[web]'
 export ANTHROPIC_API_KEY=...        # optional; omit for offline heuristic mode
 
+breachload auto engagements/example.yaml           # one shot: recon -> plan -> report
 breachload run engagements/example.yaml            # auto-chain recon -> enum -> vuln
 breachload status engagements/example.yaml         # current known state
 breachload suggest engagements/example.yaml        # rule-based next steps (no API key)

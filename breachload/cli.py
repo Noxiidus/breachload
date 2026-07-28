@@ -48,6 +48,17 @@ def _confirm(prompt: str) -> bool:
     return typer.confirm("  run this?", default=False)
 
 
+def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementState:
+    """Resume an existing engagement, or start a fresh state seeded from targets."""
+    if state_path.exists():
+        return EngagementState.load(state_path)
+    state = EngagementState(name=cfg.name)
+    for target in cfg.targets:
+        if not any(c in target for c in "/*"):  # bare host/IP → seed a host record
+            state.upsert_host(target)
+    return state
+
+
 @app.command()
 def run(config: Path = typer.Argument(..., help="engagement YAML"),
         phase: str = typer.Option(None, help="run only this phase (recon/enumeration/vuln)"),
@@ -56,14 +67,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     cfg = EngagementConfig.load(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
-
-    if state_path.exists():
-        state = EngagementState.load(state_path)
-    else:
-        state = EngagementState(name=cfg.name)
-        for t in cfg.targets:
-            if not any(c in t for c in "/*"):  # bare host/IP → seed a host record
-                state.upsert_host(t)
+    state = _load_or_seed_state(cfg, state_path)
 
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
@@ -93,6 +97,60 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def auto(config: Path = typer.Argument(..., help="engagement YAML"),
+         lhost: str = typer.Option("LHOST", help="your listener host for the attack plan"),
+         lport: int = typer.Option(4444, help="listener port for the attack plan"),
+         stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase"),
+         pdf: bool = typer.Option(True, "--pdf/--no-pdf", help="also write a PDF report")):
+    """Autopilot: recon -> enum -> vuln, then print an attack plan and write a report.
+
+    One command, no API key needed. Safe recon/enumeration/vuln scanning runs
+    automatically (anything above the threshold still asks); then the rule-based
+    engine prints exactly what to try next, and a report is written.
+    """
+    cfg = EngagementConfig.load(config)
+    work = ENGAGEMENTS / cfg.name
+    state_path = work / "state.json"
+    state = _load_or_seed_state(cfg, state_path)
+
+    scope = Scope.from_config(cfg.targets, cfg.exclude)
+    registry = default_registry()
+    validator = Validator(scope, allowed_binaries(registry), cfg.effective_threshold)
+    planner = Planner()
+    audit = AuditLog(work / "audit.jsonl")
+    rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
+
+    console.print(f"[bold]breachload autopilot[/] - {cfg.name} | auto -> {stop} | "
+                  f"planner={'Claude' if planner.online else 'heuristic'}\n")
+
+    orch = Orchestrator(cfg, state, registry, validator, planner, audit, state_path,
+                        confirm=_confirm, on_event=_emit, analyzer=Analyzer.default(),
+                        rate_limiter=rate)
+    asyncio.run(orch.run_engagement(stop_after=Phase(stop)))
+    state.save(state_path)
+
+    console.print("\n" + state.summary() + "\n")
+
+    suggestions = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
+    if suggestions:
+        console.print("[bold]== attack plan (suggested next steps) ==[/]\n")
+        for s in suggestions:
+            console.print(f"[bold cyan]> {escape(s.title)}[/]  [dim]{escape(s.why)}[/]")
+            for action in s.actions:
+                console.print("    " + action, markup=False)
+            console.print()
+
+    md = render_markdown(state)
+    report_path = work / "report.md"
+    report_path.write_text(md, encoding="utf-8")
+    console.print(f"[bold green]report[/] {report_path}")
+    if pdf:
+        pdf_path = report_path.with_suffix(".pdf")
+        pdf_path.write_bytes(render_pdf(md, title=f"breachload - {cfg.name}"))
+        console.print(f"[bold green]report[/] {pdf_path}")
+
+
+@app.command()
 def serve(config: Path = typer.Argument(..., help="engagement YAML"),
           host: str = typer.Option("127.0.0.1", help="bind host"),
           port: int = typer.Option(8000, help="bind port"),
@@ -111,13 +169,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     cfg = EngagementConfig.load(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
-    if state_path.exists():
-        state = EngagementState.load(state_path)
-    else:
-        state = EngagementState(name=cfg.name)
-        for t in cfg.targets:
-            if not any(c in t for c in "/*"):
-                state.upsert_host(t)
+    state = _load_or_seed_state(cfg, state_path)
 
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()

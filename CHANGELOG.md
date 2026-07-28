@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `breachload auto` — one-shot autopilot: runs the recon -> enum -> vuln chain,
+  then prints the rule-based attack plan and writes a report (Markdown + PDF), in
+  a single command. No API key required. State seeding shared via a helper
+  (`_load_or_seed_state`) across `run`, `serve`, and `auto`.
 - Offline payload/technique library (`data/payloads.json`, `exploit/library.py`):
   35 curated HTB/CTF entries — reverse shells, TTY upgrades, webshells, msfvenom
   specs, file transfer, privilege-escalation checks, and per-service quick wins.
