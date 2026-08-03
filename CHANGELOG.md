@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-03
+
+This release brings the actual version number in line with the code: everything
+from exploitation through the web dashboard (roadmap milestones v0.4–v0.8, plus
+the v1.0 plugin/contract work) had landed on `main` but sat unreleased behind the
+`0.3.0` tag. It is cut as a single `0.9.0`; only the live-box beta soak remains
+before `1.0.0`.
+
 ### Added
 - Startup banner (`banner.py`): pure-ASCII `breachload` wordmark with a "by
   Noxidus" line, shown on interactive runs. Suppressible via `--no-banner` or
@@ -229,5 +237,7 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Noxiidus/breachload/compare/v0.3.0...v0.9.0
+[0.3.0]: https://github.com/Noxiidus/breachload/releases/tag/v0.3.0
 [0.1.0]: https://github.com/Noxiidus/breachload/releases/tag/v0.1.0

@@ -1,7 +1,13 @@
 # Roadmap
 
-breachload follows [Semantic Versioning](https://semver.org). Milestones map to
-minor versions until the API and safety model stabilize at `1.0.0`.
+breachload follows [Semantic Versioning](https://semver.org).
+
+**Milestones vs. releases.** The `vX.Y` headings below are *scope milestones*
+(what capabilities exist), not a promise that each maps 1:1 to a published
+release. In practice: milestones v0.1–v0.3 were tagged incrementally; the whole
+body of work from v0.4 (exploitation) through v0.8 (web dashboard), plus the
+v1.0 plugin/contract items, shipped together in **`0.9.0`**. The stable `1.0.0`
+tag is gated on the one remaining item — a beta soak on live boxes.
 
 Legend: ✅ done · 🚧 in progress · ⬜ planned
 
@@ -28,7 +34,7 @@ Turn raw services into leads.
 - ✅ Finding synthesis with severity + remediation, deduplicated
 - ✅ NVD 2.0 feed import (`kb-import`) + `BREACHLOAD_KB` extension point
 
-## v0.4 — Exploitation & payloads 🚧
+## v0.4 — Exploitation & payloads ✅
 Generation is unrestricted; delivery is scope- and confirm-gated.
 - ✅ `Artifact` state model (generated payloads/PoCs as first-class records)
 - ✅ `msfvenom` payload generator (offline, no scope check) + `payload` command
@@ -53,7 +59,7 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ✅ Flag detection & auto-capture (into `state.flags`, `flag` events)
 - ✅ Flags shown live on the dashboard
 
-## v0.8 — Web dashboard 🚧
+## v0.8 — Web dashboard ✅
 Follow and steer an engagement from a browser while the engine runs in the
 terminal. Rides on the orchestrator's existing `on_event` seam.
 - ✅ FastAPI backend + WebSocket event stream
