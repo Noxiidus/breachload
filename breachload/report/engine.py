@@ -8,6 +8,7 @@ action history. Plain-Python string building — no template engine dependency.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from datetime import UTC, datetime
 
@@ -17,6 +18,12 @@ from ..core.state import EngagementState, Finding, Severity
 _SEVERITY_ORDER = [
     Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO,
 ]
+
+
+def _cell(value: object) -> str:
+    """Sanitize a value for a Markdown table cell: escape pipes and flatten newlines
+    so a secret/product/banner containing ``|`` can't break the table."""
+    return str(value).replace("|", "\\|").replace("\n", " ").replace("\r", " ")
 
 
 def render_markdown(state: EngagementState) -> str:
@@ -63,13 +70,14 @@ def _hosts(state: EngagementState) -> list[str]:
     out = ["## Hosts & services", "", "| Host | OS | Port | Service | Version |",
            "|------|----|------|---------|---------|"]
     for host in state.hosts.values():
-        os_ = host.os_guess or "?"
+        os_ = _cell(host.os_guess or "?")
+        addr = _cell(host.address)
         if not host.services:
-            out.append(f"| {host.address} | {os_} | — | — | — |")
+            out.append(f"| {addr} | {os_} | — | — | — |")
             continue
         for svc in sorted(host.services.values(), key=lambda s: s.port):
-            product = " ".join(x for x in (svc.product, svc.version) if x) or "—"
-            out.append(f"| {host.address} | {os_} | {svc.key} | {svc.name or '?'} | {product} |")
+            product = _cell(" ".join(x for x in (svc.product, svc.version) if x) or "—")
+            out.append(f"| {addr} | {os_} | {svc.key} | {_cell(svc.name or '?')} | {product} |")
     out.append("")
     return out
 
@@ -108,11 +116,14 @@ def _repro_steps(f: Finding, state: EngagementState) -> list[str]:
     """Successful commands from the history that targeted this finding's host."""
     if not f.host:
         return []
+    # Trailing-digit guard so host 10.10.10.5 doesn't match 10.10.10.50 (same
+    # prefix-collision fix used by state.has_action).
+    host_re = re.compile(re.escape(f.host) + r"(?!\d)")
     steps = [
         " ".join(a.command)
         for a in state.history
         if a.approved and a.exit_code in (0, None)
-        and any(f.host in token for token in a.command)
+        and any(host_re.search(token) for token in a.command)
     ]
     # De-duplicate while preserving order, cap the list.
     seen: dict[str, None] = {}
@@ -128,8 +139,8 @@ def _credentials(state: EngagementState) -> list[str]:
            "|----------|--------|------|---------|-----------|"]
     for c in state.credentials:
         out.append(
-            f"| {c.username or '—'} | {c.secret or '—'} | {c.kind} | "
-            f"{c.service_key or '—'} | {'yes' if c.validated else 'no'} |"
+            f"| {_cell(c.username or '—')} | {_cell(c.secret or '—')} | {_cell(c.kind)} | "
+            f"{_cell(c.service_key or '—')} | {'yes' if c.validated else 'no'} |"
         )
     out.append("")
     return out
@@ -142,7 +153,8 @@ def _artifacts(state: EngagementState) -> list[str]:
            "|------|------|------|----------|------|"]
     for a in state.artifacts:
         out.append(
-            f"| {a.name} | {a.kind} | {a.tool or '—'} | {a.platform or '—'} | {a.path or '—'} |"
+            f"| {_cell(a.name)} | {_cell(a.kind)} | {_cell(a.tool or '—')} | "
+            f"{_cell(a.platform or '—')} | {_cell(a.path or '—')} |"
         )
     out.append("")
     return out

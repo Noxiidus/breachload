@@ -92,5 +92,7 @@ def _name(cve: dict, cve_id: str) -> str:
     for desc in cve.get("descriptions", []):
         if desc.get("lang") == "en":
             text = " ".join(desc.get("value", "").split())
-            return (text[:90] + "…") if len(text) > 90 else text or cve_id
+            # ASCII "..." on purpose: names flow to a cp1250 Windows console that
+            # can't encode a Unicode ellipsis.
+            return (text[:90] + "...") if len(text) > 90 else text or cve_id
     return cve_id

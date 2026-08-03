@@ -97,3 +97,34 @@ class TestUtilityCommands:
         state = EngagementState.load(tmp_path / "t" / "state.json")
         assert any("find" in f.title for f in state.findings)
         assert any(c.secret == "Sup3rSecret" for c in state.credentials)
+
+    def test_flag_captures_bare_htb_hash(self, tmp_path, monkeypatch):
+        # A bare 32-hex HTB user.txt/root.txt flag is captured via explicit scan.
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        from breachload.core.state import EngagementState
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        htb = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+        result = runner.invoke(app, ["flag", str(cfg), "--text", htb])
+        assert result.exit_code == 0 and htb in result.output
+        assert htb in EngagementState.load(tmp_path / "t" / "state.json").flags
+
+
+class TestParsePhase:
+    def test_aliases_resolve(self):
+        from breachload.cli import _parse_phase
+        from breachload.core.state import Phase
+        assert _parse_phase("vuln") == Phase.VULN
+        assert _parse_phase("enum") == Phase.ENUM
+        assert _parse_phase("VULN_ANALYSIS") == Phase.VULN
+        assert _parse_phase("recon") == Phase.RECON
+
+    def test_invalid_phase_exits_cleanly(self, tmp_path, monkeypatch):
+        # `run --phase bogus` must exit non-zero with a message, not a traceback.
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        result = runner.invoke(app, ["run", str(cfg), "--phase", "bogus"])
+        assert result.exit_code == 2
+        assert "invalid phase" in result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit)

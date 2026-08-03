@@ -51,6 +51,22 @@ class TestEventHub:
     def test_resolve_unknown_confirm_is_noop(self):
         assert EventHub().resolve_confirm("nope", True) is False
 
+    def test_cancel_pending_unblocks_waiters(self):
+        # The kill-switch must be able to release a confirm no client will answer,
+        # resolving it to False instead of hanging the engine forever.
+        async def scenario():
+            hub = EventHub()
+            q = hub.subscribe()
+            task = asyncio.create_task(hub.request_confirm("exploit?"))
+            await asyncio.wait_for(q.get(), 1)          # confirm broadcast
+            cancelled = hub.cancel_pending()
+            assert cancelled == 1
+            return await asyncio.wait_for(task, 1)
+        assert asyncio.run(scenario()) is False
+
+    def test_cancel_pending_when_nothing_pending(self):
+        assert EventHub().cancel_pending() == 0
+
     def test_emit_state_stores_last_and_broadcasts(self):
         async def scenario():
             hub = EventHub()

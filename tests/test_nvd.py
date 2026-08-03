@@ -48,7 +48,9 @@ class TestParseNvd:
         data = {"vulnerabilities": [
             _cve("CVE-2", "x", start="1", end_excl="2", desc="word " * 50)
         ]}
-        assert parse_nvd(data)[0]["name"].endswith("…")
+        name = parse_nvd(data)[0]["name"]
+        assert name.endswith("...")           # ASCII ellipsis (cp1250-safe console)
+        assert name.isascii()
 
     def test_imported_entry_is_matchable(self):
         # An imported entry must actually fire in the matcher.

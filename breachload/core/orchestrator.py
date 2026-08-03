@@ -180,10 +180,14 @@ class Orchestrator:
         This is the "guide me from recon to findings" experience: each phase runs
         to completion, then the next begins, all driven by state.
         """
-        try:
+        if self.state.phase in PHASE_ORDER:
             start = PHASE_ORDER.index(self.state.phase)
-        except ValueError:
-            start = 0
+        elif self.state.phase == Phase.SCOPING:
+            start = 0                       # fresh engagement: begin at recon
+        else:
+            # Already past the auto-walk (exploitation/post/report). Don't rewind
+            # the phase back to recon — there is nothing left to auto-run.
+            return
         for phase in PHASE_ORDER[start:]:
             if self._stop:
                 break

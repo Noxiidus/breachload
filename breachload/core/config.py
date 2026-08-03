@@ -30,7 +30,14 @@ class EngagementConfig(BaseModel):
 
     @property
     def auto_risk(self) -> Risk:
-        return Risk[self.auto_threshold.upper()]
+        try:
+            return Risk[self.auto_threshold.upper()]
+        except KeyError:
+            valid = ", ".join(r.name.lower() for r in Risk)
+            raise ValueError(
+                f"invalid auto_threshold {self.auto_threshold!r} "
+                f"(choose one of: {valid})"
+            ) from None
 
     @property
     def effective_threshold(self) -> Risk | None:

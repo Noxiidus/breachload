@@ -89,3 +89,20 @@ class TestGating:
         r = asyncio.run(deliver_artifact(ScriptDelivery(), Artifact(name="x"), "10.10.10.5", v,
                                          confirm=lambda _: True, runner=_ok_runner))
         assert r.status == "failed" and "no path" in r.reason
+
+    def test_async_confirm_is_awaited(self):
+        # An async confirm (e.g. the web UI gate) must be awaited, not treated as
+        # a truthy coroutine that runs delivery unconditionally.
+        async def approve(_prompt):
+            return True
+
+        async def deny(_prompt):
+            return False
+
+        v = _validator("python3")
+        r = asyncio.run(deliver_artifact(ScriptDelivery(), ARTIFACT, "10.10.10.5", v,
+                                         confirm=approve, runner=_ok_runner))
+        assert r.status == "delivered"
+        r2 = asyncio.run(deliver_artifact(ScriptDelivery(), ARTIFACT, "10.10.10.5", v,
+                                          confirm=deny, runner=_ok_runner))
+        assert r2.status == "declined"

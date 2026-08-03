@@ -182,3 +182,13 @@ def test_resume_does_not_repeat_actions(tmp_path):
     # Running again from a completed state should add no new actions.
     asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
     assert len(state.history) == count_before
+
+
+def test_resume_past_vuln_does_not_rewind_phase(tmp_path):
+    # If the engagement has advanced beyond the auto-walk (e.g. exploitation),
+    # run_engagement must not reset the phase back to recon or run anything.
+    orch, state, _ = _orchestrator(tmp_path)
+    state.phase = Phase.POST
+    asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
+    assert state.phase == Phase.POST
+    assert state.history == []

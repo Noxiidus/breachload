@@ -101,6 +101,17 @@ class TestCorrelator:
         st = self._host_state("Windows 7", [Service(port=80, name="http")])
         assert not any("MS17-010" in f.title for f in Correlator().findings_for(st))
 
+    def test_bare_seven_in_build_number_is_not_legacy(self):
+        # "7" inside a build number must not be read as "Windows 7".
+        st = self._host_state("Windows (build 17763)",
+                              [Service(port=445, name="microsoft-ds")])
+        assert not any("MS17-010" in f.title for f in Correlator().findings_for(st))
+
+    def test_server_2008_still_matches(self):
+        st = self._host_state("Windows Server 2008 R2",
+                              [Service(port=445, name="microsoft-ds")])
+        assert any("MS17-010" in f.title for f in Correlator().findings_for(st))
+
     def test_cleartext_ftp(self):
         st = self._host_state(None, [Service(port=21, name="ftp")])
         titles = [f.title for f in Correlator().findings_for(st)]

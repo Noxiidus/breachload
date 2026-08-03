@@ -169,11 +169,12 @@ class EngagementState(BaseModel):
         """True if `tool` has already been run against a command containing `needle`.
 
         Lets the planner avoid re-running the same tool on the same target. The
-        match rejects a trailing digit so a numeric needle isn't a false prefix of
-        a longer one — e.g. host:port ``10.10.10.5:80`` must not match
-        ``10.10.10.5:8080``, nor host ``10.10.10.5`` match ``10.10.10.50``.
+        match rejects an adjacent digit on either side so a numeric needle isn't a
+        false sub-string of a longer one — e.g. host:port ``10.10.10.5:80`` must
+        not match ``10.10.10.5:8080``, nor host ``10.10.10.5`` match
+        ``10.10.10.50`` (trailing) or ``210.10.10.5`` (leading).
         """
-        pattern = re.compile(re.escape(needle) + r"(?!\d)")
+        pattern = re.compile(r"(?<!\d)" + re.escape(needle) + r"(?!\d)")
         for a in self.history:
             if a.tool == tool and any(pattern.search(tok) for tok in a.command):
                 return True

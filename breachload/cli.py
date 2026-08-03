@@ -66,6 +66,27 @@ def _confirm(prompt: str) -> bool:
     return typer.confirm("  run this?", default=False)
 
 
+# Friendly short aliases for the phase enum values, so `--phase vuln` works and
+# a typo yields a clear message instead of a raw ValueError traceback.
+_PHASE_ALIASES = {
+    "recon": Phase.RECON,
+    "enum": Phase.ENUM, "enumeration": Phase.ENUM,
+    "vuln": Phase.VULN, "vuln_analysis": Phase.VULN, "vuln-analysis": Phase.VULN,
+}
+
+
+def _parse_phase(value: str) -> Phase:
+    key = value.strip().lower()
+    if key in _PHASE_ALIASES:
+        return _PHASE_ALIASES[key]
+    try:
+        return Phase(key)
+    except ValueError:
+        valid = ", ".join(sorted(_PHASE_ALIASES))
+        console.print(f"[bold red]invalid phase:[/] {value}  (choose one of: {valid})")
+        raise typer.Exit(2) from None
+
+
 def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementState:
     """Resume an existing engagement, or start a fresh state seeded from targets."""
     if state_path.exists():
@@ -104,10 +125,10 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
                         state_path, confirm=_confirm, on_event=_emit,
                         analyzer=Analyzer.default())
     if phase:
-        state.phase = Phase(phase)
+        state.phase = _parse_phase(phase)
         asyncio.run(orch.run_phase())
     else:
-        asyncio.run(orch.run_engagement(stop_after=Phase(stop)))
+        asyncio.run(orch.run_engagement(stop_after=_parse_phase(stop)))
 
     state.save(state_path)
     console.print()
@@ -144,7 +165,7 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
     orch = Orchestrator(cfg, state, registry, validator, planner, audit, state_path,
                         confirm=_confirm, on_event=_emit, analyzer=Analyzer.default(),
                         rate_limiter=rate)
-    asyncio.run(orch.run_engagement(stop_after=Phase(stop)))
+    asyncio.run(orch.run_engagement(stop_after=_parse_phase(stop)))
     state.save(state_path)
 
     console.print("\n" + state.summary() + "\n")
@@ -185,6 +206,9 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
         raise typer.Exit(1) from None
 
     cfg = EngagementConfig.load(config)
+    # Resolve phases up front so a bad value errors clearly before the server boots.
+    target_phase = _parse_phase(phase) if phase else None
+    stop_phase = _parse_phase(stop)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     state = _load_or_seed_state(cfg, state_path)
@@ -204,14 +228,18 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     async def _boot():
         async def _run():
             if phase:
-                state.phase = Phase(phase)
+                state.phase = target_phase
                 await orch.run_phase()
             else:
-                await orch.run_engagement(stop_after=Phase(stop))
+                await orch.run_engagement(stop_after=stop_phase)
             state.save(state_path)
         asyncio.create_task(_run())
 
-    web_app = create_app(hub, state_path, on_startup=_boot, stopper=orch.request_stop)
+    def _stop() -> None:
+        orch.request_stop()
+        hub.cancel_pending()   # unblock any confirm the engine is waiting on
+
+    web_app = create_app(hub, state_path, on_startup=_boot, stopper=_stop)
     if host not in ("127.0.0.1", "localhost", "::1"):
         console.print("[bold red]warning:[/] binding beyond localhost — the confirm/stop "
                       "endpoints are unauthenticated; anyone who can reach this port can "
@@ -342,7 +370,8 @@ def flag(config: Path = typer.Argument(..., help="engagement YAML"),
         blob += Path(scan).read_text(encoding="utf-8", errors="replace")
     if text:
         blob += "\n" + text
-    new = [f for f in find_flags(blob) if state.add_flag(f)]
+    # Explicit flag scan of a trusted file/paste: also accept bare 32-hex HTB flags.
+    new = [f for f in find_flags(blob, include_bare_hex=True) if state.add_flag(f)]
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state.save(state_path)
     if new:
@@ -505,9 +534,10 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
         approved=result.status not in ("blocked", "declined"),
         exit_code=result.run.exit_code if result.run else None,
     ))
-    # Delivery output can carry a flag (e.g. a shell that read user.txt).
+    # Delivery output can carry a flag (e.g. a shell that read user.txt) — this is
+    # an explicit exploit context, so accept bare 32-hex HTB flags too.
     if result.run:
-        for captured in find_flags(result.run.stdout):
+        for captured in find_flags(result.run.stdout, include_bare_hex=True):
             if state.add_flag(captured):
                 console.print(f"[bold green]flag[/] {captured}")
     state.save(state_path)

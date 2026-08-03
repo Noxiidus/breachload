@@ -7,10 +7,16 @@ host and yields findings. Add rules here as patterns emerge.
 
 from __future__ import annotations
 
+import re
+
 from ..core.state import EngagementState, Finding, Host, Severity
 
 # Legacy Windows versions historically vulnerable to MS17-010 (EternalBlue).
-_LEGACY_WINDOWS = ("xp", "vista", "7", "2003", "2008", "server 2008")
+# Word-bounded so a bare "7" doesn't match build numbers like "windows (17763)".
+_LEGACY_WINDOWS = ("xp", "vista", "7", "2003", "2008")
+_LEGACY_RE = re.compile(
+    r"(?<!\d)(?:" + "|".join(re.escape(t) for t in _LEGACY_WINDOWS) + r")(?!\d)"
+)
 _SMB_PORTS = (139, 445)
 
 
@@ -29,7 +35,7 @@ class Correlator:
         ports = {s.port for s in host.services.values()}
         if not (ports & set(_SMB_PORTS)):
             return []
-        if not any(tag in os_ for tag in _LEGACY_WINDOWS):
+        if not _LEGACY_RE.search(os_):
             return []
         return [Finding(
             title=f"MS17-010 (EternalBlue) candidate on {host.address}",

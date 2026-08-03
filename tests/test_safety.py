@@ -128,3 +128,11 @@ class TestModeThreshold:
 
     def test_full_auto_uses_configured(self):
         assert self._cfg("full-auto").effective_threshold == Risk.ACTIVE
+
+    def test_invalid_threshold_gives_clear_error(self):
+        import pytest
+
+        from breachload.core.config import EngagementConfig
+        cfg = EngagementConfig(name="t", auto_threshold="agressive")  # typo
+        with pytest.raises(ValueError, match="invalid auto_threshold"):
+            _ = cfg.effective_threshold

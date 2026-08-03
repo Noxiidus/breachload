@@ -38,6 +38,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     now recorded so it isn't retried.
 - Credential looting no longer misreads `NOPASSWD:` from sudo output as a
   password (a negative-lookbehind guard; `DB_PASSWORD=` still parses).
+- Full review pass (bug hunt before the next release):
+  - `loot` no longer crashes (`IndexError`) on a malformed sudoers entry whose
+    command is a lone `/` — such entries are skipped and valid ones still parse.
+  - `run`/`serve`/`auto` accept short phase aliases (`--phase vuln`, `--stop
+    enum`) and reject an unknown phase with a clear message instead of a raw
+    `ValueError` traceback (the documented `vuln` value now actually works).
+  - Flag capture recognizes bare 32-char-hex HTB flags (`user.txt` / `root.txt`)
+    when scanning a trusted file/paste (`flag --scan`) or explicit delivery
+    output — previously only `flag{...}`-style flags were caught, so real HTB
+    flags were missed. Off by default elsewhere to avoid matching MD5 hashes.
+  - Web kill-switch (`/api/stop`) now cancels any pending confirmation, so
+    stopping can't leave the engine blocked forever on a gate no client answers.
+  - `run_engagement` no longer rewinds the phase back to recon when resuming an
+    engagement that has advanced past the auto-walk (exploitation/post/report).
+  - `deliver_artifact` awaits an async confirmation callback instead of treating
+    the coroutine as truthy and delivering unconditionally.
+  - Markdown report cells escape `|` and flatten newlines, so a secret/product/
+    banner containing a pipe can't break the tables.
+  - Reproduction-step attribution uses the same trailing-digit host guard as the
+    planner (finding on `10.10.10.5` no longer pulls in `10.10.10.50` commands).
+  - EternalBlue correlation matches legacy Windows with word boundaries, so a
+    bare `7` in a build number is no longer read as "Windows 7".
+  - `has_action` also rejects a leading adjacent digit (`10.10.10.5` no longer
+    matches `210.10.10.5`).
+  - NVD import truncates long CVE names with an ASCII `...` (cp1250-safe console).
+  - Invalid `auto_threshold` in an engagement YAML raises a clear error listing
+    the valid risk levels instead of a bare `KeyError`.
 
 ## [0.3.0] - 2026-07-28
 

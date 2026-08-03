@@ -77,6 +77,17 @@ class EventHub:
         future.set_result(approved)
         return True
 
+    def cancel_pending(self) -> int:
+        """Deny every outstanding confirmation. Used by the kill-switch so a stop
+        can't leave the engine blocked forever on a gate no client will answer.
+        Returns the number of confirmations denied."""
+        cancelled = 0
+        for future in list(self._pending.values()):
+            if not future.done():
+                future.set_result(False)
+                cancelled += 1
+        return cancelled
+
     @property
     def pending_confirms(self) -> list[str]:
         return [cid for cid, fut in self._pending.items() if not fut.done()]

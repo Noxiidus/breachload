@@ -114,3 +114,9 @@ class TestHasActionBoundary:
     def test_exact_match_still_works(self):
         st = self._state_with_nmap_on("10.10.10.5")
         assert st.has_action("nmap", "10.10.10.5")
+
+    def test_host_not_a_suffix_of_longer_host(self):
+        # Leading-digit guard: 10.10.10.5 must not match 210.10.10.5.
+        st = self._state_with_nmap_on("210.10.10.5")
+        assert st.has_action("nmap", "210.10.10.5")
+        assert not st.has_action("nmap", "10.10.10.5")

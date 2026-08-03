@@ -78,6 +78,47 @@ class TestRenderMarkdown:
         assert "nmap 10.10.10.5" in self.md
 
 
+class TestTableSafety:
+    def test_pipe_in_secret_is_escaped(self):
+        st = EngagementState(name="acme")
+        st.credentials.append(Credential(username="admin", secret="p|a|ss", kind="password"))
+        md = render_markdown(st)
+        assert r"p\|a\|ss" in md          # pipes escaped so the table stays intact
+        assert "| p|a|ss |" not in md
+
+    def test_newline_in_product_is_flattened(self):
+        st = EngagementState(name="acme")
+        host = st.upsert_host("10.0.0.1")
+        host.upsert_service(Service(port=80, name="http", product="Foo\nBar"))
+        md = render_markdown(st)
+        assert "Foo\nBar" not in md
+        assert "Foo Bar" in md
+
+
+class TestReproSteps:
+    def test_repro_does_not_match_prefix_host(self):
+        # A finding on 10.10.10.5 must not pull in a command that targeted
+        # 10.10.10.50 (prefix collision).
+        st = EngagementState(name="acme")
+        st.upsert_host("10.10.10.5")
+        st.add_finding(Finding(title="issue", severity=Severity.HIGH, host="10.10.10.5"))
+        st.record_action(ActionRecord(phase=Phase.RECON, tool="nmap",
+                                      command=["nmap", "10.10.10.50"], exit_code=0))
+        md = render_markdown(st)
+        # The .50 command still shows in the timeline, but must NOT be pulled into
+        # the finding's reproduction steps (which key off the .5 host).
+        assert "**Reproduce:**" not in md
+
+    def test_repro_matches_exact_host(self):
+        st = EngagementState(name="acme")
+        st.upsert_host("10.10.10.5")
+        st.add_finding(Finding(title="issue", severity=Severity.HIGH, host="10.10.10.5"))
+        st.record_action(ActionRecord(phase=Phase.RECON, tool="nmap",
+                                      command=["nmap", "10.10.10.5"], exit_code=0))
+        md = render_markdown(st)
+        assert "**Reproduce:**" in md and "nmap 10.10.10.5" in md
+
+
 class TestEmptyState:
     def test_minimal_report_no_crash(self):
         md = render_markdown(EngagementState(name="empty"))
