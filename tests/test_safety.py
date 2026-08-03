@@ -133,6 +133,13 @@ class TestModeThreshold:
         import pytest
 
         from breachload.core.config import EngagementConfig
-        cfg = EngagementConfig(name="t", auto_threshold="agressive")  # typo
+        # Rejected at construction (fail-fast) with a clear message.
         with pytest.raises(ValueError, match="invalid auto_threshold"):
-            _ = cfg.effective_threshold
+            EngagementConfig(name="t", auto_threshold="agressive")  # typo
+
+    def test_invalid_mode_gives_clear_error(self):
+        import pytest
+
+        from breachload.core.config import EngagementConfig
+        with pytest.raises(ValueError, match="invalid mode"):
+            EngagementConfig(name="t", mode="yolo")

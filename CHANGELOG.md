@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Config robustness (second review pass): `auto_threshold` and `mode` are
+  validated when the engagement YAML loads (fail-fast with a clear message
+  listing the valid values), and every CLI command now reports a missing file,
+  malformed YAML, or an invalid field as a clean one-line error and exit code 2
+  instead of a raw Python traceback. The `--phase` error also escapes the
+  offending value so it can't be misread as console markup.
+
 ## [0.9.0] - 2026-08-03
 
 This release brings the actual version number in line with the code: everything

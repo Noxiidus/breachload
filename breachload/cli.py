@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 import typer
+import yaml
+from pydantic import ValidationError
 from rich.console import Console
 from rich.markup import escape
 
@@ -83,8 +85,27 @@ def _parse_phase(value: str) -> Phase:
         return Phase(key)
     except ValueError:
         valid = ", ".join(sorted(_PHASE_ALIASES))
-        console.print(f"[bold red]invalid phase:[/] {value}  (choose one of: {valid})")
+        console.print(f"[bold red]invalid phase:[/] {escape(value)}  (choose one of: {valid})")
         raise typer.Exit(2) from None
+
+
+def _load_config(path: Path) -> EngagementConfig:
+    """Load an engagement YAML, turning any load/validation error into a clean
+    message + exit instead of a raw traceback (missing file, bad YAML, invalid
+    field such as a typo'd auto_threshold/mode)."""
+    try:
+        return EngagementConfig.load(path)
+    except FileNotFoundError:
+        console.print(f"[bold red]config not found:[/] {escape(str(path))}")
+    except yaml.YAMLError as exc:
+        console.print(f"[bold red]invalid YAML in {escape(str(path))}:[/] {escape(str(exc))}")
+    except ValidationError as exc:
+        problems = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc']) or 'config'}: {e['msg']}"
+            for e in exc.errors()
+        )
+        console.print(f"[bold red]invalid config {escape(str(path))}:[/] {escape(problems)}")
+    raise typer.Exit(2)
 
 
 def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementState:
@@ -103,7 +124,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
         phase: str = typer.Option(None, help="run only this phase (recon/enumeration/vuln)"),
         stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase")):
     """Run an engagement. By default auto-chains recon -> enumeration -> vuln."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     state = _load_or_seed_state(cfg, state_path)
@@ -147,7 +168,7 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
     automatically (anything above the threshold still asks); then the rule-based
     engine prints exactly what to try next, and a report is written.
     """
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     state = _load_or_seed_state(cfg, state_path)
@@ -205,7 +226,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print("[bold red]web extra not installed[/] — run: pip install 'breachload[web]'")
         raise typer.Exit(1) from None
 
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     # Resolve phases up front so a bad value errors clearly before the server boots.
     target_phase = _parse_phase(phase) if phase else None
     stop_phase = _parse_phase(stop)
@@ -283,7 +304,7 @@ def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
             lhost: str = typer.Option("LHOST", help="your listener host for rendered payloads"),
             lport: int = typer.Option(4444, help="listener port")):
     """Rule-based next-step plan from the current state (works with no API key)."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     if not state_path.exists():
         console.print("[yellow]no state yet — run a phase first[/]")
@@ -360,7 +381,7 @@ def flag(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="file to scan for flags (e.g. loot/user.txt)"),
          text: str = typer.Option(None, help="text to scan for flags")):
     """Record CTF flags found in a file or text (e.g. paste your user.txt / root.txt)."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     state = (EngagementState.load(state_path) if state_path.exists()
              else EngagementState(name=cfg.name))
@@ -385,7 +406,7 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="file to parse (linpeas / sudo -l / SUID sweep)"),
          text: str = typer.Option(None, help="text to parse")):
     """Parse post-exploitation output into findings + credentials (privesc, loot)."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     state = (EngagementState.load(state_path) if state_path.exists()
              else EngagementState(name=cfg.name))
@@ -419,7 +440,7 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
 @app.command()
 def status(config: Path = typer.Argument(..., help="engagement YAML")):
     """Show current known state for an engagement."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     if not state_path.exists():
         console.print("[yellow]no state yet — run a phase first[/]")
@@ -435,7 +456,7 @@ def payload(config: Path = typer.Argument(..., help="engagement YAML"),
             fmt: str = typer.Option("elf", help="output format (-f): elf, exe, raw, python, ..."),
             name: str = typer.Option(None, help="artifact filename")):
     """Generate a payload artifact with msfvenom (offline — no target, no scope check)."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     if state_path.exists():
@@ -468,7 +489,7 @@ def poc(config: Path = typer.Argument(..., help="engagement YAML"),
         index: int = typer.Option(None, help="finding index (0-based, see report order)"),
         title: str = typer.Option(None, help="match a finding by title substring")):
     """Generate a proof-of-concept script for a finding (Claude, or offline stub)."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     if not state_path.exists():
@@ -506,7 +527,7 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
             listen: bool = typer.Option(False, "--listen",
                                         help="print the matching listener command first")):
     """Deliver a generated artifact to a target (EXPLOIT — scope- and confirm-gated)."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     if not state_path.exists():
@@ -553,7 +574,7 @@ def report(config: Path = typer.Argument(..., help="engagement YAML"),
            output: Path = typer.Option(None, help="output path (default: <engagement>/report.md)"),
            pdf: bool = typer.Option(False, "--pdf", help="also write a PDF next to the Markdown")):
     """Render a Markdown report (and optionally PDF) from the engagement state."""
-    cfg = EngagementConfig.load(config)
+    cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     if not state_path.exists():

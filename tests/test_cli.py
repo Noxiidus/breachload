@@ -110,6 +110,31 @@ class TestUtilityCommands:
         assert htb in EngagementState.load(tmp_path / "t" / "state.json").flags
 
 
+class TestLoadConfig:
+    def test_missing_file_exits_cleanly(self, tmp_path):
+        result = runner.invoke(app, ["run", str(tmp_path / "nope.yaml")])
+        assert result.exit_code == 2
+        assert "config not found" in result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+
+    def test_invalid_yaml_exits_cleanly(self, tmp_path):
+        cfg = tmp_path / "bad.yaml"
+        cfg.write_text("name: t\n  bad: [unclosed\n", encoding="utf-8")
+        result = runner.invoke(app, ["run", str(cfg)])
+        assert result.exit_code == 2
+        assert "invalid YAML" in result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+
+    def test_invalid_threshold_exits_cleanly(self, tmp_path):
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\nauto_threshold: agressive\n",
+                       encoding="utf-8")
+        result = runner.invoke(app, ["run", str(cfg)])
+        assert result.exit_code == 2
+        assert "invalid config" in result.output and "auto_threshold" in result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
 class TestParsePhase:
     def test_aliases_resolve(self):
         from breachload.cli import _parse_phase

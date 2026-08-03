@@ -9,9 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..safety.validator import Risk
+
+_VALID_MODES = ("advisor", "semi-auto", "full-auto")
 
 
 class EngagementConfig(BaseModel):
@@ -27,6 +29,21 @@ class EngagementConfig(BaseModel):
     # from hammering a target.
     min_action_interval: float = 0.0
     notes: str = ""
+
+    @field_validator("auto_threshold")
+    @classmethod
+    def _check_threshold(cls, v: str) -> str:
+        if v.upper() not in Risk.__members__:
+            valid = ", ".join(r.name.lower() for r in Risk)
+            raise ValueError(f"invalid auto_threshold {v!r} (choose one of: {valid})")
+        return v
+
+    @field_validator("mode")
+    @classmethod
+    def _check_mode(cls, v: str) -> str:
+        if v.lower() not in _VALID_MODES:
+            raise ValueError(f"invalid mode {v!r} (choose one of: {', '.join(_VALID_MODES)})")
+        return v
 
     @property
     def auto_risk(self) -> Risk:
