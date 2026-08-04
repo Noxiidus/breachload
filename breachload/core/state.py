@@ -182,8 +182,13 @@ class EngagementState(BaseModel):
 
     # --- persistence --------------------------------------------------------
     def save(self, path: Path) -> None:
+        # Atomic write: a crash or Ctrl-C mid-save must never leave a truncated
+        # state.json that can't be resumed. Write a temp file, then rename over
+        # the target (atomic on the same filesystem).
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_json(indent=2), encoding="utf-8")
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(self.model_dump_json(indent=2), encoding="utf-8")
+        tmp.replace(path)
 
     @classmethod
     def load(cls, path: Path) -> EngagementState:

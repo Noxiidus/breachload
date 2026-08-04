@@ -108,6 +108,16 @@ def _load_config(path: Path) -> EngagementConfig:
     raise typer.Exit(2)
 
 
+def _write_pdf(text: str, pdf_path: Path, name: str) -> None:
+    # A glitch in the (hand-rolled) PDF writer must not lose the report — the
+    # Markdown is already saved, so a PDF failure is a warning, not a crash.
+    try:
+        pdf_path.write_bytes(render_pdf(text, title=f"breachload - {name}"))
+        console.print(f"[bold green]report[/] {pdf_path}")
+    except Exception as exc:  # noqa: BLE001 — keep the Markdown report
+        console.print(f"[yellow]PDF generation failed ({exc}); Markdown report is saved.[/]")
+
+
 def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementState:
     """Resume an existing engagement, or start a fresh state seeded from targets."""
     if state_path.exists():
@@ -205,9 +215,7 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
     report_path.write_text(md, encoding="utf-8")
     console.print(f"[bold green]report[/] {report_path}")
     if pdf:
-        pdf_path = report_path.with_suffix(".pdf")
-        pdf_path.write_bytes(render_pdf(md, title=f"breachload - {cfg.name}"))
-        console.print(f"[bold green]report[/] {pdf_path}")
+        _write_pdf(md, report_path.with_suffix(".pdf"), cfg.name)
 
 
 @app.command()
@@ -248,12 +256,19 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
 
     async def _boot():
         async def _run():
-            if phase:
-                state.phase = target_phase
-                await orch.run_phase()
-            else:
-                await orch.run_engagement(stop_after=stop_phase)
-            state.save(state_path)
+            # A crash in the background engagement must surface on the dashboard
+            # (not vanish into an unretrieved task) and the state must still save.
+            try:
+                if phase:
+                    state.phase = target_phase
+                    await orch.run_phase()
+                else:
+                    await orch.run_engagement(stop_after=stop_phase)
+                hub.emit("phase", "== engagement finished ==")
+            except Exception as exc:  # noqa: BLE001 — report, don't swallow
+                hub.emit("error", f"engagement crashed: {exc}")
+            finally:
+                state.save(state_path)
         asyncio.create_task(_run())
 
     def _stop() -> None:
@@ -589,9 +604,7 @@ def report(config: Path = typer.Argument(..., help="engagement YAML"),
     console.print(f"[bold green]report[/] {out_path}")
 
     if pdf:
-        pdf_path = out_path.with_suffix(".pdf")
-        pdf_path.write_bytes(render_pdf(markdown, title=f"breachload — {cfg.name}"))
-        console.print(f"[bold green]report[/] {pdf_path}")
+        _write_pdf(markdown, out_path.with_suffix(".pdf"), cfg.name)
 
 
 if __name__ == "__main__":

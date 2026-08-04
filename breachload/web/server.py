@@ -94,6 +94,10 @@ def create_app(
             pump.cancel()
             recv.cancel()
             hub.unsubscribe(queue)
+            # If the last client leaves with a confirmation still pending, deny it
+            # so the engine isn't blocked forever on a gate no one can answer.
+            if hub.subscriber_count == 0:
+                hub.cancel_pending()
 
     return app
 

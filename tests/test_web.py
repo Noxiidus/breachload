@@ -51,6 +51,25 @@ class TestEventHub:
     def test_resolve_unknown_confirm_is_noop(self):
         assert EventHub().resolve_confirm("nope", True) is False
 
+    def test_subscriber_count(self):
+        hub = EventHub()
+        assert hub.subscriber_count == 0
+        q = hub.subscribe()
+        assert hub.subscriber_count == 1
+        hub.unsubscribe(q)
+        assert hub.subscriber_count == 0
+
+    def test_cancel_pending_denies_outstanding_confirm(self):
+        # A disconnecting last client must not leave the engine blocked forever.
+        async def scenario():
+            hub = EventHub()
+            task = asyncio.create_task(hub.request_confirm("run nmap?"))
+            await asyncio.sleep(0)          # let request_confirm register the future
+            denied = hub.cancel_pending()
+            return denied, await asyncio.wait_for(task, 1)
+        denied, result = asyncio.run(scenario())
+        assert denied == 1 and result is False
+
     def test_cancel_pending_unblocks_waiters(self):
         # The kill-switch must be able to release a confirm no client will answer,
         # resolving it to False instead of hanging the engine forever.

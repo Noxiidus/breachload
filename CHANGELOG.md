@@ -39,6 +39,17 @@ before `1.0.0`.
   server, detected technologies) folded into the matching service.
 
 ### Fixed
+- Second pre-live-run review pass (robustness):
+  - state is now saved atomically (temp file + rename), so a crash or Ctrl-C
+    mid-save can't leave a truncated `state.json` that breaks resuming a
+    long-running engagement.
+  - the web dashboard no longer hangs the engine: if the last client disconnects
+    with a confirmation still pending, it is denied (via `cancel_pending`) so the
+    run isn't blocked on a gate no one can answer.
+  - the `serve` background engagement reports a crash to the dashboard instead of
+    vanishing into an unretrieved task, and always saves state on exit.
+  - a failure in the hand-rolled PDF writer no longer loses the report — the
+    Markdown is already saved, so a PDF error is a warning, not a crash.
 - Pre-live-run review pass:
   - `has_action` (planner de-duplication) matched a numeric needle as a prefix of
     a longer one, so enumerating `host:8080` marked `host:80` as already done (and

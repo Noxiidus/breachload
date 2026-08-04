@@ -91,3 +91,7 @@ class EventHub:
     @property
     def pending_confirms(self) -> list[str]:
         return [cid for cid, fut in self._pending.items() if not fut.done()]
+
+    @property
+    def subscriber_count(self) -> int:
+        return len(self._subscribers)
