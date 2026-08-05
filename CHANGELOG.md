@@ -7,21 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- Config robustness (second review pass): `auto_threshold` and `mode` are
-  validated when the engagement YAML loads (fail-fast with a clear message
-  listing the valid values), and every CLI command now reports a missing file,
-  malformed YAML, or an invalid field as a clean one-line error and exit code 2
-  instead of a raw Python traceback. The `--phase` error also escapes the
-  offending value so it can't be misread as console markup.
-
-## [0.9.0] - 2026-08-03
+## [0.9.0] - 2026-08-05
 
 This release brings the actual version number in line with the code: everything
 from exploitation through the web dashboard (roadmap milestones v0.4–v0.8, plus
 the v1.0 plugin/contract work) had landed on `main` but sat unreleased behind the
 `0.3.0` tag. It is cut as a single `0.9.0`; only the live-box beta soak remains
 before `1.0.0`.
+
+### Changed
+- Config robustness: `auto_threshold` and `mode` are validated when the
+  engagement YAML loads (fail-fast with a clear message listing the valid
+  values), and every CLI command now reports a missing file, malformed YAML, or
+  an invalid field as a clean one-line error and exit code 2 instead of a raw
+  Python traceback. The `--phase` error also escapes the offending value so it
+  can't be misread as console markup.
 
 ### Added
 - Startup banner (`banner.py`): pure-ASCII `breachload` wordmark with a "by
