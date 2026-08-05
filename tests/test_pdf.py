@@ -38,6 +38,12 @@ class TestRenderPdf:
         pdf = render_pdf("arrow → and dash — and emoji 🎯")
         assert pdf.startswith(b"%PDF-1.4")
 
+    def test_common_punctuation_becomes_ascii(self):
+        # em/en dash, curly quotes and ellipsis would render as "?" otherwise.
+        pdf = render_pdf("dash — and … dots and “curly” ‘quotes’")
+        assert b"dash - and ... dots" in pdf
+        assert b'"curly"' in pdf and b"'quotes'" in pdf
+
     def test_empty_input(self):
         pdf = render_pdf("")
         assert pdf.startswith(b"%PDF-1.4") and b"/Type /Page " in pdf

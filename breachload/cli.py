@@ -108,6 +108,18 @@ def _load_config(path: Path) -> EngagementConfig:
     raise typer.Exit(2)
 
 
+def _load_state(path: Path) -> EngagementState:
+    """Load engagement state, turning a corrupt/invalid state.json into a clean
+    message instead of a raw traceback (e.g. an interrupted pre-atomic-save file,
+    or a hand-edit typo)."""
+    try:
+        return EngagementState.load(path)
+    except (ValueError, ValidationError) as exc:
+        console.print(f"[bold red]corrupt state file {escape(str(path))}:[/] {escape(str(exc))}")
+        console.print("[dim]delete it to start fresh, or restore a backup.[/]")
+        raise typer.Exit(2) from None
+
+
 def _write_pdf(text: str, pdf_path: Path, name: str) -> None:
     # A glitch in the (hand-rolled) PDF writer must not lose the report — the
     # Markdown is already saved, so a PDF failure is a warning, not a crash.
@@ -121,7 +133,7 @@ def _write_pdf(text: str, pdf_path: Path, name: str) -> None:
 def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementState:
     """Resume an existing engagement, or start a fresh state seeded from targets."""
     if state_path.exists():
-        return EngagementState.load(state_path)
+        return _load_state(state_path)
     state = EngagementState(name=cfg.name)
     for target in cfg.targets:
         if not any(c in target for c in "/*"):  # bare host/IP → seed a host record
@@ -324,7 +336,7 @@ def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
     if not state_path.exists():
         console.print("[yellow]no state yet — run a phase first[/]")
         raise typer.Exit(1)
-    state = EngagementState.load(state_path)
+    state = _load_state(state_path)
     suggestions = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
     if not suggestions:
         console.print("[yellow]nothing to suggest yet — run more recon[/]")
@@ -398,7 +410,7 @@ def flag(config: Path = typer.Argument(..., help="engagement YAML"),
     """Record CTF flags found in a file or text (e.g. paste your user.txt / root.txt)."""
     cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
-    state = (EngagementState.load(state_path) if state_path.exists()
+    state = (_load_state(state_path) if state_path.exists()
              else EngagementState(name=cfg.name))
 
     blob = ""
@@ -423,7 +435,7 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
     """Parse post-exploitation output into findings + credentials (privesc, loot)."""
     cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
-    state = (EngagementState.load(state_path) if state_path.exists()
+    state = (_load_state(state_path) if state_path.exists()
              else EngagementState(name=cfg.name))
 
     blob = ""
@@ -460,7 +472,7 @@ def status(config: Path = typer.Argument(..., help="engagement YAML")):
     if not state_path.exists():
         console.print("[yellow]no state yet — run a phase first[/]")
         raise typer.Exit(1)
-    console.print(EngagementState.load(state_path).summary())
+    console.print(_load_state(state_path).summary())
 
 
 @app.command()
@@ -475,7 +487,7 @@ def payload(config: Path = typer.Argument(..., help="engagement YAML"),
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     if state_path.exists():
-        state = EngagementState.load(state_path)
+        state = _load_state(state_path)
     else:
         state = EngagementState(name=cfg.name)
 
@@ -510,7 +522,7 @@ def poc(config: Path = typer.Argument(..., help="engagement YAML"),
     if not state_path.exists():
         console.print("[yellow]no state yet[/]")
         raise typer.Exit(1)
-    state = EngagementState.load(state_path)
+    state = _load_state(state_path)
 
     finding = _select_finding(state, index, title)
     if finding is None:
@@ -548,7 +560,7 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
     if not state_path.exists():
         console.print("[yellow]no state yet[/]")
         raise typer.Exit(1)
-    state = EngagementState.load(state_path)
+    state = _load_state(state_path)
 
     art = next((a for a in state.artifacts if a.name == artifact), None)
     if art is None:
@@ -596,7 +608,7 @@ def report(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print("[yellow]no state yet — run a phase first[/]")
         raise typer.Exit(1)
 
-    state = EngagementState.load(state_path)
+    state = _load_state(state_path)
     markdown = render_markdown(state)
     out_path = output or (work / "report.md")
     out_path.parent.mkdir(parents=True, exist_ok=True)

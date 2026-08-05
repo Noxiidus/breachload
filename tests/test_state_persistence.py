@@ -1,6 +1,23 @@
 """State persistence — atomic, crash-safe save/load."""
 
-from breachload.core.state import EngagementState, Finding, Service, Severity
+from breachload.core.state import EngagementState, Finding, Host, Service, Severity
+
+
+class TestServiceMerge:
+    def test_notes_order_preserved_and_deduped(self):
+        # Reports must be reproducible: merged notes keep first-seen order and
+        # drop duplicates (a set would scramble order non-deterministically).
+        h = Host(address="10.0.0.1")
+        h.upsert_service(Service(port=80, notes=["alpha", "beta"]))
+        h.upsert_service(Service(port=80, notes=["beta", "gamma"]))
+        assert h.services["80/tcp"].notes == ["alpha", "beta", "gamma"]
+
+    def test_merge_keeps_newer_non_null_fields(self):
+        h = Host(address="10.0.0.1")
+        h.upsert_service(Service(port=80, name="http"))
+        h.upsert_service(Service(port=80, product="Apache", version="2.4.49"))
+        svc = h.services["80/tcp"]
+        assert svc.name == "http" and svc.product == "Apache" and svc.version == "2.4.49"
 
 
 class TestPersistence:

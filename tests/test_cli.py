@@ -86,6 +86,17 @@ class TestUtilityCommands:
         state = EngagementState.load(tmp_path / "t" / "state.json")
         assert "flag{pwned_it}" in state.flags
 
+    def test_corrupt_state_is_a_clean_error_not_a_traceback(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        state_dir = tmp_path / "t"
+        state_dir.mkdir()
+        (state_dir / "state.json").write_text("{ this is not valid json", encoding="utf-8")
+        result = runner.invoke(app, ["status", str(cfg)])
+        assert result.exit_code == 2
+        assert "corrupt state file" in result.output
+
     def test_loot_parses_findings_and_creds(self, tmp_path, monkeypatch):
         monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
         from breachload.core.state import EngagementState

@@ -76,7 +76,9 @@ class Host(BaseModel):
             if val not in (None, "", "open"):
                 data[field] = val
         merged = Service(**data)
-        merged.notes = list({*existing.notes, *svc.notes})
+        # Order-preserving dedup: a set would scramble note order non-
+        # deterministically (hash-seeded), making reports irreproducible.
+        merged.notes = list(dict.fromkeys([*existing.notes, *svc.notes]))
         self.services[svc.key] = merged
 
 

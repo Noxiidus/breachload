@@ -39,6 +39,17 @@ before `1.0.0`.
   server, detected technologies) folded into the matching service.
 
 ### Fixed
+- Third review pass:
+  - `Host.upsert_service` merged service notes through a `set`, scrambling their
+    order non-deterministically (hash-seeded) — the same engagement re-run
+    produced differently ordered reports. Now an order-preserving dedup, so
+    reports are reproducible.
+  - the PDF report rendered em/en dashes, curly quotes and ellipses as `?`
+    (not in latin-1). They're now transliterated to ASCII, so the PDF deliverable
+    is clean while the Markdown keeps its Unicode.
+  - a corrupt or hand-edited `state.json` produced a raw traceback on every
+    command; loading is now wrapped (`_load_state`) with a clean message, matching
+    the config-load handling.
 - Second pre-live-run review pass (robustness):
   - state is now saved atomically (temp file + rename), so a crash or Ctrl-C
     mid-save can't leave a truncated `state.json` that breaks resuming a

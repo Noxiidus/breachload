@@ -45,8 +45,18 @@ def _obj(num: int, body: bytes) -> bytes:
     return f"{num} 0 obj\n".encode() + body + b"\nendobj\n"
 
 
+# Common non-latin-1 punctuation that would otherwise become "?" in the PDF.
+_UNICODE_ASCII = str.maketrans({
+    "—": "-", "–": "-",            # em / en dash
+    "‘": "'", "’": "'",            # curly single quotes
+    "“": '"', "”": '"',            # curly double quotes
+    "…": "...",                          # ellipsis
+    " ": " ",                            # non-breaking space
+})
+
+
 def _escape(line: str) -> bytes:
-    b = line.encode("latin-1", "replace")
+    b = line.translate(_UNICODE_ASCII).encode("latin-1", "replace")
     return b.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
 
 
