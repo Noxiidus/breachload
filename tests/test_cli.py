@@ -46,6 +46,21 @@ class TestAutoCommand:
         assert "attack plan" in result.output
         assert (tmp_path / "t" / "report.md").exists()
 
+    def test_warns_when_scope_is_cidr_only(self, tmp_path, monkeypatch):
+        # A CIDR-only scope seeds no hosts and there's no auto-discovery, so the
+        # run would silently do nothing — it must warn instead.
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+
+        async def _noop(self, *args, **kwargs):
+            return None
+
+        monkeypatch.setattr(climod.Orchestrator, "run_engagement", _noop)
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.0/24']\n", encoding="utf-8")
+        result = runner.invoke(app, ["auto", str(cfg), "--no-pdf"])
+        assert result.exit_code == 0
+        assert "no hosts to scan" in result.output
+
     def test_auto_writes_pdf_when_requested(self, tmp_path, monkeypatch):
         monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
 

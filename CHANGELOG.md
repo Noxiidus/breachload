@@ -39,6 +39,13 @@ before `1.0.0`.
   server, detected technologies) folded into the matching service.
 
 ### Fixed
+- Fourth review pass:
+  - a CIDR/glob-only scope (e.g. `targets: ["10.10.10.0/24"]`) seeds no hosts and
+    there is no auto host-discovery, so a run would silently do nothing. `run`/
+    `auto` now warn clearly instead of exiting quietly.
+  - remaining non-ASCII punctuation (em dashes, arrows) in CLI output rendered as
+    `?` on the Windows cp1250 console — including the `breachload -` branding
+    line. All CLI output is now ASCII (the Markdown/PDF report keeps its Unicode).
 - Third review pass:
   - `Host.upsert_service` merged service notes through a `set`, scrambling their
     order non-deterministically (hash-seeded) — the same engagement re-run

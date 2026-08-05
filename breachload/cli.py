@@ -36,7 +36,7 @@ from .safety.scope import Scope
 from .safety.validator import Validator
 from .tools.registry import allowed_binaries, default_registry
 
-app = typer.Typer(help="breachload — autonomous pentest copilot", no_args_is_help=True)
+app = typer.Typer(help="breachload - autonomous pentest copilot", no_args_is_help=True)
 console = Console()
 
 ENGAGEMENTS = Path("engagements")
@@ -51,7 +51,7 @@ _STYLES = {
 @app.callback()
 def _root(no_banner: bool = typer.Option(
         False, "--no-banner", help="suppress the startup banner")):
-    """breachload — autonomous, safety-gated pentest copilot."""
+    """breachload - autonomous, safety-gated pentest copilot."""
     # Show the banner only for interactive runs, so piped/scripted output and the
     # test harness stay clean. Also suppressible via --no-banner or the env var.
     if (not no_banner and sys.stdout.isatty()
@@ -121,12 +121,12 @@ def _load_state(path: Path) -> EngagementState:
 
 
 def _write_pdf(text: str, pdf_path: Path, name: str) -> None:
-    # A glitch in the (hand-rolled) PDF writer must not lose the report — the
+    # A glitch in the (hand-rolled) PDF writer must not lose the report - the
     # Markdown is already saved, so a PDF failure is a warning, not a crash.
     try:
         pdf_path.write_bytes(render_pdf(text, title=f"breachload - {name}"))
         console.print(f"[bold green]report[/] {pdf_path}")
-    except Exception as exc:  # noqa: BLE001 — keep the Markdown report
+    except Exception as exc:  # noqa: BLE001 - keep the Markdown report
         console.print(f"[yellow]PDF generation failed ({exc}); Markdown report is saved.[/]")
 
 
@@ -136,9 +136,23 @@ def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementSt
         return _load_state(state_path)
     state = EngagementState(name=cfg.name)
     for target in cfg.targets:
-        if not any(c in target for c in "/*"):  # bare host/IP → seed a host record
+        if not any(c in target for c in "/*"):  # bare host/IP -> seed a host record
             state.upsert_host(target)
     return state
+
+
+def _warn_if_no_hosts(state: EngagementState, cfg: EngagementConfig) -> None:
+    """A CIDR/glob-only scope seeds no hosts, and there's no auto host-discovery
+    yet - so the engagement would silently do nothing. Say so, loudly."""
+    if state.hosts:
+        return
+    net = [t for t in cfg.targets if any(c in t for c in "/*")]
+    if net:
+        console.print(f"[bold yellow]no hosts to scan:[/] scope has network/glob targets "
+                      f"({', '.join(net)}) but no explicit host. breachload does not "
+                      "auto-discover hosts yet - add specific target IP(s) to the config.")
+    else:
+        console.print("[bold yellow]no hosts to scan[/] - check the engagement targets.")
 
 
 @app.command()
@@ -150,6 +164,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     state = _load_or_seed_state(cfg, state_path)
+    _warn_if_no_hosts(state, cfg)
 
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
@@ -159,7 +174,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
 
     planner_mode = "online (Claude)" if planner.online else "offline (heuristic)"
     label = f"phase={phase}" if phase else f"auto -> {stop}"
-    console.print(f"[bold]breachload[/] — {cfg.name} | {label} | "
+    console.print(f"[bold]breachload[/] - {cfg.name} | {label} | "
                   f"mode={cfg.mode} | planner={planner_mode}")
     console.print(state.summary())
     console.print()
@@ -194,6 +209,7 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     state = _load_or_seed_state(cfg, state_path)
+    _warn_if_no_hosts(state, cfg)
 
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
@@ -243,7 +259,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
         from .web.hub import EventHub
         from .web.server import create_app
     except ImportError:
-        console.print("[bold red]web extra not installed[/] — run: pip install 'breachload[web]'")
+        console.print("[bold red]web extra not installed[/] - run: pip install 'breachload[web]'")
         raise typer.Exit(1) from None
 
     cfg = _load_config(config)
@@ -277,7 +293,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
                 else:
                     await orch.run_engagement(stop_after=stop_phase)
                 hub.emit("phase", "== engagement finished ==")
-            except Exception as exc:  # noqa: BLE001 — report, don't swallow
+            except Exception as exc:  # noqa: BLE001 - report, don't swallow
                 hub.emit("error", f"engagement crashed: {exc}")
             finally:
                 state.save(state_path)
@@ -289,7 +305,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
 
     web_app = create_app(hub, state_path, on_startup=_boot, stopper=_stop)
     if host not in ("127.0.0.1", "localhost", "::1"):
-        console.print("[bold red]warning:[/] binding beyond localhost — the confirm/stop "
+        console.print("[bold red]warning:[/] binding beyond localhost - the confirm/stop "
                       "endpoints are unauthenticated; anyone who can reach this port can "
                       "approve risky actions.")
     console.print(f"[bold]breachload[/] dashboard: http://{host}:{port}  (engagement: {cfg.name})")
@@ -334,12 +350,12 @@ def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
     cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     if not state_path.exists():
-        console.print("[yellow]no state yet — run a phase first[/]")
+        console.print("[yellow]no state yet - run a phase first[/]")
         raise typer.Exit(1)
     state = _load_state(state_path)
     suggestions = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
     if not suggestions:
-        console.print("[yellow]nothing to suggest yet — run more recon[/]")
+        console.print("[yellow]nothing to suggest yet - run more recon[/]")
         return
     console.print(f"[bold]breachload - suggested next steps[/] ({len(suggestions)})\n")
     for s in suggestions:
@@ -444,7 +460,7 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
     if text:
         blob += "\n" + text
     if not blob.strip():
-        console.print("[yellow]nothing to parse — pass --scan <file> or --text[/]")
+        console.print("[yellow]nothing to parse - pass --scan <file> or --text[/]")
         raise typer.Exit(1)
 
     findings, creds = postexploit_loot(blob)
@@ -470,7 +486,7 @@ def status(config: Path = typer.Argument(..., help="engagement YAML")):
     cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     if not state_path.exists():
-        console.print("[yellow]no state yet — run a phase first[/]")
+        console.print("[yellow]no state yet - run a phase first[/]")
         raise typer.Exit(1)
     console.print(_load_state(state_path).summary())
 
@@ -482,7 +498,7 @@ def payload(config: Path = typer.Argument(..., help="engagement YAML"),
             lport: int = typer.Option(4444, help="listener port"),
             fmt: str = typer.Option("elf", help="output format (-f): elf, exe, raw, python, ..."),
             name: str = typer.Option(None, help="artifact filename")):
-    """Generate a payload artifact with msfvenom (offline — no target, no scope check)."""
+    """Generate a payload artifact with msfvenom (offline - no target, no scope check)."""
     cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
@@ -526,7 +542,7 @@ def poc(config: Path = typer.Argument(..., help="engagement YAML"),
 
     finding = _select_finding(state, index, title)
     if finding is None:
-        console.print("[bold red]no matching finding[/] — use --index or --title")
+        console.print("[bold red]no matching finding[/] - use --index or --title")
         raise typer.Exit(1)
 
     gen = PocGenerator()
@@ -553,7 +569,7 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
             interpreter: str = typer.Option("python3", help="interpreter for the script method"),
             listen: bool = typer.Option(False, "--listen",
                                         help="print the matching listener command first")):
-    """Deliver a generated artifact to a target (EXPLOIT — scope- and confirm-gated)."""
+    """Deliver a generated artifact to a target (EXPLOIT - scope- and confirm-gated)."""
     cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
@@ -582,7 +598,7 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
         approved=result.status not in ("blocked", "declined"),
         exit_code=result.run.exit_code if result.run else None,
     ))
-    # Delivery output can carry a flag (e.g. a shell that read user.txt) — this is
+    # Delivery output can carry a flag (e.g. a shell that read user.txt) - this is
     # an explicit exploit context, so accept bare 32-hex HTB flags too.
     if result.run:
         for captured in find_flags(result.run.stdout, include_bare_hex=True):
@@ -605,7 +621,7 @@ def report(config: Path = typer.Argument(..., help="engagement YAML"),
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     if not state_path.exists():
-        console.print("[yellow]no state yet — run a phase first[/]")
+        console.print("[yellow]no state yet - run a phase first[/]")
         raise typer.Exit(1)
 
     state = _load_state(state_path)
