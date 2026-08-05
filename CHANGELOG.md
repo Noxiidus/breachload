@@ -7,13 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-08-05
+## [0.9.1] - 2026-08-05
 
-This release brings the actual version number in line with the code: everything
-from exploitation through the web dashboard (roadmap milestones v0.4–v0.8, plus
-the v1.0 plugin/contract work) had landed on `main` but sat unreleased behind the
-`0.3.0` tag. It is cut as a single `0.9.0`; only the live-box beta soak remains
-before `1.0.0`.
+Patch release: the hardening from the pre-live-run review passes, on top of
+`0.9.0` — no new features, all correctness and robustness.
 
 ### Changed
 - Config robustness: `auto_threshold` and `mode` are validated when the
@@ -22,6 +19,42 @@ before `1.0.0`.
   an invalid field as a clean one-line error and exit code 2 instead of a raw
   Python traceback. The `--phase` error also escapes the offending value so it
   can't be misread as console markup.
+
+### Fixed
+- A CIDR/glob-only scope (e.g. `targets: ["10.10.10.0/24"]`) seeds no hosts and
+  there is no auto host-discovery, so a run silently did nothing. `run`/`auto`
+  now warn clearly instead of exiting quietly.
+- Non-ASCII punctuation (em dashes, arrows) in CLI output rendered as a
+  replacement char on the Windows cp1250 console — including the `breachload -`
+  branding line. All CLI output is now ASCII; the Markdown/PDF report keeps its
+  Unicode.
+- `Host.upsert_service` merged service notes through a `set`, scrambling their
+  order non-deterministically (hash-seeded), so the same engagement re-run
+  produced differently-ordered reports. Now an order-preserving dedup — reports
+  are reproducible.
+- The PDF report rendered em/en dashes, curly quotes and ellipses as `?` (not in
+  latin-1); they are now transliterated to ASCII, so the PDF is clean while the
+  Markdown keeps its Unicode.
+- A corrupt or hand-edited `state.json` produced a raw traceback on every
+  command; loading is now wrapped (`_load_state`) with a clean message + exit 2.
+- State is saved atomically (temp file + rename), so a crash or Ctrl-C mid-save
+  can't leave a truncated `state.json` that breaks resuming an engagement.
+- The web dashboard no longer hangs the engine: if the last client disconnects
+  with a confirmation pending, it is denied (`cancel_pending`).
+- The `serve` background engagement reports a crash to the dashboard instead of
+  vanishing into an unretrieved task, and always saves state on exit.
+- A failure in the hand-rolled PDF writer no longer loses the report — the
+  Markdown is already saved, so a PDF error is a warning, not a crash.
+- The exploit-runner timeout path (a hanging delivered exploit) is now covered by
+  a test.
+
+## [0.9.0] - 2026-08-03
+
+This release brings the actual version number in line with the code: everything
+from exploitation through the web dashboard (roadmap milestones v0.4–v0.8, plus
+the v1.0 plugin/contract work) had landed on `main` but sat unreleased behind the
+`0.3.0` tag. It is cut as a single `0.9.0`; only the live-box beta soak remains
+before `1.0.0`.
 
 ### Added
 - Startup banner (`banner.py`): pure-ASCII `breachload` wordmark with a "by
@@ -39,35 +72,6 @@ before `1.0.0`.
   server, detected technologies) folded into the matching service.
 
 ### Fixed
-- Fourth review pass:
-  - a CIDR/glob-only scope (e.g. `targets: ["10.10.10.0/24"]`) seeds no hosts and
-    there is no auto host-discovery, so a run would silently do nothing. `run`/
-    `auto` now warn clearly instead of exiting quietly.
-  - remaining non-ASCII punctuation (em dashes, arrows) in CLI output rendered as
-    `?` on the Windows cp1250 console — including the `breachload -` branding
-    line. All CLI output is now ASCII (the Markdown/PDF report keeps its Unicode).
-- Third review pass:
-  - `Host.upsert_service` merged service notes through a `set`, scrambling their
-    order non-deterministically (hash-seeded) — the same engagement re-run
-    produced differently ordered reports. Now an order-preserving dedup, so
-    reports are reproducible.
-  - the PDF report rendered em/en dashes, curly quotes and ellipses as `?`
-    (not in latin-1). They're now transliterated to ASCII, so the PDF deliverable
-    is clean while the Markdown keeps its Unicode.
-  - a corrupt or hand-edited `state.json` produced a raw traceback on every
-    command; loading is now wrapped (`_load_state`) with a clean message, matching
-    the config-load handling.
-- Second pre-live-run review pass (robustness):
-  - state is now saved atomically (temp file + rename), so a crash or Ctrl-C
-    mid-save can't leave a truncated `state.json` that breaks resuming a
-    long-running engagement.
-  - the web dashboard no longer hangs the engine: if the last client disconnects
-    with a confirmation still pending, it is denied (via `cancel_pending`) so the
-    run isn't blocked on a gate no one can answer.
-  - the `serve` background engagement reports a crash to the dashboard instead of
-    vanishing into an unretrieved task, and always saves state on exit.
-  - a failure in the hand-rolled PDF writer no longer loses the report — the
-    Markdown is already saved, so a PDF error is a warning, not a crash.
 - Pre-live-run review pass:
   - `has_action` (planner de-duplication) matched a numeric needle as a prefix of
     a longer one, so enumerating `host:8080` marked `host:80` as already done (and
