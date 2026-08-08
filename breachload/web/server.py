@@ -19,6 +19,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from pydantic import ValidationError
 
 from ..core.state import EngagementState
 from ..report.engine import render_markdown
@@ -103,6 +104,15 @@ def create_app(
 
 
 def _load_state(state_path: Path) -> EngagementState | None:
-    if state_path.exists():
+    """Load state, or None if it's missing or corrupt.
+
+    A truncated (interrupted pre-atomic-save) or hand-edited state.json must not
+    turn every dashboard request into an HTTP 500 — the API degrades to an empty
+    state instead, matching the CLI's graceful corrupt-state handling.
+    """
+    if not state_path.exists():
+        return None
+    try:
         return EngagementState.load(state_path)
-    return None
+    except (ValueError, ValidationError):
+        return None

@@ -135,6 +135,17 @@ class TestServer:
         client = TestClient(create_app(EventHub(), tmp_path / "missing.json"))
         assert client.get("/api/state").json() == {}
 
+    def test_corrupt_state_degrades_not_500(self, tmp_path):
+        # A truncated / hand-edited state.json must not 500 the dashboard API;
+        # it degrades to an empty state / "no state" report instead.
+        sp = tmp_path / "state.json"
+        sp.write_text("{ not valid json ", encoding="utf-8")
+        client = TestClient(create_app(EventHub(), sp))
+        r_state = client.get("/api/state")
+        r_report = client.get("/api/report")
+        assert r_state.status_code == 200 and r_state.json() == {}
+        assert r_report.status_code == 200 and "No state yet" in r_report.text
+
     def test_api_report(self, tmp_path):
         client = TestClient(_app_with_state(tmp_path))
         r = client.get("/api/report")

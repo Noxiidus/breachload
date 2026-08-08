@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Report reproduction-step attribution used only a trailing-digit guard, so a
   finding on `10.10.10.5` pulled in commands that targeted `210.10.10.5`
   (leading-digit collision). It now guards both sides, matching `has_action`.
+- The web dashboard's `/api/state` and `/api/report` returned a raw HTTP 500 on a
+  corrupt or truncated `state.json` (e.g. an interrupted pre-atomic-save file).
+  The server's `_load_state` now degrades to an empty state / "no state" report,
+  matching the CLI's graceful corrupt-state handling.
 
 ## [0.9.1] - 2026-08-05
 
