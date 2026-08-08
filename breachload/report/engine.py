@@ -116,9 +116,10 @@ def _repro_steps(f: Finding, state: EngagementState) -> list[str]:
     """Successful commands from the history that targeted this finding's host."""
     if not f.host:
         return []
-    # Trailing-digit guard so host 10.10.10.5 doesn't match 10.10.10.50 (same
-    # prefix-collision fix used by state.has_action).
-    host_re = re.compile(re.escape(f.host) + r"(?!\d)")
+    # Adjacent-digit guard on both sides so host 10.10.10.5 matches neither
+    # 10.10.10.50 (trailing) nor 210.10.10.5 (leading) — the same prefix-collision
+    # fix state.has_action uses, applied identically here.
+    host_re = re.compile(r"(?<!\d)" + re.escape(f.host) + r"(?!\d)")
     steps = [
         " ".join(a.command)
         for a in state.history

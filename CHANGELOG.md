@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Scope-enforcement gap: a URL's `userinfo` (`http://user:pass@host/`) shadowed
+  the real host — `extract_targets` captured the credential part and stopped at
+  the first `:`, so an out-of-scope host could pass the scope gate behind an
+  in-scope-looking credential (`http://in.scope:x@evil.com/` was allowed while it
+  actually contacted `evil.com`). Userinfo is now skipped and the true host
+  (including a bracketed IPv6 `[::1]`) is extracted and scope-checked.
+- An IPv6 target was never extracted from a command — `extract_targets` only knew
+  IPv4 and hostnames — so an out-of-scope IPv6 host slipped through scope entirely
+  (`nmap 2001:db8::1` was allowed under an unrelated scope). A bare/bracketed IPv6
+  literal argument is now extracted and validated like any other target.
+
+### Fixed
+- Report reproduction-step attribution used only a trailing-digit guard, so a
+  finding on `10.10.10.5` pulled in commands that targeted `210.10.10.5`
+  (leading-digit collision). It now guards both sides, matching `has_action`.
+
 ## [0.9.1] - 2026-08-05
 
 Patch release: the hardening from the pre-live-run review passes, on top of

@@ -62,12 +62,40 @@ class TestExtractTargets:
         assert extract_targets(["wordlists/common.txt"]) == set()
         assert extract_targets(["-w", "path//double/x"]) == set()
 
+    def test_url_userinfo_does_not_hide_host(self):
+        # The real host must be extracted, not the user:pass@ userinfo, so a host
+        # can't hide behind in-scope-looking credentials.
+        assert "evil.example" in extract_targets(["http://user:pass@evil.example/x"])
+        assert "evil.example" in extract_targets(["http://in.scope@evil.example/x"])
+        # A bracketed IPv6 host with userinfo is unwrapped to the bare address.
+        assert "::1" in extract_targets(["http://u:p@[::1]:8080/x"])
+
+    def test_extracts_bare_ipv6(self):
+        # A bare IPv6 literal (which the IPv4/hostname patterns miss) must still
+        # be extracted, or an out-of-scope IPv6 target would slip past scope.
+        assert "dead:beef::1" in extract_targets(["dead:beef::1"])
+        assert "2001:db8::1" in extract_targets(["[2001:db8::1]"])
+
     def test_out_of_scope_smb_target_is_blocked(self):
         from breachload.safety.validator import Risk, Validator
         scope = Scope.from_config(["10.10.10.0/24"])
         v = Validator(scope, {"smbclient"}, Risk.ACTIVE)
         decision = v.check(["smbclient", "-N", "-L", "//evil.example/share"], Risk.ACTIVE)
         assert not decision.allowed and "out-of-scope" in decision.reason
+
+    def test_out_of_scope_host_behind_userinfo_is_blocked(self):
+        # Regression: http://<in-scope>:x@evil/ must not pass the scope gate.
+        from breachload.safety.validator import Risk, Validator
+        scope = Scope.from_config(["target.example"])
+        v = Validator(scope, {"curl"}, Risk.ACTIVE)
+        decision = v.check(["curl", "http://target.example:pw@evil.example/loot"], Risk.ACTIVE)
+        assert not decision.allowed and "out-of-scope" in decision.reason
+
+    def test_out_of_scope_ipv6_target_is_blocked(self):
+        from breachload.safety.validator import Risk, Validator
+        scope = Scope.from_config(["dead:beef::/64"])
+        v = Validator(scope, {"nmap"}, Risk.ACTIVE)
+        assert not v.check(["nmap", "2001:db8::1"], Risk.ACTIVE).allowed
 
 
 class TestValidator:

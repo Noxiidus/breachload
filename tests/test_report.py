@@ -109,6 +109,17 @@ class TestReproSteps:
         # the finding's reproduction steps (which key off the .5 host).
         assert "**Reproduce:**" not in md
 
+    def test_repro_does_not_match_leading_digit_host(self):
+        # A finding on 10.10.10.5 must not pull in a command that targeted
+        # 210.10.10.5 (leading-digit collision) — the guard is on both sides.
+        st = EngagementState(name="acme")
+        st.upsert_host("10.10.10.5")
+        st.add_finding(Finding(title="issue", severity=Severity.HIGH, host="10.10.10.5"))
+        st.record_action(ActionRecord(phase=Phase.RECON, tool="nmap",
+                                      command=["nmap", "210.10.10.5"], exit_code=0))
+        md = render_markdown(st)
+        assert "**Reproduce:**" not in md
+
     def test_repro_matches_exact_host(self):
         st = EngagementState(name="acme")
         st.upsert_host("10.10.10.5")

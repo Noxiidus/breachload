@@ -59,9 +59,13 @@ class Scope:
 
 _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b", re.IGNORECASE)
-_URL_RE = re.compile(r"https?://([^/:\s]+)", re.IGNORECASE)
-# Authority after an SMB/UNC prefix: //host/share or \\host\share.
-_AUTHORITY_RE = re.compile(r"(?://|\\\\)([a-z0-9.\-]+)", re.IGNORECASE)
+# URL host: skip any ``userinfo@`` first, then capture a bracketed IPv6
+# (``[::1]``) or a plain host/IPv4. The userinfo (``user:pass@``) must never be
+# mistaken for the host, or an out-of-scope host could hide behind an in-scope
+# looking credential (``http://in.scope:x@evil.com/``).
+_URL_RE = re.compile(r"https?://(?:[^/@\s]*@)?(\[[0-9A-Fa-f:]+\]|[^/:\s]+)", re.IGNORECASE)
+# Authority after an SMB/UNC prefix: //host/share or \\host\share (skip userinfo).
+_AUTHORITY_RE = re.compile(r"(?://|\\\\)(?:[^/\\@\s]*@)?([a-z0-9.\-]+)", re.IGNORECASE)
 # A whole-argument host:port, e.g. evil.com:445 (bare IPs are caught by _IP_RE).
 _HOSTPORT_RE = re.compile(r"([a-z0-9.\-]+):\d{1,5}", re.IGNORECASE)
 
@@ -70,23 +74,31 @@ def extract_targets(args: list[str]) -> set[str]:
     """Pull every IP/host/URL-host out of a command's arguments.
 
     Used to check a proposed command against scope before running it. Matches:
-    URLs (``http://host``), bare IPv4 anywhere, SMB/UNC authorities
+    URLs (``http://host``, ignoring any ``user:pass@`` userinfo), bare IPv4
+    anywhere, a bare IPv6 literal as a whole argument, SMB/UNC authorities
     (``//host/share``, ``\\\\host\\share``), a whole-argument ``host:port``, and a
     whole-argument hostname. Hostnames are only taken when the argument really is
     a host — so file paths like ``wordlists/common.txt`` are not misread as
     targets — but a host must never slip through scope just because it is wrapped
-    in an SMB path or carries a port.
+    in an SMB path, carries a port, hides behind URL credentials, or is an IPv6
+    literal that the IPv4/hostname patterns don't recognise.
     """
     found: set[str] = set()
     for arg in args:
         token = arg.strip()
         for m in _URL_RE.findall(arg):
-            found.add(m)
+            found.add(m.strip("[]"))                # unwrap a bracketed IPv6 host
         for m in _IP_RE.findall(arg):
             found.add(m)
         for m in _AUTHORITY_RE.findall(arg):        # //host or \\host
             if _try_ip(m) or _HOST_RE.fullmatch(m):
                 found.add(m)
+        # A bare IP literal as a whole argument, including IPv6 — which _IP_RE
+        # (IPv4-only) and _HOST_RE do not catch, e.g. `nmap dead:beef::1` or a
+        # bracketed `[::1]`. Without this an out-of-scope IPv6 target slips past.
+        stripped = token.strip("[]")
+        if _try_ip(stripped) is not None:
+            found.add(stripped)
         host = token
         hostport = _HOSTPORT_RE.fullmatch(token)    # host:port -> host
         if hostport:
