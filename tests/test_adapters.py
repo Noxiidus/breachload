@@ -84,6 +84,26 @@ class TestNmap:
         cmd = NmapAdapter().build_command("10.10.10.5")
         assert cmd[0] == "nmap" and _no_shell_metachars(cmd)
 
+    def test_mac_only_host_is_skipped(self):
+        # A MAC address (e.g. from an ARP result) is not a scannable target and
+        # must not be keyed into state as a bogus host.
+        xml = ('<?xml version="1.0"?><nmaprun><host>'
+               '<address addr="AA:BB:CC:DD:EE:FF" addrtype="mac"/>'
+               '<ports><port protocol="tcp" portid="22"><state state="open"/>'
+               '<service name="ssh"/></port></ports></host></nmaprun>')
+        st = EngagementState(name="t")
+        NmapAdapter().parse(_result(xml), st)
+        assert st.hosts == {}
+
+    def test_ipv6_host_is_parsed(self):
+        xml = ('<?xml version="1.0"?><nmaprun><host>'
+               '<address addr="dead:beef::1" addrtype="ipv6"/>'
+               '<ports><port protocol="tcp" portid="80"><state state="open"/>'
+               '<service name="http"/></port></ports></host></nmaprun>')
+        st = EngagementState(name="t")
+        NmapAdapter().parse(_result(xml), st)
+        assert "dead:beef::1" in st.hosts and "80/tcp" in st.hosts["dead:beef::1"].services
+
 
 class TestWhatWeb:
     def test_parses_server_and_techs(self):

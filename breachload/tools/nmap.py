@@ -47,11 +47,15 @@ class NmapAdapter(ToolAdapter):
             return [f"nmap XML parse error: {exc}"]
 
         for host_el in root.findall("host"):
+            # Prefer an IP address; never fall back to the MAC element, which is
+            # not a scannable target and would key state by a bogus "host".
+            # (Explicit `is not None`: an <address> element has no children and is
+            # therefore falsy, so a truthiness test would misbehave.)
             addr_el = host_el.find("address[@addrtype='ipv4']")
             if addr_el is None:
-                addr_el = host_el.find("address")
+                addr_el = host_el.find("address[@addrtype='ipv6']")
             if addr_el is None:
-                continue
+                continue                        # MAC-only (e.g. ARP result): skip
             address = addr_el.get("addr", "")
             host = state.upsert_host(address)
 

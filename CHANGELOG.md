@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corrupt or truncated `state.json` (e.g. an interrupted pre-atomic-save file).
   The server's `_load_state` now degrades to an empty state / "no state" report,
   matching the CLI's graceful corrupt-state handling.
+- nmap parsing fell back to the `<address>` MAC element when a host had no IPv4,
+  keying state by a MAC (`AA:BB:CC:...`) — not a scannable target — for an
+  ARP-style result. It now prefers IPv4, then IPv6, and skips a MAC-only host.
+  IPv6 hosts are parsed instead of dropped.
 
 ## [0.9.1] - 2026-08-05
 
