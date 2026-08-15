@@ -24,7 +24,7 @@ from .core.environment import check_tools, check_wordlists
 from .core.llm import Planner
 from .core.orchestrator import Orchestrator
 from .core.ratelimit import RateLimiter
-from .core.state import ActionRecord, EngagementState, Phase
+from .core.state import ActionRecord, Credential, EngagementState, Phase
 from .exploit.delivery import deliver_artifact, method_by_name
 from .exploit.generators import GenerationError, MsfvenomGenerator, PayloadSpec
 from .exploit.library import PayloadLibrary
@@ -478,6 +478,36 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(f"  [{f.severity.value}] {f.title}")
     for c in new_c:
         console.print(f"  cred: {c.username or '?'} / {c.secret or '?'} ({c.kind})")
+
+
+@app.command()
+def creds(config: Path = typer.Argument(..., help="engagement YAML"),
+          add: str = typer.Option(None, help="add a credential as 'user:secret' (or just 'user')"),
+          kind: str = typer.Option("password", help="password | hash | key | ticket"),
+          service: str = typer.Option(None, help="service key it belongs to (host:port/proto)"),
+          validated: bool = typer.Option(False, "--validated", help="mark it validated")):
+    """List or add credentials. Added creds auto-fill the AD / lateral / pivot chains."""
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
+
+    if add:
+        username, sep, secret = add.partition(":")
+        cred = Credential(username=username or None, secret=secret if sep else None,
+                          kind=kind, service_key=service, validated=validated, source="manual")
+        state.credentials.append(cred)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state.save(state_path)
+        console.print(f"[bold green]added[/] {username or '?'} / {secret or '?'} ({kind})")
+
+    if not state.credentials:
+        console.print("[yellow]no credentials yet[/]")
+        return
+    console.print(f"[bold]credentials ({len(state.credentials)})[/]")
+    for c in state.credentials:
+        mark = "[green]validated[/]" if c.validated else "[dim]unvalidated[/]"
+        console.print(f"  {c.username or '?'} / {c.secret or '?'} "
+                      f"[dim]{c.kind}[/] {mark} [dim]{c.source or ''}[/]")
 
 
 @app.command()

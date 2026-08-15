@@ -112,6 +112,20 @@ class TestUtilityCommands:
         assert result.exit_code == 2
         assert "corrupt state file" in result.output
 
+    def test_creds_add_and_list(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        from breachload.core.state import EngagementState
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        r = runner.invoke(app, ["creds", str(cfg), "--add", "j.doe:Autumn2024!"])
+        assert r.exit_code == 0 and "added" in r.output and "j.doe" in r.output
+        state = EngagementState.load(tmp_path / "t" / "state.json")
+        assert any(c.username == "j.doe" and c.secret == "Autumn2024!"
+                   for c in state.credentials)
+        # listing shows it
+        r2 = runner.invoke(app, ["creds", str(cfg)])
+        assert "j.doe" in r2.output
+
     def test_loot_parses_findings_and_creds(self, tmp_path, monkeypatch):
         monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
         from breachload.core.state import EngagementState
