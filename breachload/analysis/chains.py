@@ -77,9 +77,12 @@ class ChainMatcher:
             conditions.append(any(needle in (h.os_guess or "").lower() for h in hosts))
         if "product_contains" in when:
             needle = when["product_contains"].lower()
-            conditions.append(
-                any(needle in (s.product or "").lower() for h in hosts for s in h.services.values())
-            )
+            # Also scan service notes: tech detections (whatweb/httpx) land there,
+            # not in `product`, so a WordPress/Tomcat hit is in the notes.
+            conditions.append(any(
+                needle in (s.product or "").lower() or needle in " ".join(s.notes).lower()
+                for h in hosts for s in h.services.values()
+            ))
         if "finding_contains" in when:
             needle = when["finding_contains"].lower()
             conditions.append(any(needle in f.title.lower() for f in state.findings))

@@ -61,7 +61,11 @@ class NetexecAdapter(ToolAdapter):
             dom = _DOMAIN_RE.search(info)
             if dom:
                 domain = dom.group(1).strip().lower()
-                if netbios.lower() != domain and f"domain:{domain}" not in host.tags:
+                # WORKGROUP (or the host's own name) is not an AD domain — don't tag
+                # it, or the AD chains would try authenticated enum against a
+                # standalone host.
+                if (domain not in ("workgroup", netbios.lower())
+                        and f"domain:{domain}" not in host.tags):
                     host.tags.append(f"domain:{domain}")
             host.upsert_service(Service(port=445, name="microsoft-ds", state="open"))
             notes.append(f"{ip} {netbios} "

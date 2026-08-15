@@ -36,6 +36,13 @@ class TestChainMatcher:
         st = _host("10.0.0.5", None, [Service(port=8080, name="http", product="Apache Tomcat")])
         assert any(c.id == "tomcat-manager" for c in self.m.match(st))
 
+    def test_product_condition_matches_service_notes(self):
+        # whatweb/httpx put tech (WordPress, Tomcat) in notes, not product.
+        svc = Service(port=80, name="http")
+        svc.notes.append("whatweb: WordPress, jQuery, MySQL")
+        st = _host("10.0.0.5", None, [svc])
+        assert any(c.id == "web-wordpress" for c in self.m.match(st))
+
     def test_finding_condition(self):
         st = EngagementState(name="t")
         st.upsert_host("10.0.0.5")

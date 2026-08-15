@@ -47,6 +47,14 @@ class TestParse:
         notes = NetexecAdapter().parse(_result(text), st)
         assert any("Users" in n and "share" in n for n in notes)
 
+    def test_workgroup_is_not_tagged_as_domain(self):
+        # A standalone Windows host reports (domain:WORKGROUP) — not an AD domain.
+        st = EngagementState(name="t")
+        line = ("SMB  10.10.10.5  445  WS01  [*] Windows 10 (name:WS01) "
+                "(domain:WORKGROUP) (signing:False)")
+        NetexecAdapter().parse(_result(line), st)
+        assert not any(t.startswith("domain:") for t in st.hosts["10.10.10.5"].tags)
+
     def test_nothing_parsed(self):
         notes = NetexecAdapter().parse(_result("garbage"), EngagementState(name="t"))
         assert "nothing parsed" in notes[0]
