@@ -33,6 +33,18 @@ def _first_cred(state: EngagementState) -> tuple[str, str]:
     return "<user>", "<pass>"
 
 
+def _web_port(state: EngagementState, target: str) -> int:
+    """The most likely web port on `target`, for rendering web chains."""
+    host = state.hosts.get(target)
+    if host:
+        for preferred in _HTTP_PORTS:
+            if any(s.port == preferred for s in host.services.values()):
+                return preferred
+        for svc in host.services.values():
+            return svc.port
+    return 80
+
+
 def _domain_from_state(state: EngagementState) -> str:
     """The AD domain, if the correlator tagged a host with `domain:<x>`."""
     for host in state.hosts.values():
@@ -129,7 +141,8 @@ class SuggestionEngine:
                 title=f"Chain: {chain.name}",
                 why="matched attack-chain template",
                 actions=chain.render_steps(TARGET=target, LHOST=lhost, LPORT=lport,
-                                           USER=user, PASS=passwd, DOMAIN=domain),
+                                           USER=user, PASS=passwd, DOMAIN=domain,
+                                           PORT=_web_port(state, target)),
             ))
         return out
 
@@ -165,7 +178,8 @@ class SuggestionEngine:
         if svc.port in _HTTP_PORTS or "http" in name:
             return [self._svc(3, f"HTTP on {addr}:{svc.port}",
                               "Content discovery and web-shell paths",
-                              ["svc-http-fuzz", "rev-php", "webshell-php"], ctx)]
+                              ["svc-http-fuzz", "web-nikto", "web-feroxbuster",
+                               "rev-php", "webshell-php"], ctx)]
         if svc.port == 3389 or name == "ms-wbt-server":
             return [self._svc(4, f"RDP on {addr}", "Connect with found credentials",
                               ["svc-rdp"], ctx)]

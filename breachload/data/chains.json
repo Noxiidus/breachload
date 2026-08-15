@@ -56,6 +56,17 @@
       ]
     },
     {
+      "id": "web-wordpress",
+      "name": "WordPress enumeration (wpscan)",
+      "priority": 1,
+      "when": {"product_contains": "wordpress"},
+      "steps": [
+        "wpscan --url http://{TARGET}:{PORT} --enumerate u,vp,vt --plugins-detection aggressive",
+        "# then brute found users: wpscan --url http://{TARGET}:{PORT} -U users.txt -P rockyou.txt",
+        "# vulnerable plugin RCE is the usual path; check exploit-db for the plugin+version"
+      ]
+    },
+    {
       "id": "ad-unauth-enum",
       "name": "Active Directory - unauthenticated enumeration",
       "priority": 0,

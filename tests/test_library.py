@@ -126,6 +126,23 @@ class TestSuggestionEngine:
         assert "certipy find" in blob
         assert "j.doe" in blob and "Autumn2024!" in blob and "corp.local" in blob
 
+    def test_wordpress_chain_fires_on_product(self):
+        st = EngagementState(name="t")
+        h = st.upsert_host("10.10.10.5")
+        h.upsert_service(Service(port=80, name="http", product="WordPress 6.1"))
+        out = SuggestionEngine().suggest(st)
+        wp = next((s for s in out if "WordPress" in s.title), None)
+        assert wp is not None
+        blob = "\n".join(wp.actions)
+        assert "wpscan" in blob and "10.10.10.5:80" in blob   # PORT substituted
+
+    def test_http_suggestion_includes_web_tools(self):
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.5").upsert_service(Service(port=8080, name="http"))
+        out = SuggestionEngine().suggest(st)
+        blob = "\n".join(a for s in out for a in s.actions if "HTTP" in s.title)
+        assert "nikto" in blob and "feroxbuster" in blob and ":8080" in blob
+
     def test_pivot_suggested_with_multiple_hosts(self):
         st = EngagementState(name="t")
         st.upsert_host("10.10.10.5")
