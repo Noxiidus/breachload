@@ -18,6 +18,25 @@ _LEGACY_RE = re.compile(
     r"(?<!\d)(?:" + "|".join(re.escape(t) for t in _LEGACY_WINDOWS) + r")(?!\d)"
 )
 _SMB_PORTS = (139, 445)
+_DOMAIN_RE = re.compile(r"Domain:\s*([A-Za-z0-9.\-]+)", re.IGNORECASE)
+
+
+def _guess_domain(host: Host) -> str | None:
+    """Best-effort AD domain from LDAP/Kerberos service info or an FQDN hostname."""
+    blobs: list[str] = list(host.hostnames)
+    for svc in host.services.values():
+        blobs += [svc.product or "", svc.version or "", svc.banner or "", *svc.notes]
+    for blob in blobs:
+        m = _DOMAIN_RE.search(blob)
+        if m:
+            dom = re.sub(r"0$", "", m.group(1).strip(" .,")).lower()  # nmap adds a stray "0"
+            if "." in dom:
+                return dom
+    for hostname in host.hostnames:                    # dc01.corp.local -> corp.local
+        parts = hostname.strip(".").split(".")
+        if len(parts) >= 3:
+            return ".".join(parts[1:]).lower()
+    return None
 
 
 class Correlator:
@@ -25,8 +44,31 @@ class Correlator:
         out: list[Finding] = []
         for host in state.hosts.values():
             out += self._eternalblue_candidate(host)
+            out += self._domain_controller(host)
             out += self._cleartext_and_anon(host)
         return out
+
+    def _domain_controller(self, host: Host) -> list[Finding]:
+        """Kerberos + LDAP on one host is a strong Domain Controller signal — the
+        entry point to the whole Active Directory attack surface."""
+        ports = {s.port for s in host.services.values()}
+        if 88 not in ports or not ({389, 636, 3268} & ports):
+            return []
+        domain = _guess_domain(host)
+        desc = "Kerberos and LDAP indicate an Active Directory Domain Controller."
+        if domain:
+            desc += f" Domain: {domain}."
+        desc += (" Enumerate the domain (authenticated once you have any credential) and "
+                 "map privilege-escalation paths with BloodHound / certipy.")
+        if "dc" not in host.tags:
+            host.tags.append("dc")
+        if domain and f"domain:{domain}" not in host.tags:
+            host.tags.append(f"domain:{domain}")
+        return [Finding(
+            title=f"Active Directory Domain Controller on {host.address}",
+            severity=Severity.INFO, host=host.address, service_key="88/tcp",
+            description=desc,
+        )]
 
     def _eternalblue_candidate(self, host: Host) -> list[Finding]:
         os_ = (host.os_guess or "").lower()

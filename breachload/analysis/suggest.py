@@ -22,6 +22,26 @@ _HTTP_PORTS = (80, 443, 8080, 8443, 8000)
 _HTTPS = (443, 8443)
 
 
+def _first_cred(state: EngagementState) -> tuple[str, str]:
+    """A username/password to auto-fill AD chains; placeholders if none looted."""
+    for c in state.credentials:
+        if c.username and c.secret and c.kind == "password":
+            return c.username, c.secret
+    for c in state.credentials:
+        if c.username:
+            return c.username, c.secret or "<pass>"
+    return "<user>", "<pass>"
+
+
+def _domain_from_state(state: EngagementState) -> str:
+    """The AD domain, if the correlator tagged a host with `domain:<x>`."""
+    for host in state.hosts.values():
+        for tag in host.tags:
+            if tag.startswith("domain:"):
+                return tag.split(":", 1)[1]
+    return "<domain>"
+
+
 @dataclass
 class Suggestion:
     priority: int
@@ -82,13 +102,16 @@ class SuggestionEngine:
     # --- rules --------------------------------------------------------------
     def _from_chains(self, state: EngagementState, lhost: str, lport: int) -> list[Suggestion]:
         out = []
+        user, passwd = _first_cred(state)          # auto-fill AD chains from loot
+        domain = _domain_from_state(state)
         for chain in self.chains.match(state):
             target = self.chains.target_for(chain, state)
             out.append(Suggestion(
                 priority=chain.priority - 10,   # matched chains outrank ad-hoc steps
                 title=f"Chain: {chain.name}",
                 why="matched attack-chain template",
-                actions=chain.render_steps(TARGET=target, LHOST=lhost, LPORT=lport),
+                actions=chain.render_steps(TARGET=target, LHOST=lhost, LPORT=lport,
+                                           USER=user, PASS=passwd, DOMAIN=domain),
             ))
         return out
 

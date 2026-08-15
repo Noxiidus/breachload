@@ -17,6 +17,8 @@ KNOWN_TOOLS = {
     "enumeration": ["whatweb", "ffuf", "gobuster", "enum4linux-ng", "smbclient"],
     "vuln": ["nuclei", "searchsploit"],
     "exploit": ["msfvenom", "msfconsole", "hydra"],
+    "active-directory": ["nxc", "netexec", "bloodhound-python", "certipy",
+                         "bloodyAD", "evil-winrm", "kerbrute", "impacket-secretsdump"],
     "shell": ["nc", "ncat", "socat", "python3", "curl", "wget"],
 }
 

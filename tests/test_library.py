@@ -110,6 +110,22 @@ class TestSuggestionEngine:
         lateral = next(s for s in out if "Lateral movement" in s.title)
         assert any("pass-the-hash" in a for a in lateral.actions)
 
+    def test_ad_chains_autofill_looted_credentials(self):
+        from breachload.core.state import Credential, Finding, Severity
+        st = EngagementState(name="t")
+        h = st.upsert_host("10.10.11.42")
+        h.tags += ["dc", "domain:corp.local"]
+        h.upsert_service(Service(port=88, name="kerberos-sec"))
+        st.add_finding(Finding(title="Active Directory Domain Controller on 10.10.11.42",
+                               severity=Severity.INFO, host="10.10.11.42"))
+        st.credentials.append(Credential(username="j.doe", secret="Autumn2024!",
+                                         kind="password"))
+        out = SuggestionEngine().suggest(st, lhost="10.10.14.9")
+        blob = "\n".join(a for s in out for a in s.actions if s.title.startswith("Chain:"))
+        assert "bloodhound-python" in blob or "--bloodhound" in blob
+        assert "certipy find" in blob
+        assert "j.doe" in blob and "Autumn2024!" in blob and "corp.local" in blob
+
     def test_no_lateral_without_credentials(self):
         st = EngagementState(name="t")
         st.upsert_host("10.10.10.5").upsert_service(Service(port=22, name="ssh"))

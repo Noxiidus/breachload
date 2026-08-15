@@ -1,0 +1,13 @@
+name: danglingtree
+mode: full-auto
+ctf: true
+targets:
+  - 10.129.71.139
+  - danglingtree.htb
+  - "*.danglingtree.htb"
+auto_threshold: active
+notes: |
+  HTB Season 11 "DanglingTree" (Windows DC, Server 2025). Authorized lab.
+  Known foothold: anderson.w : R3dT3am@Acc3ss#01
+  Interesting: WAC on 6600, ADCS (locked templates), Authenticated Users have
+  CreateChild on _msdcs DNS zone. Looking for the anderson.w -> user -> DA path.

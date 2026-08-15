@@ -124,6 +124,29 @@ class TestCorrelator:
         titles = [f.title for f in Correlator().findings_for(st)]
         assert any("Anonymous FTP" in t for t in titles)
 
+    def test_domain_controller_detected(self):
+        st = self._host_state("Windows Server 2019", [
+            Service(port=88, name="kerberos-sec"),
+            Service(port=389, name="ldap"),
+            Service(port=445, name="microsoft-ds"),
+        ])
+        findings = Correlator().findings_for(st)
+        assert any("Domain Controller" in f.title for f in findings)
+        assert "dc" in st.hosts["10.10.10.5"].tags
+
+    def test_no_dc_without_kerberos(self):
+        st = self._host_state("Windows", [Service(port=389, name="ldap")])
+        assert not any("Domain Controller" in f.title
+                       for f in Correlator().findings_for(st))
+
+    def test_domain_extracted_from_ldap_and_tagged(self):
+        ldap = Service(port=389, name="ldap",
+                       product="Microsoft Windows AD LDAP (Domain: CORP.LOCAL0., Site: X)")
+        st = self._host_state("Windows Server 2019",
+                              [Service(port=88, name="kerberos-sec"), ldap])
+        Correlator().findings_for(st)
+        assert "domain:corp.local" in st.hosts["10.10.10.5"].tags   # nmap "0." stripped
+
 
 class TestAnalyzerDedup:
     def _vuln_state(self) -> EngagementState:

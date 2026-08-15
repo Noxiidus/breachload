@@ -7,17 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Security
-- Scope-enforcement gap: a URL's `userinfo` (`http://user:pass@host/`) shadowed
-  the real host — `extract_targets` captured the credential part and stopped at
-  the first `:`, so an out-of-scope host could pass the scope gate behind an
-  in-scope-looking credential (`http://in.scope:x@evil.com/` was allowed while it
-  actually contacted `evil.com`). Userinfo is now skipped and the true host
-  (including a bracketed IPv6 `[::1]`) is extracted and scope-checked.
-- An IPv6 target was never extracted from a command — `extract_targets` only knew
-  IPv4 and hostnames — so an out-of-scope IPv6 host slipped through scope entirely
-  (`nmap 2001:db8::1` was allowed under an unrelated scope). A bare/bracketed IPv6
-  literal argument is now extracted and validated like any other target.
+### Added
+- Active Directory capability. The correlator detects a Domain Controller
+  (Kerberos + LDAP) and extracts the domain from the LDAP service info; the
+  suggestion engine then surfaces the full AD playbook as attack chains, with the
+  looted username / password / domain auto-filled: unauthenticated enumeration
+  (netexec/nxc, RID cycling, AS-REP), authenticated enum + BloodHound collection,
+  Kerberoasting / AS-REP roasting, ADCS abuse (certipy ESC1–16), ACL abuse /
+  DCSync (secretsdump, bloodyAD), and password spraying. New `ad` payload-library
+  entries (nxc, bloodhound-python, certipy, impacket, evil-winrm, bloodyAD) and
+  chain conditions (`has_credentials`, `{USER}`/`{PASS}`/`{DOMAIN}` placeholders).
+  `doctor` now reports the AD toolchain. Fully offline / no-API.
 
 ### Fixed
 - Report reproduction-step attribution used only a trailing-digit guard, so a
@@ -31,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keying state by a MAC (`AA:BB:CC:...`) — not a scannable target — for an
   ARP-style result. It now prefers IPv4, then IPv6, and skips a MAC-only host.
   IPv6 hosts are parsed instead of dropped.
+
+### Security
+- Scope-enforcement gap: a URL's `userinfo` (`http://user:pass@host/`) shadowed
+  the real host — `extract_targets` captured the credential part and stopped at
+  the first `:`, so an out-of-scope host could pass the scope gate behind an
+  in-scope-looking credential (`http://in.scope:x@evil.com/` was allowed while it
+  actually contacted `evil.com`). Userinfo is now skipped and the true host
+  (including a bracketed IPv6 `[::1]`) is extracted and scope-checked.
+- An IPv6 target was never extracted from a command — `extract_targets` only knew
+  IPv4 and hostnames — so an out-of-scope IPv6 host slipped through scope entirely
+  (`nmap 2001:db8::1` was allowed under an unrelated scope). A bare/bracketed IPv6
+  literal argument is now extracted and validated like any other target.
 
 ## [0.9.1] - 2026-08-05
 

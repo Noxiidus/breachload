@@ -54,6 +54,15 @@ Generation is unrestricted; delivery is scope- and confirm-gated.
 - ✅ PDF export (dependency-free)
 - ✅ Reproduction steps pulled from the history
 
+## v0.5b — Active Directory 🚧
+The primitive class HTB Windows/AD boxes need.
+- ✅ Domain Controller detection (Kerberos + LDAP) + domain extraction
+- ✅ AD attack chains: unauth enum, BloodHound, Kerberoast/AS-REP, ADCS (certipy),
+  ACL abuse / DCSync, password spray — auto-filled from looted creds
+- ✅ AD payload-library entries (nxc, bloodhound-python, certipy, impacket, bloodyAD)
+- ⬜ netexec / certipy adapters that parse output back into state (users, shares,
+  ADCS templates) for a fully authenticated AD-enum phase in the planner
+
 ## v0.7 — CTF mode ✅
 - ✅ Aggressive defaults, raised auto-threshold (`ctf: true`)
 - ✅ Flag detection & auto-capture (into `state.flags`, `flag` events)

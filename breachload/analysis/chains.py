@@ -15,7 +15,7 @@ from importlib import resources
 
 from ..core.state import EngagementState
 
-_PLACEHOLDERS = ("LHOST", "LPORT", "TARGET", "PORT")
+_PLACEHOLDERS = ("LHOST", "LPORT", "TARGET", "PORT", "USER", "PASS", "DOMAIN")
 
 
 @dataclass
@@ -83,5 +83,9 @@ class ChainMatcher:
         if "finding_contains" in when:
             needle = when["finding_contains"].lower()
             conditions.append(any(needle in f.title.lower() for f in state.findings))
+        if "has_credentials" in when:
+            has_cred = any(c.username and (c.secret or c.kind in ("hash", "key"))
+                           for c in state.credentials)
+            conditions.append(has_cred == bool(when["has_credentials"]))
 
         return bool(conditions) and all(conditions)

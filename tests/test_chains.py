@@ -51,6 +51,28 @@ class TestChainMatcher:
         matched = self.m.match(st)
         assert [c.priority for c in matched] == sorted(c.priority for c in matched)
 
+    def test_ad_authed_chain_needs_credentials(self):
+        from breachload.core.state import Credential, Finding, Severity
+        st = EngagementState(name="t")
+        st.upsert_host("10.0.0.1")
+        st.add_finding(Finding(title="Active Directory Domain Controller on 10.0.0.1",
+                               severity=Severity.INFO))
+        # No creds yet: the authenticated AD chain must not match.
+        assert not any(c.id == "ad-authed-enum" for c in self.m.match(st))
+        # Unauthenticated AD enum still matches on the DC finding alone.
+        assert any(c.id == "ad-unauth-enum" for c in self.m.match(st))
+        # Add a credential -> the authenticated chain now matches.
+        st.credentials.append(Credential(username="bob", secret="pw", kind="password"))
+        assert any(c.id == "ad-authed-enum" for c in self.m.match(st))
+
+    def test_ad_chain_renders_user_pass_domain(self):
+        chain = next(c for c in self.m.chains if c.id == "ad-kerberoast")
+        steps = chain.render_steps(TARGET="10.0.0.1", USER="bob", PASS="pw",
+                                   DOMAIN="corp.local")
+        blob = "\n".join(steps)
+        assert "bob" in blob and "pw" in blob and "corp.local" in blob
+        assert "{USER}" not in blob and "{DOMAIN}" not in blob
+
     def test_render_and_target(self):
         st = _host("10.0.0.9", "Windows", [Service(port=445, name="microsoft-ds")])
         chain = next(c for c in self.m.match(st) if c.id == "eternalblue")

