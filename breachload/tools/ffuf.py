@@ -23,6 +23,12 @@ class FfufAdapter(ToolAdapter):
     name: str = "ffuf"
     binary: str = "ffuf"
     risk: Risk = Risk.ACTIVE
+    # ffuf writes valid JSON only to a real file: `-s` (needed to silence its
+    # noisy live UI) also suppresses `-o /dev/stdout`, so the two together yield
+    # plain text, not JSON. Route JSON through a tool-managed OUTFILE instead.
+    # Suffix is "" (the marker IS the file): ffuf's `-o PATH` writes to exactly
+    # PATH — unlike tools whose flag appends an extension to the base path.
+    output_file_suffix: str | None = ""
 
     def __post_init__(self) -> None:
         if not self.capabilities:
@@ -36,14 +42,19 @@ class FfufAdapter(ToolAdapter):
         match_codes: str = "200,204,301,302,307,401,403",
     ) -> list[str]:
         url = target if "FUZZ" in target else f"{_as_url(target).rstrip('/')}/FUZZ"
-        # -s silent, JSON to stdout so parse() gets structured results.
+        # -s silences the live UI; JSON goes to the OUTFILE (not stdout, which -s
+        # would corrupt). -ac auto-calibrates against random paths so a host that
+        # blanket-redirects every request (e.g. an IP that 301s to its vhost)
+        # doesn't report the whole wordlist as "found".
         return [
             "ffuf", "-w", wordlist, "-u", url,
-            "-mc", match_codes, "-s", "-of", "json", "-o", "/dev/stdout",
+            "-mc", match_codes, "-ac", "-s", "-of", "json", "-o", "{OUTFILE}",
         ]
 
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
-        text = result.stdout.strip()
+        # Prefer the JSON file; fall back to stdout so unit tests (and any future
+        # stdout-based invocation) keep working.
+        text = (result.output_file or result.stdout or "").strip()
         if not text:
             return [f"ffuf: no output (exit {result.exit_code})"]
         try:

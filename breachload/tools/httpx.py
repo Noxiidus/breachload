@@ -35,7 +35,11 @@ class HttpxAdapter(ToolAdapter):
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
         entries = _json_lines(result.stdout)
         if not entries:
-            return [f"httpx: no parseable JSON (exit {result.exit_code})"]
+            # No JSON often means the `httpx` on PATH is the Python HTTP client,
+            # not ProjectDiscovery's prober (a common name collision) — name it so
+            # the operator doesn't chase a phantom failure.
+            return [f"httpx: no parseable JSON (exit {result.exit_code}) — ensure the "
+                    "`httpx` on PATH is ProjectDiscovery's prober, not the python client"]
 
         notes: list[str] = []
         for entry in entries:

@@ -118,6 +118,31 @@ class TestWhatWeb:
         cmd = WhatWebAdapter().build_command("10.10.10.5")
         assert "http://10.10.10.5" in cmd and _no_shell_metachars(cmd)
 
+    def test_redirect_pivots_to_named_vhost(self):
+        # A 301 to a named vhost must add that host + its HTTP service so the
+        # planner enumerates it next, plus a finding flagging /etc/hosts.
+        st = EngagementState(name="t")
+        redirect_json = (
+            '[{"target":"http://10.10.10.5","http_status":301,'
+            '"plugins":{"nginx":{"string":["nginx/1.28.0"]},'
+            '"RedirectLocation":{"string":["http://paperwork.htb/"]}}}]'
+        )
+        notes = WhatWebAdapter().parse(_result(redirect_json), st)
+        assert "paperwork.htb" in st.hosts
+        assert "80/tcp" in st.hosts["paperwork.htb"].services
+        assert any("paperwork.htb" in n for n in notes)
+        assert any("virtual host" in f.title for f in st.findings)
+
+    def test_ip_redirect_does_not_pivot(self):
+        # A redirect to a bare IP reveals no new vhost — must not create a host.
+        st = EngagementState(name="t")
+        redirect_json = (
+            '[{"target":"http://10.10.10.5","http_status":301,'
+            '"plugins":{"RedirectLocation":{"string":["http://10.10.10.9/app"]}}}]'
+        )
+        WhatWebAdapter().parse(_result(redirect_json), st)
+        assert "10.10.10.9" not in st.hosts
+
 
 class TestFfuf:
     def test_parses_paths_into_finding(self):
@@ -129,9 +154,25 @@ class TestFfuf:
         svc = st.hosts["10.10.10.5"].services["80/tcp"]
         assert any("ffuf" in n for n in svc.notes)
 
+    def test_reads_json_from_output_file(self):
+        # ffuf's real JSON arrives via the tool-managed OUTFILE, not stdout.
+        st = EngagementState(name="t")
+        WhatWebAdapter().parse(_result(WHATWEB_JSON), st)
+        res = ToolResult(exit_code=0, stdout="", stderr="", duration_s=0.1,
+                         output_file=FFUF_JSON)
+        notes = FfufAdapter().parse(res, st)
+        assert len(notes) == 2
+        assert any("ffuf" in n for n in st.hosts["10.10.10.5"].services["80/tcp"].notes)
+
     def test_build_command_injects_fuzz(self):
         cmd = FfufAdapter().build_command("http://10.10.10.5")
         assert any("FUZZ" in tok for tok in cmd) and _no_shell_metachars(cmd)
+        # JSON must go to a real file (OUTFILE), never /dev/stdout, or -s corrupts it.
+        assert "{OUTFILE}" in cmd and "/dev/stdout" not in cmd
+        # ffuf's -o writes to exactly the given path, so the marker IS the file.
+        assert FfufAdapter().output_file_suffix == ""
+        # auto-calibration filters blanket-redirect false positives.
+        assert "-ac" in cmd
 
     def test_non_default_port_attaches_to_correct_service(self):
         st = EngagementState(name="t")

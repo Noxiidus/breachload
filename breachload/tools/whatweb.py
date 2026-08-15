@@ -6,11 +6,12 @@ HTTP service. Parsing prefers whatweb's JSON output over its coloured text.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from ..core.state import EngagementState, Service
+from ..core.state import EngagementState, Finding, Service, Severity
 from ..safety.validator import Risk
 from .base import ToolAdapter, ToolResult
 
@@ -60,6 +61,9 @@ class WhatWebAdapter(ToolAdapter):
                 f"{host_name} {port}/tcp {scheme} [{status}] {product or ''} "
                 f"({len(techs)} techs)".strip()
             )
+            redirect = _record_redirect(plugins, host_name, port, scheme, state)
+            if redirect:
+                notes.append(redirect)
         return notes or ["whatweb: nothing detected"]
 
 
@@ -98,6 +102,52 @@ def _load_json_entries(stdout: str) -> list[dict]:
         except json.JSONDecodeError:
             continue
     return entries
+
+
+def _redirect_location(plugins: dict) -> str | None:
+    strings = (plugins.get("RedirectLocation") or {}).get("string") or []
+    return strings[0] if strings else None
+
+
+def _is_ip(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
+
+
+def _record_redirect(
+    plugins: dict, from_host: str, from_port: int, scheme: str, state: EngagementState
+) -> str | None:
+    """A 301/302 to a *named* virtual host is how many web boxes hide their real
+    app. Record the target host + its HTTP service so the planner enumerates it
+    next, and flag that the name must resolve (usually via /etc/hosts)."""
+    loc = _redirect_location(plugins)
+    if not loc:
+        return None
+    parsed = urlparse(loc)
+    rhost = parsed.hostname or ""
+    # Ignore same-host and bare-IP redirects — neither reveals a new vhost.
+    if not rhost or rhost == from_host or _is_ip(rhost):
+        return None
+    rscheme = parsed.scheme or "http"
+    rport = parsed.port or (443 if rscheme == "https" else 80)
+    rh = state.upsert_host(rhost)
+    rh.upsert_service(Service(port=rport, name=rscheme, state="open"))
+    state.add_finding(Finding(
+        title=f"HTTP redirect reveals virtual host {rhost}",
+        severity=Severity.INFO,
+        host=from_host,
+        service_key=f"{from_port}/tcp",
+        description=(
+            f"{scheme}://{from_host}:{from_port} redirects to {loc}. Enumeration "
+            f"will pivot to {rhost}; the name must resolve to the target — add it "
+            f"to /etc/hosts (e.g. '<target-ip> {rhost}') if it does not already."
+        ),
+        evidence=loc,
+    ))
+    return f"redirect -> vhost {rhost} (queued for enumeration; ensure /etc/hosts maps it)"
 
 
 def _as_url(target: str) -> str:

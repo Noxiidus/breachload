@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import socket
 import sys
 from pathlib import Path
 
@@ -130,14 +131,36 @@ def _write_pdf(text: str, pdf_path: Path, name: str) -> None:
         console.print(f"[yellow]PDF generation failed ({exc}); Markdown report is saved.[/]")
 
 
+def _resolves(target: str) -> bool:
+    """True for an IP literal or a name that currently resolves (DNS or /etc/hosts)."""
+    try:
+        socket.getaddrinfo(target, None)
+        return True
+    except socket.gaierror:
+        return False
+
+
 def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementState:
     """Resume an existing engagement, or start a fresh state seeded from targets."""
     if state_path.exists():
         return _load_state(state_path)
     state = EngagementState(name=cfg.name)
+    unresolved: list[str] = []
     for target in cfg.targets:
-        if not any(c in target for c in "/*"):  # bare host/IP -> seed a host record
+        if any(c in target for c in "/*"):   # CIDR/glob -> scope, not a host record
+            continue
+        if _resolves(target):
             state.upsert_host(target)
+        else:
+            # A vhost like `app.box.htb` may not resolve yet; seeding it would make
+            # recon waste a scan and leave a dead "no services" host. Keep it in
+            # scope (it can be discovered later via a redirect + /etc/hosts) but
+            # don't scan it now.
+            unresolved.append(target)
+    if unresolved:
+        console.print(f"[yellow]not seeding unresolved target(s):[/] {', '.join(unresolved)} "
+                      "— add them to /etc/hosts to enumerate, or they'll be picked up "
+                      "if a redirect reveals them.")
     return state
 
 

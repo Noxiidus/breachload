@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Web enumeration silently found nothing against a live web box (dogfooding).
+  Three compounding bugs, all fixed with tests (incl. an end-to-end ffuf test
+  through `run()` — the parse()-only unit test could not catch the OUTFILE bug):
+  - **ffuf produced zero results.** `-s` + `-o /dev/stdout` makes ffuf emit plain
+    text, not JSON; and the OUTFILE round-trip mismatched (ffuf's `-o PATH` writes
+    exactly `PATH`, but the framework read `PATH`+suffix). ffuf now routes JSON to
+    `{OUTFILE}` with an empty suffix. Added `-ac` so a host that blanket-redirects
+    every path no longer reports the whole wordlist as "found".
+  - **whatweb dropped the redirect target.** A 301 to a named virtual host now
+    records that host + its HTTP service (so the planner pivots enumeration to it)
+    and raises a finding flagging the `/etc/hosts` requirement.
+  - **recon seeded dead hosts** for unresolvable hostnames; they're now scope-only.
+- `httpx`: the "no JSON" note now names the ProjectDiscovery-vs-python-client
+  name collision, and `doctor` lists httpx.
+
 ## [0.10.0] - 2026-08-15
 
 ### Added

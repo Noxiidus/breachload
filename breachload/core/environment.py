@@ -14,7 +14,7 @@ from pathlib import Path
 # Tools the engine or its suggestions rely on, grouped by role.
 KNOWN_TOOLS = {
     "recon": ["nmap"],
-    "enumeration": ["whatweb", "ffuf", "gobuster", "enum4linux-ng", "smbclient"],
+    "enumeration": ["httpx", "whatweb", "ffuf", "gobuster", "enum4linux-ng", "smbclient"],
     "vuln": ["nuclei", "searchsploit"],
     "exploit": ["msfvenom", "msfconsole", "hydra"],
     "active-directory": ["nxc", "netexec", "bloodhound-python", "certipy",

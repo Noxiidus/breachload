@@ -16,6 +16,12 @@ class TestSeedState:
         state = _load_or_seed_state(cfg, tmp_path / "missing.json")
         assert list(state.hosts) == ["10.10.10.5"]   # CIDR/glob are scope, not hosts
 
+    def test_skips_unresolvable_hostname(self, tmp_path):
+        # A name that cannot resolve must not become a dead host record; IPs stay.
+        cfg = EngagementConfig(name="t", targets=["10.10.10.5", "nope.invalid"])
+        state = _load_or_seed_state(cfg, tmp_path / "missing.json")
+        assert list(state.hosts) == ["10.10.10.5"]
+
     def test_resumes_existing_state(self, tmp_path):
         cfg = EngagementConfig(name="t", targets=["10.10.10.5"])
         p = tmp_path / "state.json"
