@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-15
+
 ### Added
 - Active Directory capability. The correlator detects a Domain Controller
   (Kerberos + LDAP) and extracts the domain from the LDAP service info; the
@@ -18,6 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entries (nxc, bloodhound-python, certipy, impacket, evil-winrm, bloodyAD) and
   chain conditions (`has_credentials`, `{USER}`/`{PASS}`/`{DOMAIN}` placeholders).
   `doctor` now reports the AD toolchain. Fully offline / no-API.
+- netexec (`nxc`) adapter (`tools/netexec.py`): parses `nxc smb` output into state
+  — NetBIOS name, OS, SMB signing, and the AD domain (which lights up DC detection
+  and the AD chains); authenticated runs capture valid credentials (with a
+  `Pwn3d!` → admin finding) and readable shares. Registered and run in the
+  enumeration heuristic before enum4linux.
+- Pivoting / tunneling suggestions: when 2+ hosts are in scope, `suggest`/`auto`
+  propose tunneling through the foothold to reach the internal network (chisel,
+  ligolo-ng, SSH dynamic/local forwards, sshuttle, proxychains).
+- `creds` command + credential store: list, or `--add 'user:secret'` a credential
+  that then auto-fills the AD / lateral-movement / pivot chains.
+- Web-app capability: WordPress detection (from whatweb/httpx tech in notes) fires
+  a `wpscan` chain; new library entries for nikto, feroxbuster, gobuster vhost and
+  git-dumper, added to the HTTP service suggestion.
+- Linux privilege-escalation parsing in `loot`: file capabilities (`cap_setuid`
+  etc. → HIGH, GTFOBins-linked) and curated local-privesc CVEs a scanner mentions
+  (PwnKit, Baron Samedit, Dirty Pipe, Dirty COW, OverlayFS, sudo `-u#-1`).
+- Service enumeration for the classic non-web surfaces: SNMP (onesixtyone +
+  snmpwalk), SMTP (user enumeration + open-relay test), NFS/RPC (showmount +
+  rpcclient), and anonymous LDAP dump.
 
 ### Fixed
 - Report reproduction-step attribution used only a trailing-digit guard, so a
