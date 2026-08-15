@@ -11,6 +11,7 @@ deterministic heuristic planner so the whole pipeline still runs offline.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 from dataclasses import dataclass
@@ -115,6 +116,10 @@ class Planner:
 
         if state.phase == Phase.ENUM:
             for host in state.hosts.values():
+                if "vhostfuzz" in names and _is_fuzzable_domain(host.address) \
+                        and _has_http(host) and not state.has_action("vhostfuzz", host.address):
+                    return Plan("run", "vhostfuzz", host.address, {},
+                                "Fuzz for name-based virtual hosts / subdomains.")
                 for svc in host.services.values():
                     key = f"{host.address}:{svc.port}"
                     if _is_http(svc):
@@ -158,6 +163,21 @@ _SMB_PORTS = (139, 445)
 
 def _is_http(svc) -> bool:
     return (svc.name or "").lower() in _HTTP_NAMES or svc.port in (80, 443, 8080, 8443, 8000)
+
+
+def _has_http(host) -> bool:
+    return any(_is_http(svc) for svc in host.services.values())
+
+
+def _is_fuzzable_domain(address: str) -> bool:
+    """A name-based vhost apex worth subdomain-fuzzing: a hostname (not an IP)
+    with a single label + TLD, e.g. `paperwork.htb`. Skips IPs and names that are
+    already subdomains, so we don't fuzz `FUZZ.www.example.com`."""
+    try:
+        ipaddress.ip_address(address)
+        return False                       # an IP has no subdomains to fuzz
+    except ValueError:
+        return address.count(".") == 1 and " " not in address
 
 
 def _is_smb(svc) -> bool:

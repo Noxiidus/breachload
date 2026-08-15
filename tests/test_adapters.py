@@ -13,6 +13,7 @@ from breachload.tools.ffuf import FfufAdapter
 from breachload.tools.nmap import NmapAdapter
 from breachload.tools.nuclei import NucleiAdapter
 from breachload.tools.registry import allowed_binaries, default_registry
+from breachload.tools.vhostfuzz import VhostFuzzAdapter
 from breachload.tools.whatweb import WhatWebAdapter
 
 _FORBIDDEN = (";", "|", "&", "$(", "`", ">", "<")
@@ -143,6 +144,12 @@ class TestWhatWeb:
         WhatWebAdapter().parse(_result(redirect_json), st)
         assert "10.10.10.9" not in st.hosts
 
+    def test_empty_exit0_notes_hanging_root(self):
+        # Connected but got nothing usable (a streaming/hanging root) — the note
+        # must explain that, not read as a plain scan miss.
+        notes = WhatWebAdapter().parse(_result("", code=0), EngagementState(name="t"))
+        assert "no data" in notes[0] or "hang" in notes[0]
+
 
 class TestFfuf:
     def test_parses_paths_into_finding(self):
@@ -184,6 +191,34 @@ class TestFfuf:
         FfufAdapter().parse(_result(ffuf_8080), st)
         assert any("ffuf" in n for n in host.services["8080/tcp"].notes)
         assert st.findings[0].service_key == "8080/tcp"
+
+
+VHOSTFUZZ_JSON = ('{"results":[{"input":{"FUZZ":"chat"},"status":200,"length":3421,'
+                  '"url":"http://paperwork.htb/","host":"paperwork.htb"}]}')
+
+
+class TestVhostFuzz:
+    def test_parses_vhost_into_host_and_finding(self):
+        st = EngagementState(name="t")
+        res = ToolResult(exit_code=0, stdout="", stderr="", duration_s=0.1,
+                         output_file=VHOSTFUZZ_JSON)
+        notes = VhostFuzzAdapter().parse(res, st)
+        assert "chat.paperwork.htb" in st.hosts
+        assert "80/tcp" in st.hosts["chat.paperwork.htb"].services
+        assert any("Virtual host discovered" in f.title for f in st.findings)
+        assert any("chat.paperwork.htb" in n for n in notes)
+
+    def test_build_command_fuzzes_host_header(self):
+        cmd = VhostFuzzAdapter().build_command("paperwork.htb")
+        assert "Host: FUZZ.paperwork.htb" in cmd
+        assert "{OUTFILE}" in cmd and "-ac" in cmd and _no_shell_metachars(cmd)
+
+    def test_no_vhosts_discovered(self):
+        st = EngagementState(name="t")
+        res = ToolResult(exit_code=0, stdout="", stderr="", duration_s=0.1,
+                         output_file='{"results":[]}')
+        notes = VhostFuzzAdapter().parse(res, st)
+        assert "no virtual hosts" in notes[0]
 
 
 class TestNuclei:

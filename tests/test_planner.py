@@ -57,6 +57,21 @@ class TestEnumPhase:
                                       command=["nxc", "smb", "10.10.10.5"]))
         assert Planner()._heuristic(st, _tools()).tool == "enum4linux-ng"
 
+    def test_vhostfuzz_triggers_for_domain_host(self):
+        # A named domain vhost with an HTTP service should get subdomain fuzzing.
+        st = EngagementState(name="t", phase=Phase.ENUM)
+        host = st.upsert_host("paperwork.htb")
+        host.upsert_service(Service(port=80, name="http"))
+        plan = Planner()._heuristic(st, _tools())
+        assert plan.tool == "vhostfuzz" and plan.target == "paperwork.htb"
+
+    def test_no_vhostfuzz_for_ip_host(self):
+        # An IP has no subdomains — fuzzing must never be proposed for it.
+        st = _state_with(Phase.ENUM, [Service(port=80, name="http")])  # host is an IP
+        for tool in ("httpx", "whatweb", "ffuf"):
+            self._ran(st, tool)
+        assert Planner()._heuristic(st, _tools()).action == "phase_complete"
+
     def test_multiport_web_no_prefix_collision(self):
         # Regression: enumerating :8080 must not mark :80 as done. has_action's
         # trailing-digit guard keeps the two ports distinct.

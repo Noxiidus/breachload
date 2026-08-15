@@ -23,6 +23,7 @@ from .httpx import HttpxAdapter
 from .netexec import NetexecAdapter
 from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
+from .vhostfuzz import VhostFuzzAdapter
 from .whatweb import WhatWebAdapter
 
 _log = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         NucleiAdapter(),
         Enum4linuxAdapter(),
         NetexecAdapter(),
+        VhostFuzzAdapter(),
     ]
     registry = {a.name: a for a in adapters}
     if load_plugins:

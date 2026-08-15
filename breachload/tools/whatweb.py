@@ -32,11 +32,19 @@ class WhatWebAdapter(ToolAdapter):
     def build_command(self, target: str, *, aggression: int = 1) -> list[str]:
         url = _as_url(target)
         # --log-json=- streams JSON to stdout; -a sets aggression (1 = passive).
-        return ["whatweb", "--no-errors", f"-a{aggression}", "--log-json=-", url]
+        # Bounded open/read timeouts so a slow or streaming root (a homepage that
+        # long-polls or never closes the body) can't stall enumeration.
+        return ["whatweb", "--no-errors", f"-a{aggression}",
+                "--open-timeout=10", "--read-timeout=20", "--log-json=-", url]
 
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
         entries = _load_json_entries(result.stdout)
         if not entries:
+            # Exit 0 with no JSON means whatweb connected but got nothing usable —
+            # typically a root that hangs/streams. Say so instead of a bare miss.
+            if result.exit_code == 0:
+                return ["whatweb: connected but no data (root may hang or stream; "
+                        "try a specific path)"]
             return [f"whatweb: no parseable JSON (exit {result.exit_code})"]
 
         notes: list[str] = []

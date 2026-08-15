@@ -25,6 +25,7 @@ KNOWN_TOOLS = {
 COMMON_WORDLISTS = [
     "/usr/share/seclists/Discovery/Web-Content/common.txt",
     "/usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt",
+    "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt",
     "/usr/share/wordlists/dirb/common.txt",
     "/usr/share/wordlists/rockyou.txt",
 ]

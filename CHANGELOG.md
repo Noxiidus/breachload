@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Virtual-host / subdomain fuzzing (`tools/vhostfuzz.py`): when enumeration knows a
+  named domain vhost (e.g. `paperwork.htb`), it fuzzes `Host: FUZZ.<domain>` against
+  the in-scope server (ffuf, auto-calibrated) and records every vhost that answers
+  differently, upserting it as a host so the planner enumerates it next. All requests
+  go to the in-scope host; the `*.<domain>` scope entry authorizes the discovered
+  names. `doctor` now checks the DNS subdomain wordlist.
+
 ### Fixed
+- Fingerprinting no longer stalls on a slow or streaming root: `whatweb` runs with
+  bounded open/read timeouts, and an empty exit-0 result is reported as "connected
+  but no data (root may hang or stream)" instead of a bare miss.
 - Web enumeration silently found nothing against a live web box (dogfooding).
   Three compounding bugs, all fixed with tests (incl. an end-to-end ffuf test
   through `run()` — the parse()-only unit test could not catch the OUTFILE bug):
