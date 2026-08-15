@@ -52,6 +52,8 @@ class NetexecAdapter(ToolAdapter):
         notes: list[str] = []
 
         for ip, netbios, info in _BANNER_RE.findall(text):
+            if "(name:" not in info:      # skip [*] status lines (e.g. "Enumerated shares")
+                continue
             host = state.upsert_host(ip)
             os_m = _OS_RE.match(info)
             if os_m and not host.os_guess:
@@ -84,7 +86,7 @@ class NetexecAdapter(ToolAdapter):
                     description="netexec reported Pwn3d! — local admin on this host."))
             notes.append(note)
 
-        for share in dict.fromkeys(_SHARE_RE.findall(text)):
-            notes.append(f"readable/writable share: {share}")
+        for share, perm in dict.fromkeys(_SHARE_RE.findall(text)):
+            notes.append(f"share {share} ({perm})")
 
         return notes or [f"netexec: nothing parsed (exit {result.exit_code})"]

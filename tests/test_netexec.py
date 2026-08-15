@@ -45,7 +45,17 @@ class TestParse:
         st = EngagementState(name="t")
         text = _BANNER + "\nSMB  10.10.11.42  445  DC01  Users   READ            "
         notes = NetexecAdapter().parse(_result(text), st)
-        assert any("Users" in n and "share" in n for n in notes)
+        assert any("share Users (READ)" in n for n in notes)
+
+    def test_status_line_is_not_a_second_banner(self):
+        # A "[*] Enumerated shares" status line must not be parsed as a host banner
+        # (it has no (name:...)), which previously produced a bogus "workgroup" host.
+        st = EngagementState(name="t")
+        text = _BANNER + "\nSMB  10.10.11.42  445  DC01  [*] Enumerated shares"
+        notes = NetexecAdapter().parse(_result(text), st)
+        banner_notes = [n for n in notes if n.startswith("10.10.11.42")]
+        assert len(banner_notes) == 1                       # only the real banner
+        assert "workgroup" not in " ".join(notes)
 
     def test_workgroup_is_not_tagged_as_domain(self):
         # A standalone Windows host reports (domain:WORKGROUP) — not an AD domain.

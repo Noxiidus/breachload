@@ -64,6 +64,6 @@
     {"id": "svc-smtp-relay", "name": "SMTP open-relay test (swaks)", "category": "service", "platform": "any", "tags": ["smtp"], "template": "swaks --to test@example.com --from attacker@{TARGET} --server {TARGET}", "notes": "Confirms open relay / lets you phish internally."},
     {"id": "svc-nfs-showmount", "name": "NFS export listing + mount", "category": "service", "platform": "any", "tags": ["nfs"], "template": "showmount -e {TARGET}   # then: mount -t nfs {TARGET}:/export /mnt -o nolock", "notes": "no_root_squash exports = write a SUID root binary."},
     {"id": "svc-rpc-enum", "name": "RPC / MSRPC enumeration", "category": "service", "platform": "any", "tags": ["rpc"], "template": "rpcclient -U '' -N {TARGET}   # then: enumdomusers, querydispinfo, lsaquery", "notes": "Null-session MSRPC user/domain enumeration."},
-    {"id": "svc-ldap-anon", "name": "Anonymous LDAP dump", "category": "service", "platform": "any", "tags": ["ldap"], "template": "ldapsearch -x -H ldap://{TARGET} -b \"DC={DOMAIN}\" \"(objectClass=user)\"", "notes": "Anonymous bind sometimes leaks users / descriptions (passwords!)."}
+    {"id": "svc-ldap-anon", "name": "Anonymous LDAP dump", "category": "service", "platform": "any", "tags": ["ldap"], "template": "ldapsearch -x -H ldap://{TARGET} -s base namingContexts   # then -b \"DC=domain,DC=tld\" \"(objectClass=user)\"", "notes": "Query the base first to learn the DN. Anonymous bind sometimes leaks users / descriptions (passwords!)."}
   ]
 }
