@@ -121,7 +121,7 @@ def _repro_steps(f: Finding, state: EngagementState) -> list[str]:
     # fix state.has_action uses, applied identically here.
     host_re = re.compile(r"(?<!\d)" + re.escape(f.host) + r"(?!\d)")
     steps = [
-        " ".join(a.command)
+        _render_command(a.command)
         for a in state.history
         if a.approved and a.exit_code in (0, None)
         and any(host_re.search(token) for token in a.command)
@@ -161,12 +161,18 @@ def _artifacts(state: EngagementState) -> list[str]:
     return out
 
 
+def _render_command(command: list[str]) -> str:
+    """Join an argv for display, rendering the internal {OUTFILE} tool-managed
+    placeholder as a readable path so shown commands are copy-paste-ready."""
+    return " ".join(command).replace("{OUTFILE}", "output.json")
+
+
 def _timeline(state: EngagementState) -> list[str]:
     if not state.history:
         return []
     out = ["## Activity timeline", ""]
     for a in state.history:
         status = "blocked/skipped" if not a.approved else f"exit {a.exit_code}"
-        out.append(f"- `{a.phase.value}` **{a.tool}** — {' '.join(a.command)} ({status})")
+        out.append(f"- `{a.phase.value}` **{a.tool}** — {_render_command(a.command)} ({status})")
     out.append("")
     return out

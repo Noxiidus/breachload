@@ -172,6 +172,15 @@ class TestSuggestionEngine:
         out = SuggestionEngine().suggest(st)
         assert not any("Pivot" in s.title for s in out)
 
+    def test_no_pivot_for_ip_and_its_vhost(self):
+        # An IP and a virtual host that resolves to it are one machine — the
+        # redirect pivot must not be mistaken for an internal network.
+        st = EngagementState(name="t")
+        st.upsert_host("127.0.0.1")
+        st.upsert_host("localhost")   # resolves to 127.0.0.1 locally
+        out = SuggestionEngine().suggest(st)
+        assert not any("Pivot" in s.title for s in out)
+
     def test_no_lateral_without_credentials(self):
         st = EngagementState(name="t")
         st.upsert_host("10.10.10.5").upsert_service(Service(port=22, name="ssh"))

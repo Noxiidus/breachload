@@ -129,6 +129,17 @@ class TestReproSteps:
         md = render_markdown(st)
         assert "**Reproduce:**" in md and "nmap 10.10.10.5" in md
 
+    def test_repro_renders_outfile_placeholder(self):
+        # The internal {OUTFILE} marker must not leak into a copy-paste command.
+        st = EngagementState(name="acme")
+        st.upsert_host("10.10.10.5")
+        st.add_finding(Finding(title="paths", severity=Severity.INFO, host="10.10.10.5"))
+        st.record_action(ActionRecord(phase=Phase.ENUM, tool="ffuf",
+                                      command=["ffuf", "-u", "http://10.10.10.5/FUZZ",
+                                               "-o", "{OUTFILE}"], exit_code=0))
+        md = render_markdown(st)
+        assert "{OUTFILE}" not in md and "output.json" in md
+
 
 class TestEmptyState:
     def test_minimal_report_no_crash(self):

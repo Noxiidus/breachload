@@ -25,6 +25,10 @@ class EngagementConfig(BaseModel):
     auto_threshold: str = "active"
     mode: str = "full-auto"          # advisor | semi-auto | full-auto
     ctf: bool = False                # CTF mode: aggressive defaults + flag capture
+    # Attacker listener, used to fill LHOST/LPORT in rendered payloads and the
+    # attack plan. A CLI --lhost/--lport still overrides these per-invocation.
+    lhost: str = ""
+    lport: int = 4444
     # Minimum seconds between executed actions (0 = no throttle). Keeps the agent
     # from hammering a target.
     min_action_interval: float = 0.0

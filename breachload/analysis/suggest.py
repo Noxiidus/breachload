@@ -8,6 +8,7 @@ exactly what to run next and which payload to use.
 
 from __future__ import annotations
 
+import socket
 from dataclasses import dataclass, field
 
 from ..core.state import EngagementState, Service, Severity
@@ -31,6 +32,18 @@ def _first_cred(state: EngagementState) -> tuple[str, str]:
         if c.username:
             return c.username, c.secret or "<pass>"
     return "<user>", "<pass>"
+
+
+def _distinct_machines(state: EngagementState) -> int:
+    """Count unique machines: collapse host records that resolve to the same IP
+    (e.g. an IP and its virtual host). Unresolvable names count as themselves."""
+    ips: set[str] = set()
+    for addr in state.hosts:
+        try:
+            ips.add(socket.gethostbyname(addr))
+        except OSError:
+            ips.add(addr)
+    return len(ips)
 
 
 def _web_port(state: EngagementState, target: str) -> int:
@@ -83,8 +96,13 @@ class SuggestionEngine:
         return out
 
     def _from_pivot(self, state: EngagementState, lhost: str) -> list[Suggestion]:
-        """Two or more hosts in scope means an internal network to tunnel into."""
-        if len(state.hosts) < 2:
+        """Two or more *machines* in scope means an internal network to tunnel into.
+
+        Count distinct machines, not host records: a web box reached both by IP and
+        by its virtual host is one machine, and must not trigger pivot advice.
+        """
+        machines = _distinct_machines(state)
+        if machines < 2:
             return []
         user, _ = _first_cred(state)
         pivot = next(iter(state.hosts))
@@ -94,7 +112,7 @@ class SuggestionEngine:
                    for i in ids if self.library.get(i)]
         return [Suggestion(
             priority=4, title="Pivot to the internal network",
-            why=f"{len(state.hosts)} hosts in scope - tunnel through your foothold "
+            why=f"{machines} machines in scope - tunnel through your foothold "
                 "to reach the rest",
             actions=actions,
         )]

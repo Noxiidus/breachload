@@ -218,8 +218,9 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
 
 @app.command()
 def auto(config: Path = typer.Argument(..., help="engagement YAML"),
-         lhost: str = typer.Option("LHOST", help="your listener host for the attack plan"),
-         lport: int = typer.Option(4444, help="listener port for the attack plan"),
+         lhost: str = typer.Option(None, help="your listener host for the attack plan "
+                                   "(defaults to the engagement's lhost)"),
+         lport: int = typer.Option(None, help="listener port for the attack plan"),
          stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase"),
          pdf: bool = typer.Option(True, "--pdf/--no-pdf", help="also write a PDF report")):
     """Autopilot: recon -> enum -> vuln, then print an attack plan and write a report.
@@ -229,6 +230,8 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
     engine prints exactly what to try next, and a report is written.
     """
     cfg = _load_config(config)
+    lhost = lhost or cfg.lhost or "LHOST"
+    lport = lport or cfg.lport
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
     state = _load_or_seed_state(cfg, state_path)
@@ -367,10 +370,13 @@ def payloads(category: str = typer.Option(None, help="filter by category"),
 
 @app.command()
 def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
-            lhost: str = typer.Option("LHOST", help="your listener host for rendered payloads"),
-            lport: int = typer.Option(4444, help="listener port")):
+            lhost: str = typer.Option(None, help="your listener host for rendered payloads "
+                                      "(defaults to the engagement's lhost)"),
+            lport: int = typer.Option(None, help="listener port")):
     """Rule-based next-step plan from the current state (works with no API key)."""
     cfg = _load_config(config)
+    lhost = lhost or cfg.lhost or "LHOST"
+    lport = lport or cfg.lport
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     if not state_path.exists():
         console.print("[yellow]no state yet - run a phase first[/]")

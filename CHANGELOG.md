@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **recon seeded dead hosts** for unresolvable hostnames; they're now scope-only.
 - `httpx`: the "no JSON" note now names the ProjectDiscovery-vs-python-client
   name collision, and `doctor` lists httpx.
+- More issues surfaced by continued dogfooding, fixed with tests:
+  - The engagement YAML's `lhost`/`lport` were silently ignored, so `suggest`
+    and `auto` rendered payloads with a literal `LHOST`. They're now config
+    fields; a `--lhost`/`--lport` flag still overrides per-invocation.
+  - The pivot suggestion counted an IP and its virtual host as two hosts and
+    proposed internal-network tunneling on a single-machine web box. It now
+    counts distinct machines (collapsing names that resolve to the same IP).
+  - Report reproduce/timeline commands leaked the internal `{OUTFILE}` marker;
+    they now render a readable `output.json` path.
 
 ## [0.10.0] - 2026-08-15
 

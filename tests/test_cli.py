@@ -16,6 +16,11 @@ class TestSeedState:
         state = _load_or_seed_state(cfg, tmp_path / "missing.json")
         assert list(state.hosts) == ["10.10.10.5"]   # CIDR/glob are scope, not hosts
 
+    def test_config_carries_lhost(self):
+        # The engagement YAML can set the attacker listener, used to fill payloads.
+        cfg = EngagementConfig(name="t", lhost="10.10.14.9", lport=9001)
+        assert cfg.lhost == "10.10.14.9" and cfg.lport == 9001
+
     def test_skips_unresolvable_hostname(self, tmp_path):
         # A name that cannot resolve must not become a dead host record; IPs stay.
         cfg = EngagementConfig(name="t", targets=["10.10.10.5", "nope.invalid"])
