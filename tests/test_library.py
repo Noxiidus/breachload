@@ -126,6 +126,22 @@ class TestSuggestionEngine:
         assert "certipy find" in blob
         assert "j.doe" in blob and "Autumn2024!" in blob and "corp.local" in blob
 
+    def test_pivot_suggested_with_multiple_hosts(self):
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.5")
+        st.upsert_host("10.10.10.9")
+        out = SuggestionEngine().suggest(st, lhost="10.10.14.9")
+        pivot = next((s for s in out if "Pivot" in s.title), None)
+        assert pivot is not None
+        blob = "\n".join(pivot.actions)
+        assert "chisel" in blob and "10.10.14.9" in blob
+
+    def test_no_pivot_with_single_host(self):
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.5")
+        out = SuggestionEngine().suggest(st)
+        assert not any("Pivot" in s.title for s in out)
+
     def test_no_lateral_without_credentials(self):
         st = EngagementState(name="t")
         st.upsert_host("10.10.10.5").upsert_service(Service(port=22, name="ssh"))

@@ -62,12 +62,30 @@ class SuggestionEngine:
         out += self._from_chains(state, lhost, lport)
         out += self._from_findings(state)
         out += self._from_lateral(state)
+        out += self._from_pivot(state, lhost)
         for host in state.hosts.values():
             for svc in host.services.values():
                 out += self._from_service(host.address, svc, lhost, lport)
         out.append(self._post_shell(lhost))
         out.sort(key=lambda s: s.priority)
         return out
+
+    def _from_pivot(self, state: EngagementState, lhost: str) -> list[Suggestion]:
+        """Two or more hosts in scope means an internal network to tunnel into."""
+        if len(state.hosts) < 2:
+            return []
+        user, _ = _first_cred(state)
+        pivot = next(iter(state.hosts))
+        ids = ["pivot-chisel-server", "pivot-chisel-client", "pivot-ligolo",
+               "pivot-ssh-socks", "pivot-proxychains"]
+        actions = [self.library.get(i).render(LHOST=lhost, TARGET=pivot, USER=user)
+                   for i in ids if self.library.get(i)]
+        return [Suggestion(
+            priority=4, title="Pivot to the internal network",
+            why=f"{len(state.hosts)} hosts in scope - tunnel through your foothold "
+                "to reach the rest",
+            actions=actions,
+        )]
 
     def _from_lateral(self, state: EngagementState) -> list[Suggestion]:
         """Credentials are gold: suggest reusing them across hosts and services."""
