@@ -128,10 +128,14 @@ class Planner:
                         if "ffuf" in names and not state.has_action("ffuf", key):
                             return Plan("run", "ffuf", url, {},
                                         "Discover hidden content on the web service.")
-                    if _is_smb(svc) and "enum4linux-ng" in names \
-                            and not state.has_action("enum4linux-ng", host.address):
-                        return Plan("run", "enum4linux-ng", host.address, {},
-                                    "Enumerate SMB shares, users, and null sessions.")
+                    if _is_smb(svc):
+                        if "netexec" in names and not state.has_action("netexec", host.address):
+                            return Plan("run", "netexec", host.address, {},
+                                        "SMB/AD fingerprint (host, domain, signing) via netexec.")
+                        if "enum4linux-ng" in names \
+                                and not state.has_action("enum4linux-ng", host.address):
+                            return Plan("run", "enum4linux-ng", host.address, {},
+                                        "Enumerate SMB shares, users, and null sessions.")
             return Plan("phase_complete", rationale="Enumeration exhausted for known services.")
 
         if state.phase == Phase.VULN:

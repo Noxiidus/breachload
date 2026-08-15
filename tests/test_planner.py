@@ -49,10 +49,13 @@ class TestEnumPhase:
         self._ran(st, "whatweb")
         assert Planner()._heuristic(st, _tools()).tool == "ffuf"
 
-    def test_smb_service_gets_enum4linux(self):
+    def test_smb_service_gets_netexec_then_enum4linux(self):
+        from breachload.core.state import ActionRecord
         st = _state_with(Phase.ENUM, [Service(port=445, name="microsoft-ds")])
-        plan = Planner()._heuristic(st, _tools())
-        assert plan.tool == "enum4linux-ng"
+        assert Planner()._heuristic(st, _tools()).tool == "netexec"
+        st.record_action(ActionRecord(phase=Phase.ENUM, tool="netexec",
+                                      command=["nxc", "smb", "10.10.10.5"]))
+        assert Planner()._heuristic(st, _tools()).tool == "enum4linux-ng"
 
     def test_multiport_web_no_prefix_collision(self):
         # Regression: enumerating :8080 must not mark :80 as done. has_action's

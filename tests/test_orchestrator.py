@@ -81,7 +81,8 @@ def test_full_chain_populates_state(tmp_path):
 
     # Every phase's tools ran, in order, exactly once each.
     tools_run = [a.tool for a in state.history]
-    assert tools_run == ["nmap", "httpx", "whatweb", "ffuf", "enum4linux-ng", "nuclei"]
+    assert tools_run == ["nmap", "httpx", "whatweb", "ffuf", "netexec",
+                         "enum4linux-ng", "nuclei"]
 
     # Findings from ffuf (paths), enum4linux (null session), nuclei (critical CVE).
     titles = " ".join(f.title.lower() for f in state.findings)

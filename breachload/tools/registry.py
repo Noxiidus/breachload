@@ -20,6 +20,7 @@ from .base import ToolAdapter
 from .enum4linux import Enum4linuxAdapter
 from .ffuf import FfufAdapter
 from .httpx import HttpxAdapter
+from .netexec import NetexecAdapter
 from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
 from .whatweb import WhatWebAdapter
@@ -36,6 +37,7 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         FfufAdapter(),
         NucleiAdapter(),
         Enum4linuxAdapter(),
+        NetexecAdapter(),
     ]
     registry = {a.name: a for a in adapters}
     if load_plugins:
