@@ -183,6 +183,18 @@ class SuggestionEngine:
         if svc.port == 3389 or name == "ms-wbt-server":
             return [self._svc(4, f"RDP on {addr}", "Connect with found credentials",
                               ["svc-rdp"], ctx)]
+        if svc.port == 161 or "snmp" in name:
+            return [self._svc(3, f"SNMP on {addr}", "Brute the community string, then walk the MIB",
+                              ["svc-snmp-onesixtyone", "svc-snmpwalk"], ctx)]
+        if svc.port in (25, 587) or name in ("smtp", "submission"):
+            return [self._svc(4, f"SMTP on {addr}", "Enumerate users and test for open relay",
+                              ["svc-smtp-userenum", "svc-smtp-relay"], ctx)]
+        if svc.port in (111, 2049) or name in ("rpcbind", "nfs", "nfs_acl"):
+            return [self._svc(3, f"NFS/RPC on {addr}", "List exports and enumerate over RPC",
+                              ["svc-nfs-showmount", "svc-rpc-enum"], ctx)]
+        if svc.port in (389, 636) or name == "ldap":
+            return [self._svc(3, f"LDAP on {addr}", "Try an anonymous bind and dump users",
+                              ["svc-ldap-anon"], ctx)]
         return []
 
     def _post_shell(self, lhost: str) -> Suggestion:

@@ -126,6 +126,19 @@ class TestSuggestionEngine:
         assert "certipy find" in blob
         assert "j.doe" in blob and "Autumn2024!" in blob and "corp.local" in blob
 
+    def test_snmp_smtp_nfs_ldap_service_suggestions(self):
+        st = EngagementState(name="t")
+        h = st.upsert_host("10.10.10.5")
+        h.upsert_service(Service(port=161, protocol="udp", name="snmp"))
+        h.upsert_service(Service(port=25, name="smtp"))
+        h.upsert_service(Service(port=2049, name="nfs"))
+        h.upsert_service(Service(port=389, name="ldap"))
+        titles = " ".join(s.title for s in SuggestionEngine().suggest(st))
+        assert "SNMP" in titles and "SMTP" in titles
+        assert "NFS/RPC" in titles and "LDAP" in titles
+        blob = "\n".join(a for s in SuggestionEngine().suggest(st) for a in s.actions)
+        assert "snmpwalk" in blob and "smtp-user-enum" in blob and "showmount" in blob
+
     def test_wordpress_chain_fires_on_product(self):
         st = EngagementState(name="t")
         h = st.upsert_host("10.10.10.5")
