@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scan all 65535 TCP ports (`nmap -p-`) so services on high ports aren't missed; and
   `web_extensions` (e.g. "php,txt,html") makes ffuf also fuzz file extensions. The
   planner threads both from the engagement config.
+- Kernel-exploit suggester (`analysis/kernelexploits.py`): `loot` now reads the kernel
+  version from `uname`/linpeas output and *proactively* suggests applicable local-root
+  exploits by version range (Dirty Pipe, nf_tables CVE-2024-1086, OverlayFS, GameOver(lay),
+  Dirty COW) — even when the scanner didn't name the CVE. Ubuntu-only exploits are
+  distro-gated, and every finding carries a distro-backport "verify first" caveat.
 - Virtual-host / subdomain fuzzing (`tools/vhostfuzz.py`): when enumeration knows a
   named domain vhost (e.g. `paperwork.htb`), it fuzzes `Host: FUZZ.<domain>` against
   the in-scope server (ffuf, auto-calibrated) and records every vhost that answers
