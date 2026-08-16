@@ -89,12 +89,16 @@ Legend: ✅ solid · 🟡 partial · ❌ missing · 🔴 high priority
 
 ## Priorities (highest leverage first)
 
-1. **Web-app version→CVE KB + known-CVE guided exploitation** (§2/§4/§5) — turns fingerprints into footholds; this is what actually solves web boxes.
-2. **Automated Linux privesc enum + kernel/exploit suggestion** (§7) — the other half of every box.
-3. **Non-web service adapters** (§3) — FTP/SNMP/NFS/DB/SMTP/redis — broad, cheap, high hit-rate.
-4. **Hash-cracking + credential reuse loop** (§6) — recurring foothold mechanic.
-5. **Recon depth**: `-p-`, UDP, recursive/extension web fuzzing (§1/§2).
-6. **Network robustness**: MTU probe, `/etc/hosts` opt-in write, Range-retry on hung GET (§0).
+Progress: ✅ shipped · 🚧 partial · ⏳ todo
+
+1. ⏳ **Web-app version→CVE KB + known-CVE guided exploitation** (§2/§4/§5) — turns fingerprints into footholds; this is what actually solves web boxes.
+2. 🚧 **Automated Linux privesc enum + kernel/exploit suggestion** (§7) — kernel-version→exploit suggester shipped (`analysis/kernelexploits.py`, wired into `loot`); auto upload+run of linpeas/pspy still todo.
+3. ✅ **Non-web service adapters** (§3) — snmp/nfs/ftp/redis shipped; SMTP/DB (mssql/mysql/pg) still todo.
+4. ⏳ **Hash-cracking + credential reuse loop** (§6) — recurring foothold mechanic.
+5. 🚧 **Recon depth** (§1/§2) — full-port `-p-` (config `full_ports`, auto in CTF) and ffuf `web_extensions` shipped; UDP top-ports (needs root) and recursive fuzzing still todo.
+6. ⏳ **Network robustness**: MTU probe, `/etc/hosts` opt-in write, Range-retry on hung GET (§0).
+
+Also shipped from the DanglingTree solve: a **dangling ADCS template** detector idea (diff CA `-list-templates` vs existing template objects) remains todo but is documented.
 
 ## What breachload should NOT try to be
 
