@@ -141,6 +141,19 @@ class Planner:
                                 and not state.has_action("enum4linux-ng", host.address):
                             return Plan("run", "enum4linux-ng", host.address, {},
                                         "Enumerate SMB shares, users, and null sessions.")
+                    if _is_snmp(svc) and "snmp" in names and not state.has_action("snmp", key):
+                        return Plan("run", "snmp", host.address, {"port": svc.port},
+                                    "Read the SNMP tree with community 'public'.")
+                    if _is_nfs(svc) and "nfs" in names \
+                            and not state.has_action("nfs", host.address):
+                        return Plan("run", "nfs", host.address, {},
+                                    "List NFS exports (showmount).")
+                    if _is_ftp(svc) and "ftp" in names and not state.has_action("ftp", key):
+                        return Plan("run", "ftp", host.address, {"port": svc.port},
+                                    "Check for anonymous FTP login.")
+                    if _is_redis(svc) and "redis" in names and not state.has_action("redis", key):
+                        return Plan("run", "redis", host.address, {"port": svc.port},
+                                    "Probe Redis for unauthenticated access.")
             return Plan("phase_complete", rationale="Enumeration exhausted for known services.")
 
         if state.phase == Phase.VULN:
@@ -163,6 +176,23 @@ _SMB_PORTS = (139, 445)
 
 def _is_http(svc) -> bool:
     return (svc.name or "").lower() in _HTTP_NAMES or svc.port in (80, 443, 8080, 8443, 8000)
+
+
+def _is_snmp(svc) -> bool:
+    return (svc.name or "").lower().startswith("snmp") or svc.port == 161
+
+
+def _is_nfs(svc) -> bool:
+    return (svc.name or "").lower() in ("nfs", "nfs_acl", "rpcbind", "mountd") \
+        or svc.port in (2049, 111)
+
+
+def _is_ftp(svc) -> bool:
+    return (svc.name or "").lower() in ("ftp", "ftp-data") or svc.port == 21
+
+
+def _is_redis(svc) -> bool:
+    return (svc.name or "").lower() == "redis" or svc.port == 6379
 
 
 def _has_http(host) -> bool:

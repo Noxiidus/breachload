@@ -19,10 +19,14 @@ from importlib.metadata import entry_points
 from .base import ToolAdapter
 from .enum4linux import Enum4linuxAdapter
 from .ffuf import FfufAdapter
+from .ftp import FtpAdapter
 from .httpx import HttpxAdapter
 from .netexec import NetexecAdapter
+from .nfs import NfsAdapter
 from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
+from .redis import RedisAdapter
+from .snmp import SnmpAdapter
 from .vhostfuzz import VhostFuzzAdapter
 from .whatweb import WhatWebAdapter
 
@@ -40,6 +44,10 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         Enum4linuxAdapter(),
         NetexecAdapter(),
         VhostFuzzAdapter(),
+        SnmpAdapter(),
+        NfsAdapter(),
+        FtpAdapter(),
+        RedisAdapter(),
     ]
     registry = {a.name: a for a in adapters}
     if load_plugins:

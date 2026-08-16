@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Non-web service-enumeration adapters, wired into the enumeration heuristic and
+  `doctor`: **snmp** (`snmpwalk`, community `public` → sysDescr/name + credential-
+  looking OIDs), **nfs** (`showmount -e` → exports, flags world-readable), **ftp**
+  (anonymous login via `curl`, records the anon credential), **redis** (`redis-cli
+  INFO` → unauthenticated access, flagged HIGH). Each degrades gracefully if its
+  tool is missing.
 - Virtual-host / subdomain fuzzing (`tools/vhostfuzz.py`): when enumeration knows a
   named domain vhost (e.g. `paperwork.htb`), it fuzzes `Host: FUZZ.<domain>` against
   the in-scope server (ffuf, auto-calibrated) and records every vhost that answers
