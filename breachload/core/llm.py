@@ -48,8 +48,11 @@ class Plan:
 class Planner:
     """Wraps Claude, with a heuristic fallback when no key is present."""
 
-    def __init__(self, model: str = "claude-opus-5") -> None:
+    def __init__(self, model: str = "claude-opus-5", config=None) -> None:
         self.model = model
+        # Engagement config drives recon depth (full ports) and web fuzzing
+        # extensions; optional so the planner still works standalone/in tests.
+        self.config = config
         self._client = None
         key = os.environ.get("ANTHROPIC_API_KEY")
         if key:
@@ -108,10 +111,13 @@ class Planner:
         names = {t["name"] for t in tools}
 
         if state.phase == Phase.RECON:
+            full = bool(self.config and self.config.scan_all_ports)
             for host in state.hosts.values():
                 if not host.services and not state.has_action("nmap", host.address):
-                    return Plan("run", "nmap", host.address, {},
-                                "No services known yet; run a service scan.")
+                    args = {"ports": "-"} if full else {}
+                    why = ("No services known yet; full-port service scan (-p-)."
+                           if full else "No services known yet; run a service scan.")
+                    return Plan("run", "nmap", host.address, args, why)
             return Plan("phase_complete", rationale="All hosts have been scanned.")
 
         if state.phase == Phase.ENUM:
@@ -131,7 +137,9 @@ class Planner:
                             return Plan("run", "whatweb", url, {},
                                         "Fingerprint the web service.")
                         if "ffuf" in names and not state.has_action("ffuf", key):
-                            return Plan("run", "ffuf", url, {},
+                            exts = (self.config.web_extensions if self.config else "") or ""
+                            args = {"extensions": exts} if exts else {}
+                            return Plan("run", "ffuf", url, args,
                                         "Discover hidden content on the web service.")
                     if _is_smb(svc):
                         if "netexec" in names and not state.has_action("netexec", host.address):

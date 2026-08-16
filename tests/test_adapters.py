@@ -85,6 +85,13 @@ class TestNmap:
         cmd = NmapAdapter().build_command("10.10.10.5")
         assert cmd[0] == "nmap" and _no_shell_metachars(cmd)
 
+    def test_full_ports_flag(self):
+        cmd = NmapAdapter().build_command("10.10.10.5", ports="-")
+        assert "-p-" in cmd and _no_shell_metachars(cmd)
+        # a specific port list still uses -p <list>
+        cmd2 = NmapAdapter().build_command("10.10.10.5", ports="80,443")
+        assert "-p" in cmd2 and cmd2[cmd2.index("-p") + 1] == "80,443"
+
     def test_mac_only_host_is_skipped(self):
         # A MAC address (e.g. from an ARP result) is not a scannable target and
         # must not be keyed into state as a bogus host.
@@ -174,6 +181,11 @@ class TestFfuf:
     def test_build_command_injects_fuzz(self):
         cmd = FfufAdapter().build_command("http://10.10.10.5")
         assert any("FUZZ" in tok for tok in cmd) and _no_shell_metachars(cmd)
+
+    def test_build_command_adds_extensions(self):
+        cmd = FfufAdapter().build_command("http://10.10.10.5", extensions="php, txt,.html")
+        assert "-e" in cmd
+        assert cmd[cmd.index("-e") + 1] == ".php,.txt,.html"
         # JSON must go to a real file (OUTFILE), never /dev/stdout, or -s corrupts it.
         assert "{OUTFILE}" in cmd and "/dev/stdout" not in cmd
         # ffuf's -o writes to exactly the given path, so the marker IS the file.

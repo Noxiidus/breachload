@@ -40,16 +40,22 @@ class FfufAdapter(ToolAdapter):
         *,
         wordlist: str = _DEFAULT_WORDLIST,
         match_codes: str = "200,204,301,302,307,401,403",
+        extensions: str = "",
     ) -> list[str]:
         url = target if "FUZZ" in target else f"{_as_url(target).rstrip('/')}/FUZZ"
         # -s silences the live UI; JSON goes to the OUTFILE (not stdout, which -s
         # would corrupt). -ac auto-calibrates against random paths so a host that
         # blanket-redirects every request (e.g. an IP that 301s to its vhost)
         # doesn't report the whole wordlist as "found".
-        return [
+        cmd = [
             "ffuf", "-w", wordlist, "-u", url,
             "-mc", match_codes, "-ac", "-s", "-of", "json", "-o", "{OUTFILE}",
         ]
+        # Also fuzz file extensions (".php,.txt") so files, not just dirs, surface.
+        exts = ",".join("." + e.strip().lstrip(".") for e in extensions.split(",") if e.strip())
+        if exts:
+            cmd += ["-e", exts]
+        return cmd
 
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
         # Prefer the JSON file; fall back to stdout so unit tests (and any future

@@ -30,7 +30,9 @@ class NmapAdapter(ToolAdapter):
         cmd = ["nmap", "-oX", "-", "-Pn"]
         if service_scan:
             cmd += ["-sV"]
-        if ports:
+        if ports == "-":
+            cmd += ["-p-"]              # all 65535 TCP ports (non-root connect scan)
+        elif ports:
             cmd += ["-p", ports]
         if extra:
             cmd += extra

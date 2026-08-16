@@ -83,6 +83,38 @@ class TestEnumPhase:
         assert plan.tool == "httpx" and "10.10.10.5:80" in plan.target
 
 
+class TestReconDepth:
+    def test_full_ports_when_configured(self):
+        from breachload.core.config import EngagementConfig
+        cfg = EngagementConfig(name="t", full_ports=True)
+        plan = Planner(config=cfg)._heuristic(_state_with(Phase.RECON, []), _tools())
+        assert plan.tool == "nmap" and plan.args.get("ports") == "-"
+
+    def test_full_ports_implied_by_ctf(self):
+        from breachload.core.config import EngagementConfig
+        cfg = EngagementConfig(name="t", ctf=True)
+        assert cfg.scan_all_ports is True
+        plan = Planner(config=cfg)._heuristic(_state_with(Phase.RECON, []), _tools())
+        assert plan.args.get("ports") == "-"
+
+    def test_default_recon_stays_top_ports(self):
+        plan = Planner()._heuristic(_state_with(Phase.RECON, []), _tools())
+        assert plan.tool == "nmap" and not plan.args.get("ports")
+
+    def test_ffuf_gets_extensions_from_config(self):
+        from breachload.core.config import EngagementConfig
+        cfg = EngagementConfig(name="t", web_extensions="php,txt")
+        st = _state_with(Phase.ENUM, [Service(port=80, name="http")])
+        p = Planner(config=cfg)
+        # advance past httpx + whatweb to the ffuf step
+        from breachload.core.state import ActionRecord
+        for t in ("httpx", "whatweb"):
+            st.record_action(ActionRecord(phase=Phase.ENUM, tool=t,
+                                          command=[t, "http://10.10.10.5:80"]))
+        plan = p._heuristic(st, _tools())
+        assert plan.tool == "ffuf" and plan.args.get("extensions") == "php,txt"
+
+
 class TestLlmFallback:
     def test_api_error_falls_back_to_heuristic(self):
         class _FakeClient:

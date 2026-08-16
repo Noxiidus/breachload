@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (anonymous login via `curl`, records the anon credential), **redis** (`redis-cli
   INFO` → unauthenticated access, flagged HIGH). Each degrades gracefully if its
   tool is missing.
+- Recon depth: the `full_ports` engagement option (auto-on in CTF mode) makes recon
+  scan all 65535 TCP ports (`nmap -p-`) so services on high ports aren't missed; and
+  `web_extensions` (e.g. "php,txt,html") makes ffuf also fuzz file extensions. The
+  planner threads both from the engagement config.
 - Virtual-host / subdomain fuzzing (`tools/vhostfuzz.py`): when enumeration knows a
   named domain vhost (e.g. `paperwork.htb`), it fuzzes `Host: FUZZ.<domain>` against
   the in-scope server (ffuf, auto-calibrated) and records every vhost that answers

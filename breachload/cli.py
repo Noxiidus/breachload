@@ -192,7 +192,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
     validator = Validator(scope, allowed_binaries(registry), cfg.effective_threshold)
-    planner = Planner()
+    planner = Planner(config=cfg)
     audit = AuditLog(work / "audit.jsonl")
 
     planner_mode = "online (Claude)" if planner.online else "offline (heuristic)"
@@ -240,7 +240,7 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
     scope = Scope.from_config(cfg.targets, cfg.exclude)
     registry = default_registry()
     validator = Validator(scope, allowed_binaries(registry), cfg.effective_threshold)
-    planner = Planner()
+    planner = Planner(config=cfg)
     audit = AuditLog(work / "audit.jsonl")
     rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
 
@@ -302,7 +302,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     audit = AuditLog(work / "audit.jsonl")
     hub = EventHub()
     rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
-    orch = Orchestrator(cfg, state, registry, validator, Planner(), audit, state_path,
+    orch = Orchestrator(cfg, state, registry, validator, Planner(config=cfg), audit, state_path,
                         confirm=hub.request_confirm, on_event=hub.emit,
                         analyzer=Analyzer.default(), rate_limiter=rate,
                         on_state=lambda st: hub.emit_state(st.dashboard_payload()))

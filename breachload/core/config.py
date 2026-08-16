@@ -29,6 +29,12 @@ class EngagementConfig(BaseModel):
     # attack plan. A CLI --lhost/--lport still overrides these per-invocation.
     lhost: str = ""
     lport: int = 4444
+    # Recon depth. full_ports scans all 65535 TCP ports (-p-) instead of the
+    # default top-1000; it auto-enables in CTF mode where boxes hide services on
+    # high ports. web_extensions (comma-separated, e.g. "php,txt,html") makes ffuf
+    # also fuzz those file extensions.
+    full_ports: bool = False
+    web_extensions: str = ""
     # Minimum seconds between executed actions (0 = no throttle). Keeps the agent
     # from hammering a target.
     min_action_interval: float = 0.0
@@ -48,6 +54,11 @@ class EngagementConfig(BaseModel):
         if v.lower() not in _VALID_MODES:
             raise ValueError(f"invalid mode {v!r} (choose one of: {', '.join(_VALID_MODES)})")
         return v
+
+    @property
+    def scan_all_ports(self) -> bool:
+        """Full-port TCP recon: explicit opt-in, or implied by CTF mode."""
+        return self.full_ports or self.ctf
 
     @property
     def auto_risk(self) -> Risk:
