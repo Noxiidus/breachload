@@ -31,9 +31,12 @@ class FtpAdapter(ToolAdapter):
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
         target = getattr(self, "_target", None)
         port = getattr(self, "_port", 21)
-        # curl exits 0 and prints a listing on success; a denied/failed login is
-        # non-zero. An empty-but-successful listing still means anon is allowed.
+        # curl exits 0 and prints a listing on success. Distinguish the failure
+        # modes so a network problem isn't reported as a login denial: 7 =
+        # couldn't connect, 28 = timeout, 67 = FTP login denied.
         if result.exit_code != 0:
+            if result.exit_code in (7, 28):
+                return [f"ftp: could not connect (exit {result.exit_code})"]
             return [f"ftp: anonymous login denied (exit {result.exit_code})"]
 
         entries = [ln for ln in (result.stdout or "").splitlines() if ln.strip()]

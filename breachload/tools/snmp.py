@@ -21,7 +21,9 @@ _INTERESTING = {
     "1.3.6.1.2.1.1.6.0": "sysLocation",
     "1.3.6.1.2.1.1.4.0": "sysContact",
 }
-_CRED_HINTS = ("password", "passwd", "pwd", "secret", "cred", "community")
+# "community" is deliberately excluded — it is an SNMP concept and appears all
+# over benign MIB values, so it would flood findings with false positives.
+_CRED_HINTS = ("password", "passwd", "pwd", "secret", "cred")
 
 
 @dataclass
