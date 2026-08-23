@@ -534,6 +534,34 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def sploit(config: Path = typer.Argument(..., help="engagement YAML")):
+    """Search Exploit-DB (searchsploit) for every versioned service and record matches."""
+    from .analysis.searchsploit import run_search
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet - run recon first[/]")
+        raise typer.Exit(1)
+    state = _load_state(state_path)
+
+    from .core.environment import is_available
+    if not is_available("searchsploit"):
+        console.print("[yellow]searchsploit not installed[/] - "
+                      "install exploitdb, then re-run")
+        raise typer.Exit(1)
+
+    findings = run_search(state)
+    existing = {f.title for f in state.findings}
+    new = [f for f in findings if f.title not in existing]
+    for f in new:
+        state.add_finding(f)
+    state.save(state_path)
+    console.print(f"[bold green]sploit[/] +{len(new)} Exploit-DB finding(s)")
+    for f in new:
+        console.print(f"  [{f.severity.value}] {escape(f.title)}")
+
+
+@app.command()
 def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="certipy find output file to parse"),
          text: str = typer.Option(None, help="certipy find output as text")):
