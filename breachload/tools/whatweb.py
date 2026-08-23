@@ -63,6 +63,11 @@ class WhatWebAdapter(ToolAdapter):
             techs = sorted(k for k in plugins if k not in ("Country", "IP", "HTTPServer"))
             if techs:
                 svc.notes.append("whatweb: " + ", ".join(techs[:20]))
+            # Surface any versioned application (WordPress 6.2, Grafana 8.3.0) as a
+            # parseable note so the web-app CVE matcher can range-match it. whatweb
+            # carries these under the plugin's "version" list.
+            for app_note in _app_versions(plugins):
+                svc.notes.append(app_note)
             status = entry.get("http_status")
             host.upsert_service(svc)
             notes.append(
@@ -73,6 +78,25 @@ class WhatWebAdapter(ToolAdapter):
             if redirect:
                 notes.append(redirect)
         return notes or ["whatweb: nothing detected"]
+
+
+# Plugins that only mark generic HTTP facts, not an application worth version-mapping.
+_NON_APP_PLUGINS = ("Country", "IP", "HTTPServer", "RedirectLocation", "Title",
+                    "Cookies", "HttpOnly", "UncommonHeaders", "Via-Proxy",
+                    "X-Frame-Options", "X-Powered-By", "Strict-Transport-Security")
+
+
+def _app_versions(plugins: dict) -> list[str]:
+    """`webapp: <Name> <version>` notes for every plugin carrying a version."""
+    out: list[str] = []
+    for name, info in plugins.items():
+        if name in _NON_APP_PLUGINS or not isinstance(info, dict):
+            continue
+        versions = info.get("version") or []
+        for ver in versions[:2]:
+            if ver and str(ver).strip():
+                out.append(f"webapp: {name} {str(ver).strip()}")
+    return out
 
 
 def _server_product(plugins: dict) -> str | None:

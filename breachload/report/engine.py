@@ -101,6 +101,9 @@ def _finding_block(f: Finding, state: EngagementState) -> list[str]:
         out.append(f"**CVE:** {', '.join(f.cve)}  ")
     if f.description:
         out += ["", f.description]
+    if f.exploit:
+        out += ["", "**Guided exploit** (review before running - confirm-gated):",
+                "", "```", f.exploit.strip(), "```"]
     if f.remediation:
         out += ["", f"**Remediation:** {f.remediation}"]
     if f.evidence:

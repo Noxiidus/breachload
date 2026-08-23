@@ -170,16 +170,23 @@ class SuggestionEngine:
             if not f.cve:
                 continue
             cve = f.cve[0]
+            # A guided-exploitation finding (web-CVE KB) carries a ready, reviewed
+            # command: lead with it (confirm before firing), then the generic path.
+            actions: list[str] = []
+            if f.exploit:
+                actions.append("# guided exploit (REVIEW, then run - confirm-gated):")
+                actions.extend("    " + ln for ln in f.exploit.splitlines())
+            actions += [
+                f"breachload poc <cfg> --index {idx}     # generate a PoC artifact",
+                f"searchsploit {cve}",
+                f"# then: breachload deliver <cfg> --artifact <poc> "
+                f"--target {f.host or '<target>'}",
+            ]
             out.append(Suggestion(
-                priority=_SEV_PRIORITY.get(f.severity, 6),
+                priority=_SEV_PRIORITY.get(f.severity, 6) - (1 if f.exploit else 0),
                 title=f"Exploit: {f.title}",
                 why=f"{f.severity.value} finding on {f.host or '?'} ({', '.join(f.cve)})",
-                actions=[
-                    f"breachload poc <cfg> --index {idx}     # generate a PoC artifact",
-                    f"searchsploit {cve}",
-                    f"# then: breachload deliver <cfg> --artifact <poc> "
-                    f"--target {f.host or '<target>'}",
-                ],
+                actions=actions,
             ))
         return out
 

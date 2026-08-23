@@ -10,6 +10,7 @@ from __future__ import annotations
 from ..core.state import EngagementState, Finding
 from .correlator import Correlator
 from .cve import CveMatcher
+from .webcve import WebCveMatcher
 
 
 def _sig(f: Finding) -> tuple:
@@ -17,18 +18,22 @@ def _sig(f: Finding) -> tuple:
 
 
 class Analyzer:
-    def __init__(self, cve: CveMatcher, correlator: Correlator) -> None:
+    def __init__(self, cve: CveMatcher, correlator: Correlator,
+                 webcve: WebCveMatcher | None = None) -> None:
         self.cve = cve
         self.correlator = correlator
+        self.webcve = webcve or WebCveMatcher.default()
 
     @classmethod
     def default(cls) -> Analyzer:
-        return cls(CveMatcher.default(), Correlator())
+        return cls(CveMatcher.default(), Correlator(), WebCveMatcher.default())
 
     def analyze(self, state: EngagementState) -> list[Finding]:
         existing = {_sig(f) for f in state.findings}
         added: list[Finding] = []
-        candidates = [*self.cve.findings_for(state), *self.correlator.findings_for(state)]
+        candidates = [*self.cve.findings_for(state),
+                      *self.webcve.findings_for(state),
+                      *self.correlator.findings_for(state)]
         for f in candidates:
             s = _sig(f)
             if s in existing:

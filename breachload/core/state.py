@@ -100,6 +100,10 @@ class Finding(BaseModel):
     evidence: str = ""               # command output / reproduction
     remediation: str = ""
     cve: list[str] = Field(default_factory=list)
+    # An optional ready-to-run, confirm-gated command that would exploit this
+    # finding (filled by the web-CVE matcher / guided-exploitation KB). It is a
+    # reviewed lead for the operator, never auto-fired.
+    exploit: str = ""
     discovered_at: str = Field(default_factory=_now)
 
 
