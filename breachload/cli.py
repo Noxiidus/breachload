@@ -436,6 +436,14 @@ def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
             console.print(f"  [{style}]{escape(res.verdict)}[/]")
             if res.suggestion:
                 console.print("  fix: " + res.suggestion, markup=False)
+            # When the full GET stalls, a ranged fetch still fingerprints the app.
+            if res.small_ok and not res.large_ok:
+                from .core.netprobe import ranged_fingerprint
+                fp = ranged_fingerprint(target, port=port)
+                if fp:
+                    console.print("  ranged fingerprint (first 4KB):")
+                    for k, v in fp.items():
+                        console.print(f"    {k}: {escape(v)}")
         console.print()
         return
 
@@ -601,7 +609,7 @@ def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="certipy find output file to parse"),
          text: str = typer.Option(None, help="certipy find output as text")):
     """Parse `certipy find -vulnerable` output into ESC findings (with exploit commands)."""
-    from .analysis.adcs import parse_certipy
+    from .analysis.adcs import parse_certipy, parse_dangling_templates
     cfg = _load_config(config)
     state_path = ENGAGEMENTS / cfg.name / "state.json"
     state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
@@ -615,7 +623,7 @@ def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print("[yellow]nothing to parse - pass --scan <file> or --text[/]")
         raise typer.Exit(1)
 
-    findings = parse_certipy(blob)
+    findings = parse_certipy(blob) + parse_dangling_templates(blob)
     existing = {f.title for f in state.findings}
     new = [f for f in findings if f.title not in existing]
     for f in new:

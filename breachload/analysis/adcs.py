@@ -59,6 +59,67 @@ def _exploit_for(esc: str, template: str, ca: str) -> str:
     return f"certipy req -u <user>@<domain> -p '<pass>' -ca {ca} -template {tmpl}   # {esc}"
 
 
+_ENABLED_RE = re.compile(r"Enabled Certificate Templates?\s*:?\s*(.*)", re.IGNORECASE)
+# A section header that ends the enabled-templates block.
+_SECTION_RE = re.compile(r"^\s*(Certificate Templates|Certificate Authorities|CA Name|"
+                         r"Permissions|\[)")
+
+
+def _enabled_templates(text: str) -> set[str]:
+    """Template names the CA publishes (from 'Enabled Certificate Templates')."""
+    lines = text.splitlines()
+    names: set[str] = set()
+    i = 0
+    while i < len(lines):
+        m = _ENABLED_RE.search(lines[i])
+        if not m:
+            i += 1
+            continue
+        # Collect the remainder of the marker line plus following indented entries
+        # until the next section header.
+        chunk = [m.group(1)]
+        j = i + 1
+        while j < len(lines) and lines[j].strip() and not _SECTION_RE.match(lines[j]) \
+                and not _TEMPLATE_RE.search(lines[j]):
+            chunk.append(lines[j])
+            j += 1
+        blob = " ".join(chunk)
+        for tok in re.findall(r"'([^']+)'|\"([^\"]+)\"|([A-Za-z0-9_.-]+)", blob):
+            name = next((t for t in tok if t), "")
+            if name and name not in ("[", "]"):
+                names.add(name)
+        i = j
+    return names
+
+
+def parse_dangling_templates(text: str) -> list[Finding]:
+    """Templates the CA publishes but that have no template *object* defined.
+
+    A dangling reference: the CA still offers the template, yet the AD object is
+    gone. If you can recreate/control that object (or a like-named one), you set
+    its enrollment + subject flags yourself -> a bespoke ESC1. (DanglingTree.)
+    """
+    enabled = _enabled_templates(text)
+    defined = {m.strip() for m in _TEMPLATE_RE.findall(text)}
+    defined_lower = {d.lower() for d in defined}
+    out: list[Finding] = []
+    for name in sorted(enabled):
+        if name.lower() not in defined_lower:
+            out.append(Finding(
+                title=f"Dangling ADCS template reference: {name}",
+                severity=Severity.HIGH,
+                description=f"The CA publishes template '{name}' but no matching template "
+                            "object exists. If the object can be (re)created or is "
+                            "attacker-controllable, define it as an ESC1 template "
+                            "(enrollee-supplies-subject + client-auth EKU) and request a "
+                            "DA certificate.",
+                evidence=f"enabled but undefined: {name}",
+                remediation="Unpublish the orphaned template from the CA, or restore a "
+                            "correctly-secured template object.",
+            ))
+    return out
+
+
 def parse_certipy(text: str) -> list[Finding]:
     """ESC findings from `certipy find` output, one per (template, ESC id)."""
     ca_name = ""

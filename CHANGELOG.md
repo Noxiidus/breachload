@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Four more service adapters (registry now 20): **ldap** (anonymous bind -> naming contexts +
+  domain tag), **rpc** (`rpcinfo` portmapper dump), **rsync** (unauthenticated module listing),
+  **mongodb** (unauth `listDatabases` via mongosh). Wired into the enum heuristic + `doctor`.
+- **nuclei auto-tagging**: the planner maps a service's detected stack (WordPress/Grafana/Jenkins/…)
+  to nuclei `-tags`, so the vuln scan runs the relevant template set instead of everything.
+- **Auth-aware re-crawl**: ffuf gains a `cookie` option, and once credentials exist the web
+  attack-surface suggestion names the cookie-driven re-fuzz of content behind the login.
+- **Windows local privilege-escalation** (`analysis/winprivesc.py` + `winprivesc` command): a
+  winPEAS/PrivescCheck transfer+run playbook, plus parsers for token privileges (SeImpersonate ->
+  potato, SeBackup, SeRestore, …), AlwaysInstallElevated (with an msi payload command), unquoted
+  service paths, and autologon credentials.
+- **Ranged fingerprint**: `doctor --target` now also fingerprints a *stalling* endpoint via a tiny
+  `Range: bytes=0-4096` GET (Server/X-Powered-By/title) — the response that still returns when a
+  full GET hangs on MTU. (`netprobe.ranged_fingerprint`.)
+- **Cloud (IMDS) credential parsing** in `loot`: AWS role credentials (AccessKeyId/SecretAccessKey/
+  session token, JSON or `AWS_*` env form) are folded into the credential store — the payoff of an
+  SSRF -> instance-metadata chain.
+- **Dangling ADCS template detector** (`adcs.parse_dangling_templates`): flags templates the CA
+  publishes but that have no defined template object — a recreatable-object path to a bespoke ESC1.
 - Modern Active Directory: **ADCS ESC parsing** (`analysis/adcs.py` + `adcs` command) folds
   `certipy find -vulnerable` output into per-template ESC1-ESC16 findings, each with the concrete
   `certipy req`/`account update` exploit command; and three new attack chains — **ESC9/ESC16**

@@ -13,6 +13,7 @@ tests; offline-safe (any failure yields an inconclusive verdict, never a crash).
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -74,6 +75,32 @@ def probe_path_mtu(target: str, *, port: int = 80, scheme: str = "http",
         verdict = "both requests returned - path MTU looks fine"
         suggestion = ""
     return MtuProbeResult(True, small_ok, large_ok, small_t, large_t, verdict, suggestion)
+
+
+def ranged_fingerprint(target: str, *, port: int = 80, scheme: str = "http",
+                       timeout: int = 8, runner=None) -> dict[str, str]:
+    """Fingerprint a stalling endpoint via a tiny ranged GET.
+
+    When a full GET hangs (MTU or a streaming root), the first few KB still come
+    back instantly with a `Range` request — enough to read the Server header, any
+    X-Powered-By, and the <title>. Returns a small {field: value} dict.
+    """
+    if runner is None and shutil.which("curl") is None:
+        return {}
+    runner = runner or _default_runner
+    url = f"{scheme}://{target}:{port}/"
+    # -i include headers, -r a small range so a stalling body can't hang us.
+    body = runner(["curl", "-s", "-i", "-r", "0-4096", "--max-time", str(timeout), url])
+    out: dict[str, str] = {}
+    for line in (body or "").splitlines():
+        for header in ("Server", "X-Powered-By", "X-Generator"):
+            m = re.match(rf"{header}\s*:\s*(.+)", line, re.IGNORECASE)
+            if m:
+                out[header] = m.group(1).strip()
+        tm = re.search(r"<title>(.*?)</title>", line, re.IGNORECASE)
+        if tm:
+            out["Title"] = tm.group(1).strip()
+    return out
 
 
 def _default_runner(argv: list[str]) -> str:  # pragma: no cover - real subprocess
