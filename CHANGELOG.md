@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-23
+
 ### Added
 - Web attack-surface probes (`analysis/webattacks.py`): for every HTTP host, `suggest`/`auto`
   now name the core injection classes to test with first-probe payloads — SSTI (`{{7*7}}` +
@@ -429,7 +431,10 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/Noxiidus/breachload/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/Noxiidus/breachload/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/Noxiidus/breachload/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/Noxiidus/breachload/compare/v0.3.0...v0.9.0
 [0.3.0]: https://github.com/Noxiidus/breachload/releases/tag/v0.3.0
 [0.1.0]: https://github.com/Noxiidus/breachload/releases/tag/v0.1.0
