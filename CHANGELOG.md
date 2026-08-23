@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Auto-exploit firing engine** (`exploit/autofire.py`, `tools/exploitprobe.py`): in the EXPLOIT
+  phase the engine autonomously fires a curated set of **read-only** KB-CVE probes (Grafana LFI,
+  Joomla config leak, ownCloud phpinfo, Metabase setup-token, Nginx UI) as single validated `curl`
+  argv commands, and folds any disclosed credentials / flags into state. RCE, write, and command-
+  injection exploits are deliberately **never** auto-fired — they stay surfaced as guided commands,
+  so the injection guard holds and autonomous action is bounded to disclosure. Reached via the
+  auto-exploit walk (or an explicit `--phase exploitation`, still EXPLOIT-risk-gated).
+- **Beginner / learner mode** (`docs/BEGINNER-ROADMAP.md`):
+  - `breachload init` — interactive wizard that writes the engagement YAML (with a first-run
+    authorization checklist), so no hand-editing is needed.
+  - `breachload explain <term>` — offline glossary (SSTI, kerberoast, ESC1/ESC9, shadow-creds,
+    DCSync, SUID, GTFOBins, pivoting, JWT, …): what it is / why it matters / what breachload does.
+  - `run --dry-run` — preview the commands the engine would run, without touching the target.
+  - `doctor --install` — print the exact install command for each missing tool.
+  - **Attack-path narrative** in the report — a plain-language story (recon → foothold leads →
+    credentials → privesc → flags) that turns a solved box into a study document.
 - **Auto-exploit mode** (`breachload auto-exploit`, `core/authz.py`, `docs/AUTO-EXPLOIT.md`): an
   opt-in, authorized, audited mode that walks an engagement autonomously through exploitation and
   post-exploitation without per-action confirmation. Gated on three independent conditions — the

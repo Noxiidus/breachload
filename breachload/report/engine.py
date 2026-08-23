@@ -30,6 +30,7 @@ def render_markdown(state: EngagementState) -> str:
     out: list[str] = []
     out += _header(state)
     out += _summary(state)
+    out += _attack_path(state)
     out += _hosts(state)
     out += _findings(state)
     out += _credentials(state)
@@ -62,6 +63,60 @@ def _summary(state: EngagementState) -> list[str]:
         f"- Artifacts: **{len(state.artifacts)}**",
         "",
     ]
+
+
+def _attack_path(state: EngagementState) -> list[str]:
+    """A plain-language narrative of the engagement so far — a study document, not
+    just a data dump. Deterministic prose synthesised from state."""
+    if not state.hosts and not state.findings:
+        return []
+    sev_rank = {s: i for i, s in enumerate(_SEVERITY_ORDER)}
+    out = ["## Attack path", ""]
+
+    # Recon.
+    n_hosts = len(state.hosts)
+    n_svc = sum(len(h.services) for h in state.hosts.values())
+    if n_hosts:
+        webhosts = [h.address for h in state.hosts.values()
+                    if any(s.port in (80, 443, 8080, 8443, 8000, 3000)
+                           for s in h.services.values())]
+        line = (f"Recon mapped **{n_hosts} host{'s' if n_hosts != 1 else ''}** with "
+                f"**{n_svc} open service{'s' if n_svc != 1 else ''}**.")
+        if webhosts:
+            line += f" Web surface on: {', '.join(webhosts[:5])}."
+        out.append(line)
+
+    # Foothold candidates: the most severe findings that carry a CVE or an exploit.
+    leads = sorted((f for f in state.findings if f.cve or f.exploit),
+                   key=lambda f: sev_rank.get(f.severity, 9))
+    if leads:
+        out.append("")
+        out.append("Most promising foothold leads:")
+        for f in leads[:5]:
+            where = f" on {f.host}" if f.host else ""
+            cve = f" ({', '.join(f.cve)})" if f.cve else ""
+            out.append(f"- **[{f.severity.value.upper()}]** {f.title}{where}{cve}")
+
+    # Credentials & privesc.
+    if state.credentials:
+        kinds = ", ".join(sorted({c.kind for c in state.credentials}))
+        out.append("")
+        out.append(f"Collected **{len(state.credentials)} credential(s)** ({kinds}) — "
+                   "reuse them across hosts/services and for privilege escalation.")
+    privesc = [f for f in state.findings
+               if any(w in f.title.lower() for w in ("privilege", "privesc", "suid",
+                                                     "sudo", "kernel", "group", "token"))]
+    if privesc:
+        out.append("")
+        out.append("Privilege-escalation leads: "
+                   + ", ".join(f.title for f in privesc[:5]) + ".")
+
+    # Outcome.
+    if state.flags:
+        out.append("")
+        out.append(f"**Captured {len(state.flags)} flag(s).**")
+    out.append("")
+    return out
 
 
 def _hosts(state: EngagementState) -> list[str]:

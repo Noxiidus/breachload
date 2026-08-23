@@ -179,9 +179,57 @@ def _warn_if_no_hosts(state: EngagementState, cfg: EngagementConfig) -> None:
 
 
 @app.command()
+def init(name: str = typer.Option(None, help="engagement name"),
+         targets: str = typer.Option(None, help="comma-separated targets (IPs/CIDRs/domains)"),
+         lhost: str = typer.Option(None, help="your listener IP (attacker box)"),
+         lport: int = typer.Option(4444, help="listener port"),
+         mode: str = typer.Option("full-auto", help="advisor | semi-auto | full-auto"),
+         ctf: bool = typer.Option(True, "--ctf/--no-ctf", help="CTF defaults (aggressive)"),
+         output: Path = typer.Option(None, help="where to write the YAML "
+                                     "(default: engagements/<name>.yaml)")):
+    """Create an engagement YAML interactively - no hand-editing needed.
+
+    Prompts for anything you don't pass as an option. A good first command.
+    """
+    interactive = sys.stdout.isatty()
+    if not name:
+        name = typer.prompt("Engagement name", default="lab") if interactive else "lab"
+    if not targets:
+        targets = (typer.prompt("Target(s) - IP/CIDR/domain, comma-separated")
+                   if interactive else "")
+    target_list = [t.strip() for t in (targets or "").split(",") if t.strip()]
+    if lhost is None:
+        lhost = (typer.prompt("Your listener IP (LHOST), blank to skip", default="")
+                 if interactive else "")
+
+    # First-run authorization checklist - a deliberate speed bump.
+    if interactive:
+        console.print("\n[bold yellow]Authorization check[/] - scanning a host you do not have "
+                      "written permission to test is illegal.")
+        if not typer.confirm("  Do you have authorization for the target(s) above?",
+                             default=False):
+            console.print("[yellow]aborted - get written authorization first[/]")
+            raise typer.Exit(1)
+
+    cfg = {"name": name, "targets": target_list, "mode": mode, "ctf": ctf}
+    if lhost:
+        cfg["lhost"] = lhost
+        cfg["lport"] = lport
+    out = output or (ENGAGEMENTS / f"{name}.yaml")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+    console.print(f"\n[bold green]created[/] {out}")
+    console.print("[dim]next:[/]")
+    console.print("  breachload doctor            # check your tools", markup=False)
+    console.print(f"  breachload auto {out}        # recon -> plan -> report", markup=False)
+
+
+@app.command()
 def run(config: Path = typer.Argument(..., help="engagement YAML"),
         phase: str = typer.Option(None, help="run only this phase (recon/enumeration/vuln)"),
-        stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase")):
+        stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase"),
+        dry_run: bool = typer.Option(False, "--dry-run",
+                                     help="preview the commands without running them")):
     """Run an engagement. By default auto-chains recon -> enumeration -> vuln."""
     cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
@@ -197,14 +245,15 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
 
     planner_mode = "online (Claude)" if planner.online else "offline (heuristic)"
     label = f"phase={phase}" if phase else f"auto -> {stop}"
+    dry = " | [bold]DRY-RUN[/]" if dry_run else ""
     console.print(f"[bold]breachload[/] - {cfg.name} | {label} | "
-                  f"mode={cfg.mode} | planner={planner_mode}")
+                  f"mode={cfg.mode} | planner={planner_mode}{dry}")
     console.print(state.summary())
     console.print()
 
     orch = Orchestrator(cfg, state, registry, validator, planner, audit,
                         state_path, confirm=_confirm, on_event=_emit,
-                        analyzer=Analyzer.default())
+                        analyzer=Analyzer.default(), dry_run=dry_run)
     if phase:
         state.phase = _parse_phase(phase)
         asyncio.run(orch.run_phase())
@@ -488,14 +537,59 @@ def kb_import(nvd: Path = typer.Argument(..., help="NVD 2.0 JSON feed"),
     console.print(f"[dim]use them:  export BREACHLOAD_KB={Path(output).resolve()}[/]")
 
 
+# Install hints for the external tools, shown by `doctor --install` for the ones
+# that are missing. Kali/Debian apt names, with pipx/go for the rest.
+_INSTALL_HINTS = {
+    "nmap": "sudo apt install -y nmap",
+    "whatweb": "sudo apt install -y whatweb",
+    "ffuf": "sudo apt install -y ffuf",
+    "gobuster": "sudo apt install -y gobuster",
+    "enum4linux-ng": "pipx install enum4linux-ng",
+    "smbclient": "sudo apt install -y smbclient",
+    "snmpwalk": "sudo apt install -y snmp",
+    "showmount": "sudo apt install -y nfs-common",
+    "redis-cli": "sudo apt install -y redis-tools",
+    "smtp-user-enum": "sudo apt install -y smtp-user-enum",
+    "curl": "sudo apt install -y curl",
+    "ldapsearch": "sudo apt install -y ldap-utils",
+    "rpcinfo": "sudo apt install -y rpcbind",
+    "rsync": "sudo apt install -y rsync",
+    "mysql": "sudo apt install -y default-mysql-client",
+    "psql": "sudo apt install -y postgresql-client",
+    "mongosh": "https://www.mongodb.com/docs/mongodb-shell/install/",
+    "nuclei": "go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+    "httpx": "go install github.com/projectdiscovery/httpx/cmd/httpx@latest",
+    "searchsploit": "sudo apt install -y exploitdb",
+    "msfvenom": "sudo apt install -y metasploit-framework",
+    "msfconsole": "sudo apt install -y metasploit-framework",
+    "hydra": "sudo apt install -y hydra",
+    "nxc": "pipx install netexec",
+    "netexec": "pipx install netexec",
+    "bloodhound-python": "pipx install bloodhound",
+    "certipy": "pipx install certipy-ad",
+    "bloodyAD": "pipx install bloodyAD",
+    "evil-winrm": "gem install evil-winrm",
+    "kerbrute": "go install github.com/ropnop/kerbrute@latest",
+    "impacket-secretsdump": "pipx install impacket",
+    "nc": "sudo apt install -y netcat-traditional",
+    "ncat": "sudo apt install -y ncat",
+    "socat": "sudo apt install -y socat",
+    "python3": "sudo apt install -y python3",
+    "wget": "sudo apt install -y wget",
+}
+
+
 @app.command()
 def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
                                       "MTU / large-response stall (needs it reachable)"),
-           port: int = typer.Option(80, help="port to probe with --target")):
+           port: int = typer.Option(80, help="port to probe with --target"),
+           install: bool = typer.Option(False, "--install",
+                                        help="print an install command for each missing tool")):
     """Check which external tools and wordlists are available on this machine.
 
     With --target, also probe the path for the MTU / large-response stall that
     makes web fingerprinting silently return nothing over a mis-MTU'd VPN.
+    With --install, print the command to install each missing tool.
     """
     if target:
         from .core.netprobe import probe_path_mtu
@@ -539,6 +633,43 @@ def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
         console.print(f"  {'[green]+[/]' if ok else '[red]-[/]'} {path}")
     console.print(f"\n{present}/{len(tools)} tools available. Missing tools are "
                   "skipped gracefully; suggestions still list them.")
+
+    if install:
+        missing = [t for t in tools if not t.present]
+        if not missing:
+            console.print("\n[green]all known tools are installed[/]")
+            return
+        console.print("\n[bold]install the missing tools:[/]")
+        seen: set[str] = set()
+        for t in missing:
+            hint = _INSTALL_HINTS.get(t.name)
+            if hint and hint not in seen:
+                seen.add(hint)
+                console.print(f"  [dim]# {t.name}[/]")
+                console.print("  " + hint, markup=False)
+
+
+@app.command()
+def explain(term: str = typer.Argument(None, help="term to explain (ssti, kerberoast, esc1, ...)")):
+    """Plain-language explanation of a pentest term (offline glossary for learners)."""
+    from .analysis.glossary import all_terms, lookup
+    if not term:
+        console.print("[bold]breachload glossary[/] - explain any of:\n")
+        for t in all_terms():
+            console.print(f"  [cyan]{t.key:<20}[/] {escape(t.title)}")
+        console.print("\n[dim]breachload explain <term>[/]")
+        return
+    entry = lookup(term)
+    if entry is None:
+        console.print(f"[yellow]no glossary entry for[/] {escape(term)}")
+        console.print("[dim]run `breachload explain` to list known terms[/]")
+        raise typer.Exit(1)
+    console.print(f"[bold cyan]{escape(entry.title)}[/]\n")
+    console.print(f"[bold]What it is:[/]  {escape(entry.what)}")
+    console.print(f"[bold]Why it matters:[/]  {escape(entry.why)}")
+    console.print(f"[bold]In breachload:[/]  {escape(entry.breachload)}")
+    if entry.learn:
+        console.print(f"[dim]Learn more: {escape(entry.learn)}[/]")
 
 
 @app.command()

@@ -49,8 +49,12 @@ class Orchestrator:
         rate_limiter: RateLimiter | None = None,
         on_state: Callable[[EngagementState], None] | None = None,
         auto_exploit: bool = False,
+        dry_run: bool = False,
     ) -> None:
         self.config = config
+        # Dry-run: validate and show what WOULD run, but never execute (a safe
+        # preview for learners). Actions are recorded so the planner advances.
+        self.dry_run = dry_run
         # Autonomous exploitation/post-exploitation. Set ONLY after the auto-exploit
         # authorization gate has passed (the CLI enforces this); it merely extends
         # the auto-walk — scope and DESTRUCTIVE gating are unchanged.
@@ -122,6 +126,13 @@ class Orchestrator:
             self.emit("blocked", f"BLOCKED: {' '.join(command)} — {decision.reason}")
             self._record(plan, command, approved=False)
             return True  # keep going; the planner may pick something else
+
+        if self.dry_run:
+            # Show what would run (regardless of the confirm threshold) and record
+            # it so the planner moves on, but never touch the target.
+            self.emit("run", f"DRY-RUN would run: $ {' '.join(command)}\n  why: {plan.rationale}")
+            self._record(plan, command)
+            return True
 
         if decision.needs_confirmation:
             prompt = f"[{decision.risk.name}] {' '.join(command)}\n  why: {plan.rationale}"
