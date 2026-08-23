@@ -22,9 +22,11 @@ class TestProbeTable:
             assert argv[0] == "curl", cve
             # no shell metacharacters anywhere (injection guard)
             assert not any(any(b in tok for b in _FORBIDDEN) for tok in argv), cve
-            # read-only: no write/exec verbs snuck into the probe
-            joined = " ".join(argv).lower()
-            assert " -x" not in joined and "--data" not in joined and "-d " not in joined, cve
+            # read-only HTTP: no custom write method; any --data must be a GET (-G),
+            # which sends it as a query string, not a POST/PUT body.
+            assert "-X" not in argv and "--request" not in argv, cve
+            if any(t.startswith("--data") or t == "-d" for t in argv):
+                assert "-G" in argv, f"{cve}: --data without -G is not a read-only GET"
 
     def test_render_fills_placeholders(self):
         argv = render_argv("CVE-2021-43798", "10.10.10.9", 3000)
@@ -83,3 +85,18 @@ class TestExploitPhasePlanner:
         st.add_finding(Finding(title="Cacti RCE (CVE-2022-46169)", host="10.10.10.9",
                                cve=["CVE-2022-46169"]))   # RCE: not in the auto-fire table
         assert Planner()._heuristic(st, _tools()).action == "phase_complete"
+
+
+class TestFreepbx:
+    def test_freepbx_kb_matches_and_probe_exists(self):
+        from breachload.analysis.webcve import WebCveMatcher
+        from breachload.core.state import EngagementState, Service
+        st = EngagementState(name="t")
+        st.upsert_host("10.129.110.230").upsert_service(
+            Service(port=80, name="http", notes=["whatweb: FreePBX"]))
+        findings = WebCveMatcher.default().findings_for(st)
+        assert any("CVE-2025-57819" in f.cve for f in findings)
+        # and it is auto-fireable (read-only SQLi confirm)
+        assert probe_for("CVE-2025-57819") is not None
+        argv = render_argv("CVE-2025-57819", "10.129.110.230", 80)
+        assert any("ajax.php" in t for t in argv) and any("EXTRACTVALUE" in t for t in argv)

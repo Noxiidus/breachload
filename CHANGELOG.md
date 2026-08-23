@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-23
+
 ### Added
+- **FreePBX -> CVE-2025-57819** in the web-app CVE KB (endpoint-module unauthenticated SQLi -> RCE,
+  incron/`sysadmin_manager` root chain), with a **read-only** auto-fire probe that confirms the SQLi
+  via an error-based `EXTRACTVALUE(USER())` GET — so the auto-exploit mode autonomously *confirms* the
+  vulnerability while the webshell/RCE step stays guided. Grounded in a live HTB dogfood (Connected).
 - **Auto-exploit firing engine** (`exploit/autofire.py`, `tools/exploitprobe.py`): in the EXPLOIT
   phase the engine autonomously fires a curated set of **read-only** KB-CVE probes (Grafana LFI,
   Joomla config leak, ownCloud phpinfo, Metabase setup-token, Nginx UI) as single validated `curl`
@@ -33,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hard-blocked), DESTRUCTIVE actions still require a human, the injection guard is intact (only
   validated argv runs, never a shell), and the authorization + every action are written to the
   audit log. Fails closed with a specific reason when any condition is missing.
+
+### Fixed
+- Safety-blocked / user-declined actions were recorded to persistent history and counted by
+  `has_action`, so a target that was out-of-scope on one run (then added to scope) would be skipped
+  on the next. The orchestrator now prunes those (approved=False, no exit code) at the start of each
+  run, while executed actions and permanent build-failures persist. Found via a live HTB dogfood.
 
 ## [0.12.0] - 2026-08-23
 
@@ -502,7 +514,8 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/Noxiidus/breachload/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Noxiidus/breachload/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Noxiidus/breachload/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Noxiidus/breachload/compare/v0.9.1...v0.10.0

