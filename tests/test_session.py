@@ -156,3 +156,28 @@ class TestOrchestratorPost:
                             auto_exploit=True, session=sess)
         asyncio.run(orch.run_engagement(stop_after=Phase.POST))
         assert not state.flags   # off-scope session must not run
+
+
+class TestSuidEscalation:
+    def _sess(self, responses):
+        s = WebshellSession.from_spec("http://h/s.php?cmd=FUZZ")
+
+        def run(command, **k):
+            for needle, out in responses.items():
+                if needle in command:
+                    return out
+            return ""
+        s.run = run
+        return s
+
+    def test_suid_shell_reads_root(self):
+        s = self._sess({"/usr/bin/bash -p": "d41d8cd98f00b204e9800998ecf8427e"})
+        enum = "uid=1000(bob) groups=1000(bob)\n/usr/bin/bash\n/usr/bin/passwd\n"
+        r = attempt_escalation(s, enum, [])
+        assert r.escalated and "SUID bash" in r.method
+
+    def test_non_shell_suid_ignored(self):
+        s = self._sess({"passwd": "x" * 32})
+        enum = "/usr/bin/passwd\n/usr/bin/sudo\n"
+        r = attempt_escalation(s, enum, [])
+        assert not r.escalated
