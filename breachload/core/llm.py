@@ -187,6 +187,20 @@ class Planner:
                     if _is_mssql(svc) and "mssql" in names and not state.has_action("mssql", key):
                         return Plan("run", "mssql", host.address, {"port": svc.port},
                                     "Test MSSQL for a blank sa login.")
+                    if _is_ldap(svc) and "ldap" in names and not state.has_action("ldap", key):
+                        return Plan("run", "ldap", host.address, {"port": svc.port},
+                                    "Try an anonymous LDAP bind and read naming contexts.")
+                    if _is_rpc(svc) and "rpc" in names \
+                            and not state.has_action("rpc", host.address):
+                        return Plan("run", "rpc", host.address, {},
+                                    "Dump the RPC portmapper (rpcinfo).")
+                    if _is_rsync(svc) and "rsync" in names and not state.has_action("rsync", key):
+                        return Plan("run", "rsync", host.address, {"port": svc.port},
+                                    "List exposed rsync modules.")
+                    if _is_mongo(svc) and "mongodb" in names \
+                            and not state.has_action("mongodb", key):
+                        return Plan("run", "mongodb", host.address, {"port": svc.port},
+                                    "Test MongoDB for unauthenticated access.")
             return Plan("phase_complete", rationale="Enumeration exhausted for known services.")
 
         if state.phase == Phase.VULN:
@@ -216,8 +230,8 @@ def _is_snmp(svc) -> bool:
 
 
 def _is_nfs(svc) -> bool:
-    return (svc.name or "").lower() in ("nfs", "nfs_acl", "rpcbind", "mountd") \
-        or svc.port in (2049, 111)
+    # Port 111 / rpcbind is the RPC adapter's (portmapper dump); NFS proper is 2049.
+    return (svc.name or "").lower() in ("nfs", "nfs_acl", "mountd") or svc.port == 2049
 
 
 def _is_ftp(svc) -> bool:
@@ -242,6 +256,23 @@ def _is_postgres(svc) -> bool:
 
 def _is_mssql(svc) -> bool:
     return (svc.name or "").lower() in ("ms-sql-s", "mssql", "ms-sql") or svc.port == 1433
+
+
+def _is_ldap(svc) -> bool:
+    return (svc.name or "").lower() in ("ldap", "ldapssl", "globalcatldap") \
+        or svc.port in (389, 636, 3268)
+
+
+def _is_rpc(svc) -> bool:
+    return (svc.name or "").lower() in ("rpcbind", "portmapper", "sunrpc") or svc.port == 111
+
+
+def _is_rsync(svc) -> bool:
+    return (svc.name or "").lower() == "rsync" or svc.port == 873
+
+
+def _is_mongo(svc) -> bool:
+    return (svc.name or "").lower() in ("mongodb", "mongod") or svc.port == 27017
 
 
 def _has_http(host) -> bool:

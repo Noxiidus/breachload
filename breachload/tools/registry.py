@@ -21,6 +21,8 @@ from .enum4linux import Enum4linuxAdapter
 from .ffuf import FfufAdapter
 from .ftp import FtpAdapter
 from .httpx import HttpxAdapter
+from .ldap import LdapAdapter
+from .mongodb import MongoAdapter
 from .mssql import MssqlAdapter
 from .mysql import MysqlAdapter
 from .netexec import NetexecAdapter
@@ -29,6 +31,8 @@ from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
 from .postgres import PostgresAdapter
 from .redis import RedisAdapter
+from .rpc import RpcAdapter
+from .rsync import RsyncAdapter
 from .smtp import SmtpAdapter
 from .snmp import SnmpAdapter
 from .vhostfuzz import VhostFuzzAdapter
@@ -56,6 +60,10 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         MysqlAdapter(),
         PostgresAdapter(),
         MssqlAdapter(),
+        LdapAdapter(),
+        RpcAdapter(),
+        RsyncAdapter(),
+        MongoAdapter(),
     ]
     registry = {a.name: a for a in adapters}
     if load_plugins:

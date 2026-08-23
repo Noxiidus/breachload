@@ -15,7 +15,8 @@ from pathlib import Path
 KNOWN_TOOLS = {
     "recon": ["nmap"],
     "enumeration": ["httpx", "whatweb", "ffuf", "gobuster", "enum4linux-ng", "smbclient"],
-    "services": ["snmpwalk", "showmount", "redis-cli", "smtp-user-enum", "curl"],
+    "services": ["snmpwalk", "showmount", "redis-cli", "smtp-user-enum", "curl",
+                 "ldapsearch", "rpcinfo", "rsync"],
     "database": ["mysql", "psql", "mongosh"],
     "vuln": ["nuclei", "searchsploit"],
     "exploit": ["msfvenom", "msfconsole", "hydra"],
