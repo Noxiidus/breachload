@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-23
+
+### Added
+- **Auto-foothold modules** (`exploit/footholds.py`) — the piece that makes the chain fully
+  autonomous: in the auto-exploit EXPLOIT phase, a coded module for a matching KB CVE fires the
+  real exploit, gains code execution, and hands back a live **Session** for the POST phase. Ships
+  the **FreePBX CVE-2025-57819** module (SQLi stacked-write of a `cron_jobs` webshell dropper ->
+  waits for cron -> registers a webshell session). Unlike the read-only probes these *write* to the
+  target, so they run only in auto-exploit mode, are scope-checked, and audited. **Verified live on
+  HTB Connected: the engine autonomously established the foothold and opened the session.**
+- More autonomous privesc vectors: **cap_setuid on a scriptable interpreter** (python/perl/ruby/node
+  -> `setuid(0)` then read the proof) joins full-sudo / sudo-NOPASSWD / docker-group / SUID-shell.
+- **Container / orchestration escape detection** in `loot` (`postexploit.parse_container`): flags a
+  writable Docker socket, a mounted Kubernetes service-account token, and a privileged container
+  (`.dockerenv` + `CAP_SYS_ADMIN`), each with the escape command.
+- **BloodHound ingestion** (`analysis/bloodhound.py` + `bloodhound` command): parses BloodHound /
+  SharpHound / bloodhound-python JSON into AD findings — kerberoastable & AS-REP-roastable accounts,
+  unconstrained delegation, and dangerous outbound ACL edges (GenericAll/WriteOwner/…) — each with
+  the concrete impacket/bloodyAD follow-up.
+
 ## [0.14.0] - 2026-08-23
 
 ### Added
@@ -532,7 +552,8 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/Noxiidus/breachload/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Noxiidus/breachload/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Noxiidus/breachload/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Noxiidus/breachload/compare/v0.11.0...v0.12.0

@@ -3,4 +3,4 @@
 Deterministic core (state, scope, parsing) + LLM reasoning for decisions.
 """
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
