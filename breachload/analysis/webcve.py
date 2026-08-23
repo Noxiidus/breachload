@@ -54,11 +54,18 @@ def _haystack(svc: Service) -> str:
 
 
 def _find_version(haystack: str, token: str) -> str | None:
-    """A version string appearing just after `token` in the fingerprint text."""
+    """A version string appearing just after `token` in the fingerprint text.
+
+    The search window is short and stops at a comma/semicolon so a *neighbouring*
+    product's version (e.g. "grafana, apache 2.4.1") is not misattributed to this
+    token. The intended format is the whatweb note "webapp: <Name> <version>",
+    where the version sits immediately after the name.
+    """
     idx = haystack.find(token)
     if idx < 0:
         return None
-    window = haystack[idx + len(token): idx + len(token) + 24]
+    tail = haystack[idx + len(token):]
+    window = re.split(r"[,;]", tail, maxsplit=1)[0][:14]
     m = _VER_RE.match(window) or _VER_RE.search(window)
     return m.group(1) if m else None
 

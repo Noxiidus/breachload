@@ -67,3 +67,11 @@ class TestNewAdChains:
         steps = "\n".join(chain.render_steps(TARGET="10.10.11.10", DOMAIN="corp.local",
                                              USER="bob", PASS="Pass1"))
         assert "corp.local" in steps and "10.10.11.10" in steps
+
+
+class TestBughunt:
+    def test_esc_in_prose_not_flagged(self):
+        # BUG-1: an ESC mention outside the Vulnerabilities section must not fire.
+        text = ("Certificate Templates\n  0\n    Template Name : Web\n"
+                "    Description : hardened against ESC1 and ESC8\n")
+        assert parse_certipy(text) == []

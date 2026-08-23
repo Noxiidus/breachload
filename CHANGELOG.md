@@ -41,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fetch+exec and direct reverse-shell one-liners (LHOST/LPORT filled), and PTY-upgrade steps.
   `--run` optionally launches the netcat listener.
 
+### Fixed
+- ADCS ESC parsing counted an `ESC<n>` token found in a template's description prose, not only
+  under its `[!] Vulnerabilities` section — a false positive; now requires the vulnerabilities
+  section. (`docs/BUGHUNT-2026-08-23.md` BUG-1.)
+- Web-CVE version detection could borrow a *neighbouring* product's version (`grafana, apache
+  2.4.1` -> grafana 2.4.1) from too wide a search window; the window now stops at `,`/`;` and is
+  shortened so a version is only taken when it directly follows the app token. (BUG-2.)
+
 ## [0.11.0] - 2026-08-23
 
 ### Added

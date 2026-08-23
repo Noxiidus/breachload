@@ -85,3 +85,12 @@ class TestWhatwebAppVersions:
         a.parse(ToolResult(exit_code=0, stdout=stdout, stderr="", duration_s=0.1), st)
         notes = st.hosts["10.10.10.9"].services["80/tcp"].notes
         assert any("webapp: WordPress 6.2" in n for n in notes)
+
+
+class TestBughunt:
+    def test_neighbouring_product_version_not_misattributed(self):
+        # BUG-2: 'grafana' with no adjacent version must not borrow apache's.
+        from breachload.analysis.webcve import _find_version
+        hay = "grafana, apache 2.4.1"
+        assert _find_version(hay, "grafana") is None
+        assert _find_version("grafana 8.3.0, apache 2.4.1", "grafana") == "8.3.0"

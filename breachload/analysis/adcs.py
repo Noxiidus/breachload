@@ -140,9 +140,10 @@ def parse_certipy(text: str) -> list[Finding]:
         if "Vulnerabilities" in line:
             in_vulns = True
             continue
-        # ESC lines are meaningful under a template's Vulnerabilities section.
+        # ESC lines only count inside a template's [!] Vulnerabilities section, so
+        # an "ESC1" mentioned in prose elsewhere is not misread as a finding.
         em = _ESC_RE.search(line)
-        if em and (in_vulns or current_template):
+        if em and in_vulns:
             esc = em.group(1).upper()
             key = (current_template or "?", esc)
             if key in seen:
