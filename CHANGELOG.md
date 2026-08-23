@@ -8,6 +8,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Web attack-surface probes (`analysis/webattacks.py`): for every HTTP host, `suggest`/`auto`
+  now name the core injection classes to test with first-probe payloads — SSTI (`{{7*7}}` +
+  per-engine RCE), SQLi (login bypass, sqlmap, INTO OUTFILE webshell), LFI (traversal, php
+  filter/wrapper, log poisoning), file upload, command injection, SSRF **incl. cloud metadata
+  (AWS/GCP IMDS)**, XXE, and JWT (alg:none / HS256 crack). Curated from recurring HTB/CTF
+  writeup patterns; light and confirm-gated, not auto-fired.
+- Group-membership privesc parsing in `loot` (`postexploit.parse_groups`): flags membership of
+  the `docker`, `lxd`/`lxc`, `disk`, or `adm` group and carries the exact root primitive as a
+  guided exploit (e.g. `docker run -v /:/mnt ... chroot /mnt`).
+- Web-application version → CVE mapping with **guided exploitation** (`analysis/webcve.py`
+  + `data/webapp_kb.json`): scans the web fingerprint (product/name/banner **and** the
+  service notes where whatweb/httpx put app tech) for a known web app, range-matches its
+  version when discoverable, and attaches a ready-to-run, confirm-gated exploit command to
+  the finding. Closes the gap where a fingerprinted app (Grafana, Gitea, Confluence, Jenkins,
+  Nginx UI, …) was never mapped to a CVE. whatweb now also emits `webapp: <Name> <version>`
+  notes so the matcher can range-match. The guided command surfaces in `suggest`/`auto` and
+  in the report; a new `Finding.exploit` field carries it. Grow the KB via `BREACHLOAD_WEBAPP_KB`.
+- Database and mail enumeration adapters, wired into the enumeration heuristic and `doctor`:
+  **mysql** (blank/weak `root` login via the `mysql` client), **postgres** (trust/blank
+  `postgres` login via `psql -w`), **mssql** (blank `sa` login via `nxc mssql`, carries a
+  guided `xp_cmdshell` command), **smtp** (VRFY username enumeration via `smtp-user-enum`).
+  Each is a single-binary, non-interactive probe (one auth attempt, ACTIVE risk) that
+  degrades gracefully when its tool/list is missing.
+- Linux privilege-escalation enumeration playbook (`analysis/privesc_enum.py` + `privesc`
+  command): copy-paste-ready, LHOST-filled commands to stabilize a shell, triage
+  SUID/sudo/caps/cron, transfer + run linpeas/pspy from your box, and feed the output back
+  to `loot` (which names the escalation via the kernel suggester + GTFOBins). The
+  "once you have a shell" suggestion now drives this whole flow instead of a few loose one-liners.
+- Network robustness: `doctor --target <ip>` probes the path for the VPN MTU / large-response
+  stall (small ranged GET vs full GET) that silently empties web fingerprints, and prints the
+  `ip link set tun0 mtu 1300` fix; a new `hosts` command lists /etc/hosts entries for discovered
+  virtual hosts and, with `--write`, appends the missing ones (privileged, confirm-gated).
+- Hash cracking + credential-reuse loop (`analysis/hashcrack.py` + `crack` command):
+  identifies a hash type (bcrypt/sha-crypt/md5crypt/NTLM/NetNTLMv2/Kerberos/phpass/…) by
+  prefix and shape, prints ready hashcat + john rockyou commands, and with `--run` cracks
+  it and writes the plaintext back as a validated credential — which the existing
+  lateral-movement suggestions then reuse across hosts/services. Runs over an explicit
+  `--hash` or every stored hash-kind credential.
+- Recon depth: `udp_scan` (a top-ports `nmap -sU` pass after the TCP sweep — surfaces
+  SNMP/DNS/TFTP/IKE; needs root, skipped gracefully otherwise, and the planner asks for it
+  exactly once per host) and `ffuf_recursion`/`recursion_depth` (recurse content discovery
+  into found directories). Both threaded from the engagement config through the planner.
 - Non-web service-enumeration adapters, wired into the enumeration heuristic and
   `doctor`: **snmp** (`snmpwalk`, community `public` → sysDescr/name + credential-
   looking OIDs), **nfs** (`showmount -e` → exports, flags world-readable), **ftp**

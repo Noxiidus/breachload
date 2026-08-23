@@ -17,10 +17,10 @@ Legend: ✅ solid · 🟡 partial · ❌ missing · 🔴 high priority
 
 | Item | State | Note |
 |------|-------|------|
-| VPN MTU / large-response stalls | ❌ 🔴 | tun0 MTU 1500 stalled every response >~1 MTU; looked like "app hangs". `doctor` should probe path MTU (send a big-ish GET to the target and time it) and warn/suggest `ip link set tun0 mtu 1300`. |
-| `/etc/hosts` management | 🟡 | vhost/redirect discovery is inert until the name resolves. Surface the exact line (done as a finding) **and** offer an opt-in `--write-hosts` that appends discovered vhosts (privileged, confirm-gated). |
-| Hanging / streaming endpoints | 🟡 | whatweb now bounded + noted. Add: on a hung full GET, retry with `Range: bytes=0-4096` (served instantly even when full GET stalls — proven on Snapped) and fingerprint that. |
-| Full-port + UDP recon | ❌ 🔴 | recon is default-1000 TCP `-sV` only. Add `-p-` sweep (toggle) and a top-UDP pass (SNMP/DNS/TFTP/IKE hide there). |
+| VPN MTU / large-response stalls | ✅ | `doctor --target <ip>` probes path MTU (tiny ranged GET vs full GET) and prints the `ip link set tun0 mtu 1300` fix when the stall pattern shows. |
+| `/etc/hosts` management | ✅ | The redirect/vhost finding surfaces the line, **and** `hosts --write` appends discovered vhosts to /etc/hosts (privileged, confirm-gated). |
+| Hanging / streaming endpoints | 🟡 | whatweb bounded + noted; the MTU probe addresses the common root cause. Range-retry (`Range: bytes=0-4096`) on a hung full GET still todo. |
+| Full-port + UDP recon | ✅ | `full_ports` (`-p-`) shipped; `udp_scan` adds a top-ports `nmap -sU` pass (SNMP/DNS/TFTP/IKE). |
 | Distro-backport CVE false positives | 🟡 | OpenSSH 9.6p1 flagged regreSSHion, but `3ubuntu13.15` is backport-patched. Correlator should down-rank a CVE when the banner carries a distro patch suffix. |
 
 ---
@@ -41,9 +41,10 @@ Legend: ✅ solid · 🟡 partial · ❌ missing · 🔴 high priority
 
 ## 3. Service enumeration (non-web)
 
-✅ SMB via netexec + enum4linux-ng.
-- ❌ 🔴 **FTP** (anon login, version→CVE), **SNMP** (`snmpwalk` public), **NFS** (`showmount`), **RPC** (`rpcinfo`), **LDAP** (anon binds), **rsync**, **redis/memcached** (unauth), **MySQL/MSSQL/PostgreSQL/MongoDB** (default/blank creds), **SMTP** (VRFY/user enum), **IMAP/POP3**, **Kerberos** (already partial via AD).
-- Each is a small adapter in the existing pattern; this is the widest coverage gap for "service" boxes.
+✅ SMB via netexec + enum4linux-ng. ✅ FTP (anon), SNMP (public), NFS (showmount), Redis (unauth),
+SMTP (VRFY), MySQL/PostgreSQL/MSSQL (blank/default creds) — all shipped as adapters.
+- ⏳ still todo: **RPC** (`rpcinfo`), **LDAP** (anon binds), **rsync**, **memcached**, **MongoDB**,
+  **IMAP/POP3**. Each is a small adapter in the existing pattern.
 
 ## 4. Vulnerability analysis
 
@@ -91,14 +92,24 @@ Legend: ✅ solid · 🟡 partial · ❌ missing · 🔴 high priority
 
 Progress: ✅ shipped · 🚧 partial · ⏳ todo
 
-1. ⏳ **Web-app version→CVE KB + known-CVE guided exploitation** (§2/§4/§5) — turns fingerprints into footholds; this is what actually solves web boxes.
-2. 🚧 **Automated Linux privesc enum + kernel/exploit suggestion** (§7) — kernel-version→exploit suggester shipped (`analysis/kernelexploits.py`, wired into `loot`); auto upload+run of linpeas/pspy still todo.
-3. ✅ **Non-web service adapters** (§3) — snmp/nfs/ftp/redis shipped; SMTP/DB (mssql/mysql/pg) still todo.
-4. ⏳ **Hash-cracking + credential reuse loop** (§6) — recurring foothold mechanic.
-5. 🚧 **Recon depth** (§1/§2) — full-port `-p-` (config `full_ports`, auto in CTF) and ffuf `web_extensions` shipped; UDP top-ports (needs root) and recursive fuzzing still todo.
-6. ⏳ **Network robustness**: MTU probe, `/etc/hosts` opt-in write, Range-retry on hung GET (§0).
+1. ✅ **Web-app version→CVE KB + known-CVE guided exploitation** (§2/§4/§5) — `analysis/webcve.py`
+   + `data/webapp_kb.json` map a fingerprinted web app (from service notes) to a CVE and attach a
+   ready, confirm-gated exploit command; whatweb now emits `webapp: <Name> <version>` notes to feed it.
+2. ✅ **Automated Linux privesc enum + kernel/exploit suggestion** (§7) — kernel suggester
+   (`kernelexploits.py`) + the `privesc` playbook (`privesc_enum.py`: transfer/run linpeas/pspy with the
+   real LHOST, then loot-back) + group-membership privesc (docker/lxd/disk) in `loot`.
+3. ✅ **Non-web service adapters** (§3) — snmp/nfs/ftp/redis **and** smtp/mysql/postgres/mssql shipped.
+4. ✅ **Hash-cracking + credential reuse loop** (§6) — `analysis/hashcrack.py` + `crack` command
+   (identify → rockyou hashcat/john commands → optional live crack → store → reuse via lateral suggestions).
+5. ✅ **Recon depth** (§1/§2) — full-port `-p-`, ffuf `web_extensions`, **UDP top-ports pass** (`udp_scan`)
+   and **recursive ffuf** (`ffuf_recursion`/`recursion_depth`), all threaded from the engagement config.
+6. 🚧 **Network robustness** — **MTU probe** (`doctor --target`) and **`/etc/hosts` opt-in write**
+   (`hosts --write`) shipped; Range-retry on a hung full GET still todo (MTU probe addresses the root cause).
 
-Also shipped from the DanglingTree solve: a **dangling ADCS template** detector idea (diff CA `-list-templates` vs existing template objects) remains todo but is documented.
+Also shipped: **web attack-surface probes** (`webattacks.py` — SSTI/SQLi/LFI/upload/cmdi/SSRF+IMDS/XXE/JWT
+first-probe payloads per HTTP host, §2). Still todo: nuclei auto-tagging from detected tech, auth-aware
+re-crawl behind login, and the **dangling ADCS template** detector idea (diff CA `-list-templates` vs
+existing template objects) from the DanglingTree solve.
 
 ## What breachload should NOT try to be
 
