@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-23
+
+### Added
+- **Deep web-app fingerprinting** (`tools/appfinger`): a single `curl -sL` (follows redirects) against
+  each HTTP service, matched against a curated signature table (title / meta-generator / body /
+  headers) for the apps breachload has CVEs and auto-foothold modules for — FreePBX, Grafana,
+  WordPress, Joomla, Drupal, Jenkins, GitLab, phpMyAdmin, Confluence, Cacti, Nginx UI, Tomcat,
+  Webmin, Metabase, ownCloud. Records a `webapp: <App> <version>` note that feeds the web-CVE matcher,
+  so an app hidden behind a root redirect (e.g. FreePBX at `/admin`) is now detected autonomously —
+  closing the gap that previously blocked the auto-foothold from triggering. Wired into the enum
+  heuristic (httpx -> whatweb -> appfinger -> ffuf).
+- **Deeper session enumeration**: the autonomous privesc now runs a curated "mini-linpeas" over the
+  session (SUID/SGID, caps, cron, docker/k8s, SSH keys, writable files, config/env secret grep), so
+  the loot parsers find more vectors without transferring a binary.
+- **Root session after escalation** (`core/session.RootSession`): once the engine roots the host, the
+  session is upgraded to a persistent **root command channel** (via the matched vector's template) and
+  persisted — the operator gets a real root shell, not just the flag.
+
+### Fixed
+- Bug-hunt: `parse_bloodhound` crashed on a malformed export (a `data` value that wasn't a list of
+  objects, or a non-dict document) by iterating a string's characters. It now returns nothing on
+  malformed input. Regression-tested.
+
 ## [0.15.0] - 2026-08-23
 
 ### Added
@@ -552,7 +575,8 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/Noxiidus/breachload/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Noxiidus/breachload/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Noxiidus/breachload/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Noxiidus/breachload/compare/v0.12.0...v0.13.0

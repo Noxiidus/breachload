@@ -26,8 +26,17 @@ _DANGEROUS_RIGHTS = {
 
 
 def _rows(data: dict) -> list[dict]:
-    """The object list from a BloodHound file, tolerant of the key casing."""
-    return data.get("data") or data.get("Data") or []
+    """The object list from a BloodHound file, tolerant of the key casing.
+
+    Defensive: a malformed export (a non-dict document, or a `data` that isn't a
+    list of objects) must yield nothing, not crash the parse.
+    """
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("data") or data.get("Data") or []
+    if not isinstance(rows, list):
+        return []
+    return [r for r in rows if isinstance(r, dict)]
 
 
 def _props(obj: dict) -> dict:
