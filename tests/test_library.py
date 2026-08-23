@@ -79,7 +79,7 @@ class TestSuggestionEngine:
         assert "10.10.14.9" in blob                # LHOST substituted in post-shell/rev
 
     def test_post_shell_step_last(self):
-        assert self.sug[-1].title == "Once you have a shell"
+        assert self.sug[-1].title.startswith("Once you have a shell")
         assert any("sudo -l" in a for a in self.sug[-1].actions)
 
     def test_no_findings_no_cve_still_suggests_services(self):

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from ..core.state import EngagementState, Service, Severity
 from ..exploit.library import PayloadLibrary
 from .chains import ChainMatcher
+from .privesc_enum import playbook_lines
 
 _SEV_PRIORITY = {
     Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 3,
@@ -223,12 +224,14 @@ class SuggestionEngine:
         return []
 
     def _post_shell(self, lhost: str) -> Suggestion:
-        ctx = {"LHOST": lhost}
-        ids = ["tty-python", "enum-sudo", "enum-suid", "enum-caps", "enum-linpeas"]
+        # Drive the whole privesc-enum flow (transfer + run linpeas/pspy with the
+        # real LHOST, then feed output back to `loot`) rather than a few loose
+        # library one-liners — this is the copilot naming the next moves.
         return Suggestion(
-            priority=8, title="Once you have a shell",
-            why="Stabilize the shell, then hunt for a privilege-escalation path",
-            actions=[self._render(i, **ctx) for i in ids if self.library.get(i)],
+            priority=8, title="Once you have a shell - privilege-escalation enumeration",
+            why="Stabilize the shell, enumerate SUID/sudo/caps/cron/kernel, then let "
+                "`breachload loot` name the escalation",
+            actions=playbook_lines(lhost),
         )
 
     # --- helpers ------------------------------------------------------------

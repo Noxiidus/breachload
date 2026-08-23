@@ -413,8 +413,32 @@ def kb_import(nvd: Path = typer.Argument(..., help="NVD 2.0 JSON feed"),
 
 
 @app.command()
-def doctor():
-    """Check which external tools and wordlists are available on this machine."""
+def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
+                                      "MTU / large-response stall (needs it reachable)"),
+           port: int = typer.Option(80, help="port to probe with --target")):
+    """Check which external tools and wordlists are available on this machine.
+
+    With --target, also probe the path for the MTU / large-response stall that
+    makes web fingerprinting silently return nothing over a mis-MTU'd VPN.
+    """
+    if target:
+        from .core.netprobe import probe_path_mtu
+        console.print(f"[bold]MTU / large-response probe[/] -> {target}:{port}\n")
+        res = probe_path_mtu(target, port=port)
+        if not res.ran:
+            console.print(f"[yellow]{res.verdict}[/]")
+        else:
+            small = "[green]ok[/]" if res.small_ok else "[red]stalled[/]"
+            large = "[green]ok[/]" if res.large_ok else "[red]stalled[/]"
+            console.print(f"  small ranged GET: {small} ({res.small_time:.2f}s)")
+            console.print(f"  full GET:         {large} ({res.large_time:.2f}s)")
+            style = "bold red" if res.suggestion else "green"
+            console.print(f"  [{style}]{escape(res.verdict)}[/]")
+            if res.suggestion:
+                console.print("  fix: " + res.suggestion, markup=False)
+        console.print()
+        return
+
     console.print("[bold]breachload environment check[/]\n")
     tools = check_tools()
     present = sum(t.present for t in tools)
@@ -537,6 +561,106 @@ def creds(config: Path = typer.Argument(..., help="engagement YAML"),
         mark = "[green]validated[/]" if c.validated else "[dim]unvalidated[/]"
         console.print(f"  {c.username or '?'} / {c.secret or '?'} "
                       f"[dim]{c.kind}[/] {mark} [dim]{c.source or ''}[/]")
+
+
+def _is_ip_literal(value: str) -> bool:
+    import ipaddress
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+@app.command()
+def hosts(config: Path = typer.Argument(..., help="engagement YAML"),
+          ip: str = typer.Option(None, help="target IP to map the vhosts to "
+                                  "(default: the first IP in scope/state)"),
+          write: bool = typer.Option(False, "--write",
+                                     help="append the entries to /etc/hosts (privileged)")):
+    """Show (and optionally add) /etc/hosts entries for discovered virtual hosts.
+
+    Vhost/redirect discovery is inert until the name resolves. This surfaces the
+    exact lines; --write appends the missing ones to /etc/hosts (a privileged,
+    confirm-gated change - run with sudo).
+    """
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet - run recon/enum first[/]")
+        raise typer.Exit(1)
+    state = _load_state(state_path)
+
+    target_ip = ip or next((t for t in cfg.targets if _is_ip_literal(t)), None) \
+        or next((a for a in state.hosts if _is_ip_literal(a)), None)
+    if not target_ip:
+        console.print("[yellow]no target IP known[/] - pass --ip <target>")
+        raise typer.Exit(1)
+
+    # Every non-IP hostname breachload has recorded (vhosts from redirects/fuzzing).
+    names: list[str] = []
+    for addr, host in state.hosts.items():
+        for name in [addr, *host.hostnames]:
+            if name and not _is_ip_literal(name) and name not in names:
+                names.append(name)
+    if not names:
+        console.print("[yellow]no virtual hosts discovered yet[/]")
+        return
+
+    entries = [(target_ip, n) for n in names]
+    console.print(f"[bold]/etc/hosts entries[/] ({len(entries)}):\n")
+    for tip, n in entries:
+        console.print(f"  {tip}\t{n}", markup=False)
+
+    if not write:
+        console.print("\n[dim]add them with sudo:  breachload hosts <cfg> --write[/]")
+        return
+
+    hosts_path = Path("/etc/hosts")
+    try:
+        existing = hosts_path.read_text(encoding="utf-8") if hosts_path.exists() else ""
+    except OSError as exc:
+        console.print(f"[bold red]cannot read /etc/hosts:[/] {escape(str(exc))}")
+        raise typer.Exit(1) from None
+    missing = [(tip, n) for tip, n in entries if n not in existing.split()]
+    if not missing:
+        console.print("\n[green]all entries already present in /etc/hosts[/]")
+        return
+    if not _confirm(f"append {len(missing)} entry(ies) to /etc/hosts"):
+        console.print("[yellow]declined[/]")
+        raise typer.Exit(0)
+    block = "\n".join(f"{tip}\t{n}" for tip, n in missing)
+    try:
+        with hosts_path.open("a", encoding="utf-8") as fh:
+            fh.write(f"\n# breachload: {cfg.name}\n{block}\n")
+    except OSError as exc:
+        console.print(f"[bold red]cannot write /etc/hosts:[/] {escape(str(exc))} "
+                      "(run with sudo)")
+        raise typer.Exit(1) from None
+    console.print(f"[bold green]added[/] {len(missing)} entry(ies) to /etc/hosts")
+
+
+@app.command()
+def privesc(config: Path = typer.Argument(..., help="engagement YAML"),
+            lhost: str = typer.Option(None, help="your box IP for the transfer commands "
+                                      "(defaults to the engagement's lhost)"),
+            http_port: int = typer.Option(8000, help="port for your linpeas/pspy web server")):
+    """Print the Linux privilege-escalation enumeration playbook (transfer + run + loot).
+
+    Copy-paste-ready commands to stabilize a shell, triage, transfer and run
+    linpeas/pspy from your box, and feed the output back to `breachload loot` -
+    which names the escalation (SUID/sudo via GTFOBins, kernel via the suggester).
+    """
+    from .analysis.privesc_enum import playbook_lines as _pb
+    cfg = _load_config(config)
+    lhost = lhost or cfg.lhost or "LHOST"
+    console.print(f"[bold]breachload - privilege-escalation enumeration[/]  "
+                  f"[dim](LHOST={lhost})[/]\n")
+    for line in _pb(lhost, http_port):
+        if line and not line.startswith(" "):
+            console.print(f"[bold cyan]{escape(line)}[/]")
+        else:
+            console.print(line, markup=False)   # commands contain [ ] { } | -> verbatim
 
 
 @app.command()
