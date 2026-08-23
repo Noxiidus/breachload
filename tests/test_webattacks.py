@@ -44,3 +44,25 @@ class TestGroupPrivesc:
     def test_wired_into_loot(self):
         findings, _ = loot("uid=0 groups=docker,sudo\n")
         assert any("docker" in f.title for f in findings)
+
+
+class TestAuthAwareRecrawl:
+    def test_ffuf_cookie_flag(self):
+        from breachload.tools.ffuf import FfufAdapter
+        cmd = FfufAdapter().build_command("http://t", cookie="sess=abc")
+        assert "-H" in cmd and any("Cookie: sess=abc" in tok for tok in cmd)
+
+    def test_recrawl_suggested_when_creds_exist(self):
+        from breachload.core.state import Credential
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.9").upsert_service(Service(port=80, name="http"))
+        st.credentials.append(Credential(username="bob", secret="pw"))
+        out = SuggestionEngine().suggest(st)
+        web = next(s for s in out if "attack-surface" in s.title)
+        assert any("authenticated re-crawl" in a for a in web.actions)
+
+    def test_no_recrawl_without_creds(self):
+        st = EngagementState(name="t")
+        st.upsert_host("10.10.10.9").upsert_service(Service(port=80, name="http"))
+        web = next(s for s in SuggestionEngine().suggest(st) if "attack-surface" in s.title)
+        assert not any("authenticated re-crawl" in a for a in web.actions)

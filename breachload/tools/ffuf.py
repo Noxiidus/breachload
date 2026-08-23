@@ -43,6 +43,7 @@ class FfufAdapter(ToolAdapter):
         extensions: str = "",
         recursion: bool = False,
         recursion_depth: int = 1,
+        cookie: str = "",
     ) -> list[str]:
         url = target if "FUZZ" in target else f"{_as_url(target).rstrip('/')}/FUZZ"
         # -s silences the live UI; JSON goes to the OUTFILE (not stdout, which -s
@@ -61,6 +62,10 @@ class FfufAdapter(ToolAdapter):
         # trees). Bounded depth so it can't wander indefinitely.
         if recursion:
             cmd += ["-recursion", "-recursion-depth", str(max(1, recursion_depth))]
+        # Auth-aware crawl: pass a session cookie so content behind a login is fuzzed
+        # too (a whole app surface only appears once authenticated).
+        if cookie:
+            cmd += ["-H", f"Cookie: {cookie}"]
         return cmd
 
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:

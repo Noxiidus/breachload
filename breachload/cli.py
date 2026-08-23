@@ -760,6 +760,48 @@ def privesc(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def winprivesc(config: Path = typer.Argument(..., help="engagement YAML"),
+               lhost: str = typer.Option(None, help="your box IP for the transfer commands"),
+               http_port: int = typer.Option(8000, help="port for your winPEAS web server"),
+               scan: Path = typer.Option(None, help="winPEAS/whoami output to parse into findings"),
+               text: str = typer.Option(None, help="output text to parse")):
+    """Windows privesc: print the winPEAS playbook, or (with --scan) parse output into findings."""
+    from .analysis.winprivesc import parse_winpeas
+    from .analysis.winprivesc import playbook_lines as _pb
+    cfg = _load_config(config)
+
+    blob = ""
+    if scan and Path(scan).is_file():
+        blob += Path(scan).read_text(encoding="utf-8", errors="replace")
+    if text:
+        blob += "\n" + text
+
+    if not blob.strip():
+        lhost = lhost or cfg.lhost or "LHOST"
+        console.print(f"[bold]breachload - Windows privilege-escalation enum[/]  "
+                      f"[dim](LHOST={lhost})[/]\n")
+        for line in _pb(lhost, http_port):
+            if line and not line.startswith(" "):
+                console.print(f"[bold cyan]{escape(line)}[/]")
+            else:
+                console.print(line, markup=False)
+        return
+
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
+    findings = parse_winpeas(blob)
+    existing = {f.title for f in state.findings}
+    new = [f for f in findings if f.title not in existing]
+    for f in new:
+        state.add_finding(f)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state.save(state_path)
+    console.print(f"[bold green]winprivesc[/] +{len(new)} finding(s)")
+    for f in new:
+        console.print(f"  [{f.severity.value}] {escape(f.title)}")
+
+
+@app.command()
 def crack(config: Path = typer.Argument(..., help="engagement YAML"),
           hash: str = typer.Option(None, "--hash", help="a single hash to identify/crack"),
           user: str = typer.Option(None, help="username to attach a cracked password to"),

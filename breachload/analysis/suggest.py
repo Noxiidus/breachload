@@ -178,10 +178,18 @@ class SuggestionEngine:
                 continue
             scheme = "https" if http.port in _HTTPS else "http"
             url = f"{scheme}://{host.address}:{http.port}"
+            actions = probe_lines(url)
+            # Auth-aware re-crawl: once creds exist, a lot of the app only appears
+            # behind the login. Name the cookie-driven re-fuzz explicitly.
+            if state.credentials:
+                actions += [
+                    "# authenticated re-crawl (log in, grab the session cookie, then):",
+                    f"    ffuf -w <wordlist> -u {url}/FUZZ -H 'Cookie: <session>=<value>' -ac",
+                ]
             out.append(Suggestion(
                 priority=5, title=f"Web attack-surface probes on {url}",
                 why="light, confirm-gated injection tests to find the foothold",
-                actions=probe_lines(url),
+                actions=actions,
             ))
         return out
 

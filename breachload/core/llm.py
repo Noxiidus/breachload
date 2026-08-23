@@ -208,8 +208,13 @@ class Planner:
                 for svc in host.services.values():
                     key = f"{host.address}:{svc.port}"
                     if _is_http(svc) and "nuclei" in names and not state.has_action("nuclei", key):
-                        return Plan("run", "nuclei", _svc_url(host.address, svc), {},
-                                    "Scan the web service for known vulnerabilities.")
+                        # Auto-select nuclei templates for the detected stack — a
+                        # targeted, faster scan than the full template set.
+                        tags = _nuclei_tags(svc)
+                        args = {"tags": tags} if tags else {}
+                        why = (f"Scan the web service with nuclei (tags: {tags})."
+                               if tags else "Scan the web service for known vulnerabilities.")
+                        return Plan("run", "nuclei", _svc_url(host.address, svc), args, why)
             return Plan("phase_complete", rationale="Vulnerability scan complete.")
 
         return Plan("phase_complete", rationale="No heuristic for this phase yet.")
@@ -273,6 +278,29 @@ def _is_rsync(svc) -> bool:
 
 def _is_mongo(svc) -> bool:
     return (svc.name or "").lower() in ("mongodb", "mongod") or svc.port == 27017
+
+
+# Fingerprint token -> nuclei tag. Scanned against the service product/name/notes so
+# a detected stack picks the matching template set instead of running everything.
+_NUCLEI_TAG_MAP = {
+    "wordpress": "wordpress", "joomla": "joomla", "drupal": "drupal", "magento": "magento",
+    "apache": "apache", "nginx": "nginx", "iis": "iis", "tomcat": "tomcat",
+    "jboss": "jboss", "weblogic": "weblogic", "jenkins": "jenkins", "gitlab": "gitlab",
+    "gitea": "gitea", "grafana": "grafana", "kibana": "kibana", "jira": "jira",
+    "confluence": "confluence", "phpmyadmin": "phpmyadmin", "spring": "springboot",
+    "struts": "struts", "laravel": "laravel", "wso2": "wso2", "zabbix": "zabbix",
+    "cacti": "cacti", "solr": "solr", "coldfusion": "coldfusion", "citrix": "citrix",
+}
+
+
+def _nuclei_tags(svc) -> str:
+    """Comma-joined nuclei tags for a service's detected technologies (dedup, ordered)."""
+    haystack = " ".join([svc.product or "", svc.name or "", *svc.notes]).lower()
+    tags: list[str] = []
+    for token, tag in _NUCLEI_TAG_MAP.items():
+        if token in haystack and tag not in tags:
+            tags.append(tag)
+    return ",".join(tags)
 
 
 def _has_http(host) -> bool:
