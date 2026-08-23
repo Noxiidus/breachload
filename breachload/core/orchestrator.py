@@ -242,8 +242,43 @@ class Orchestrator:
                 self._autonomous_privesc()
             else:
                 await self.run_phase(max_steps=max_steps)
+                # After the read-only probes, try to auto-establish a foothold from a
+                # matching KB CVE, so the POST phase has a session to escalate through.
+                if phase == Phase.EXPLOIT and self.auto_exploit and self.session is None:
+                    self._auto_foothold()
             if phase == stop_after:
                 break
+
+    def _auto_foothold(self) -> None:
+        """Fire a coded auto-foothold module for a matching finding and, on success,
+        register the resulting session for the POST phase. Auto-exploit mode only."""
+        from ..exploit.footholds import foothold_for
+
+        for f in self.state.findings:
+            for cve in f.cve:
+                module = foothold_for(cve)
+                if module is None or not f.host:
+                    continue
+                if not self.validator.scope.allows(f.host):
+                    continue
+                head = (f.service_key or "").split("/", 1)[0]
+                port = int(head) if head.isdigit() else 80
+                scheme = "https" if port in (443, 8443) else "http"
+                self.emit("run", f"auto-foothold: {module.name} on {f.host}:{port}")
+                self.audit.write("auto_foothold", cve=cve, host=f.host, port=port)
+                session = module.establish(f.host, port, scheme=scheme)
+                if session is not None:
+                    self.session = session
+                    self.emit("finding", f"[critical] Foothold established via {module.name}")
+                    self.state.add_finding(Finding(
+                        title=f"Foothold established: {module.name}",
+                        severity=Severity.CRITICAL, host=f.host, cve=[cve],
+                        description="Autonomous auto-foothold module gained code execution "
+                                    "and opened a session for post-exploitation.",
+                    ))
+                    self.state.save(self.state_path)
+                    return
+                self.emit("note", f"auto-foothold {cve} did not land; foothold stays guided")
 
     def _autonomous_privesc(self) -> None:
         """Drive privilege escalation through the foothold session: enumerate, parse,

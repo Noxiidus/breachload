@@ -433,6 +433,10 @@ def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
                         rate_limiter=rate, auto_exploit=True, session=sess)
     asyncio.run(orch.run_engagement(stop_after=Phase.POST))
     state.save(state_path)
+    # Persist a session the engine auto-established, so it can be reused/inspected.
+    if orch.session is not None and sess is None:
+        orch.session.save(work / "session.json")
+        console.print(f"[bold green]session[/] auto-established on {orch.session.host}")
 
     console.print("\n" + state.summary() + "\n")
     suggestions = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
