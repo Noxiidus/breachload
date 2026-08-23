@@ -534,6 +534,39 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
+         scan: Path = typer.Option(None, help="certipy find output file to parse"),
+         text: str = typer.Option(None, help="certipy find output as text")):
+    """Parse `certipy find -vulnerable` output into ESC findings (with exploit commands)."""
+    from .analysis.adcs import parse_certipy
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
+
+    blob = ""
+    if scan and Path(scan).is_file():
+        blob += Path(scan).read_text(encoding="utf-8", errors="replace")
+    if text:
+        blob += "\n" + text
+    if not blob.strip():
+        console.print("[yellow]nothing to parse - pass --scan <file> or --text[/]")
+        raise typer.Exit(1)
+
+    findings = parse_certipy(blob)
+    existing = {f.title for f in state.findings}
+    new = [f for f in findings if f.title not in existing]
+    for f in new:
+        state.add_finding(f)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state.save(state_path)
+    console.print(f"[bold green]adcs[/] +{len(new)} ESC finding(s)")
+    for f in new:
+        console.print(f"  [{f.severity.value}] {f.title}")
+        if f.exploit:
+            console.print("    " + f.exploit, markup=False)
+
+
+@app.command()
 def creds(config: Path = typer.Argument(..., help="engagement YAML"),
           add: str = typer.Option(None, help="add a credential as 'user:secret' (or just 'user')"),
           kind: str = typer.Option("password", help="password | hash | key | ticket"),

