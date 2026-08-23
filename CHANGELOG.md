@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Modern Active Directory: **ADCS ESC parsing** (`analysis/adcs.py` + `adcs` command) folds
+  `certipy find -vulnerable` output into per-template ESC1-ESC16 findings, each with the concrete
+  `certipy req`/`account update` exploit command; and three new attack chains — **ESC9/ESC16**
+  (no-security-extension UPN swap), **Shadow Credentials** (msDS-KeyCredentialLink via certipy
+  shadow / pyWhisker + PKINIT), and **ACL abuse** (BloodHound edges -> bloodyAD).
+- **searchsploit / Exploit-DB integration** (`analysis/searchsploit.py` + `sploit` command):
+  turns each versioned service into a searchsploit query, parses the JSON hits, and records one
+  finding per service with the top Exploit-DB titles, their CVEs, and a `searchsploit -m` mirror
+  command. Offline-graceful when the binary is absent.
+- **Reverse-shell handler kit** (`analysis/handler.py` + `listen` command): a full catch kit -
+  listener options (rlwrap-nc / pwncat / penelope / msf), a payload HTTP server, target-side
+  fetch+exec and direct reverse-shell one-liners (LHOST/LPORT filled), and PTY-upgrade steps.
+  `--run` optionally launches the netcat listener.
+
 ## [0.11.0] - 2026-08-23
 
 ### Added

