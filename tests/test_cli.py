@@ -112,6 +112,32 @@ class TestUtilityCommands:
         state = EngagementState.load(tmp_path / "t" / "state.json")
         assert "flag{pwned_it}" in state.flags
 
+    def test_crack_identifies_and_prints_commands(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        h = "$2b$12$" + "a" * 53
+        result = runner.invoke(app, ["crack", str(cfg), "--hash", h])
+        assert result.exit_code == 0, result.output
+        assert "bcrypt" in result.output and "hashcat -m 3200" in result.output
+
+    def test_crack_run_stores_cracked_password(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
+        from breachload.core.state import EngagementState
+        cfg = tmp_path / "t.yaml"
+        cfg.write_text("name: t\ntargets: ['10.10.10.5']\n", encoding="utf-8")
+        h = "5f4dcc3b5aa765d61d8327deb882cf99"   # md5("password")
+        import breachload.analysis.hashcrack as hc
+        from breachload.analysis.hashcrack import CrackResult
+        monkeypatch.setattr(hc, "run_hashcat",
+                            lambda *a, **k: CrackResult(True, "password", "MD5", True, "ok"))
+        result = runner.invoke(app, ["crack", str(cfg), "--hash", h,
+                                     "--user", "bob", "--run"])
+        assert result.exit_code == 0, result.output
+        assert "cracked" in result.output
+        state = EngagementState.load(tmp_path / "t" / "state.json")
+        assert any(c.username == "bob" and c.secret == "password" for c in state.credentials)
+
     def test_corrupt_state_is_a_clean_error_not_a_traceback(self, tmp_path, monkeypatch):
         monkeypatch.setattr(climod, "ENGAGEMENTS", tmp_path)
         cfg = tmp_path / "t.yaml"

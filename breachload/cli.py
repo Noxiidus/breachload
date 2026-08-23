@@ -540,6 +540,64 @@ def creds(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def crack(config: Path = typer.Argument(..., help="engagement YAML"),
+          hash: str = typer.Option(None, "--hash", help="a single hash to identify/crack"),
+          user: str = typer.Option(None, help="username to attach a cracked password to"),
+          wordlist: str = typer.Option("/usr/share/wordlists/rockyou.txt", help="wordlist"),
+          run: bool = typer.Option(False, "--run",
+                                   help="actually run hashcat (else just print commands)")):
+    """Identify a hash, print rockyou crack commands, and (with --run) crack + store it.
+
+    Without --hash it processes every hash-kind credential already in state. A
+    cracked plaintext is written back as a validated password credential, so the
+    lateral-movement / AD suggestions can reuse it immediately.
+    """
+    from .analysis.hashcrack import crack_commands, identify, run_hashcat
+
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
+
+    # Build the work list: an explicit --hash, else every stored hash credential.
+    targets: list[tuple[str, str | None]] = []
+    if hash:
+        targets.append((hash, user))
+    else:
+        targets += [(c.secret, c.username) for c in state.credentials
+                    if c.kind == "hash" and c.secret]
+    if not targets:
+        console.print("[yellow]no hashes to crack[/] - pass --hash or add one with "
+                      "`creds --add user:<hash> --kind hash`")
+        raise typer.Exit(1)
+
+    cracked_any = False
+    for raw, who in targets:
+        cands = identify(raw)
+        label = ", ".join(c.name for c in cands) or "unrecognized"
+        console.print(f"[bold]{escape(raw[:48])}{'...' if len(raw) > 48 else ''}[/] "
+                      f"[dim]-> {label}[/]")
+        for cmd in crack_commands(raw, wordlist):
+            console.print("    " + cmd, markup=False)
+        if run:
+            res = run_hashcat(raw, wordlist)
+            if res.cracked and res.plaintext:
+                cracked_any = True
+                console.print(f"  [bold green]cracked[/] {escape(res.plaintext)} ({res.hash_type})")
+                state.credentials.append(Credential(
+                    username=who, secret=res.plaintext, kind="password",
+                    source=f"cracked {res.hash_type}", validated=True))
+            else:
+                console.print(f"  [yellow]{escape(res.detail)}[/]")
+        console.print()
+
+    if cracked_any:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state.save(state_path)
+        console.print("[dim]cracked passwords stored - run `suggest` to reuse them "
+                      "across hosts/services.[/]")
+
+
+@app.command()
 def status(config: Path = typer.Argument(..., help="engagement YAML")):
     """Show current known state for an engagement."""
     cfg = _load_config(config)
