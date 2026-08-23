@@ -869,6 +869,40 @@ def sploit(config: Path = typer.Argument(..., help="engagement YAML")):
 
 
 @app.command()
+def bloodhound(config: Path = typer.Argument(..., help="engagement YAML"),
+               scan: list[Path] = typer.Option(None, help="BloodHound JSON file(s) to parse")):
+    """Parse BloodHound JSON into AD attack findings (kerberoast, AS-REP, ACL edges)."""
+    import json as _json
+
+    from .analysis.bloodhound import parse_bloodhound
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
+
+    files = [p for p in (scan or []) if Path(p).is_file()]
+    if not files:
+        console.print("[yellow]pass one or more --scan <bloodhound.json> files[/]")
+        raise typer.Exit(1)
+
+    findings = []
+    for fp in files:
+        try:
+            findings += parse_bloodhound(_json.loads(Path(fp).read_text(encoding="utf-8")))
+        except (ValueError, OSError) as exc:
+            console.print(f"[yellow]skip {escape(str(fp))}: {escape(str(exc))}[/]")
+
+    existing = {f.title for f in state.findings}
+    new = [f for f in findings if f.title not in existing]
+    for f in new:
+        state.add_finding(f)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state.save(state_path)
+    console.print(f"[bold green]bloodhound[/] +{len(new)} AD finding(s)")
+    for f in new[:40]:
+        console.print(f"  [{f.severity.value}] {escape(f.title)}")
+
+
+@app.command()
 def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="certipy find output file to parse"),
          text: str = typer.Option(None, help="certipy find output as text")):
