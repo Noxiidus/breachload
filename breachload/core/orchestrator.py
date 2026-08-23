@@ -76,6 +76,14 @@ class Orchestrator:
         self.emit = on_event or (lambda ev, msg: None)
         self._stop = False
 
+    def _prune_retryable_history(self) -> None:
+        """Remove safety-blocked / declined actions (approved=False, no exit code) so a
+        new run re-evaluates them against the current scope and confirmation."""
+        self.state.history = [
+            a for a in self.state.history
+            if a.approved or a.exit_code is not None
+        ]
+
     def request_stop(self) -> None:
         """Kill-switch: stop the engagement after the current action."""
         self._stop = True
@@ -116,7 +124,9 @@ class Orchestrator:
             self.emit("error", f"Bad command for {plan.tool}: {exc}")
             # Include the target so has_action() records this attempt and the
             # planner doesn't re-propose the same failing action in a loop.
-            self._record(plan, [plan.tool, plan.target or ""], approved=False)
+            # exit_code=-1 marks it as a real (permanent) failure so it survives the
+            # start-of-run prune of merely safety-blocked actions.
+            self._record(plan, [plan.tool, plan.target or ""], approved=False, exit_code=-1)
             return True
 
         decision = self.validator.check(command, adapter.risk)
@@ -202,6 +212,13 @@ class Orchestrator:
         to completion, then the next begins, all driven by state. In auto-exploit
         mode the walk continues through exploitation and post-exploitation.
         """
+        # A safety-blocked or user-declined action was recorded only to prevent an
+        # in-run re-propose loop; it must not suppress a retry on a *later* run whose
+        # scope or confirmation may differ (e.g. a vhost added to scope between runs).
+        # Drop those (approved=False, exit_code is None) at the start of each run;
+        # executed actions and permanent build failures (exit_code set) are kept.
+        self._prune_retryable_history()
+
         order = AUTO_EXPLOIT_ORDER if self.auto_exploit else PHASE_ORDER
         if self.state.phase in order:
             start = order.index(self.state.phase)

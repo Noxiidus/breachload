@@ -103,6 +103,48 @@ class TestPhaseWalk:
         assert state.phase == Phase.POST
 
 
+class TestHistoryPrune:
+    def _orch(self, tmp_path, state):
+        from breachload.safety.audit import AuditLog
+        from breachload.safety.scope import Scope
+        from breachload.safety.validator import Risk, Validator
+        from breachload.tools.registry import allowed_binaries, default_registry
+        cfg = EngagementConfig(name="t", targets=["10.10.10.5"])
+        reg = default_registry()
+
+        class _Planner:
+            online = False
+
+            def next_action(self, *a, **k):
+                from breachload.core.llm import Plan
+                return Plan("phase_complete", rationale="done")
+
+        return Orchestrator(cfg, state, reg,
+                            Validator(Scope.from_config(cfg.targets), allowed_binaries(reg),
+                                      Risk.ACTIVE),
+                            _Planner(), AuditLog(tmp_path / "a.jsonl"), tmp_path / "s.json")
+
+    def test_blocked_actions_pruned_executed_kept(self, tmp_path):
+        import asyncio
+
+        from breachload.core.state import ActionRecord, Phase
+        state = EngagementState(name="t")
+        state.history = [
+            ActionRecord(phase=Phase.ENUM, tool="whatweb", command=["whatweb", "in-scope"],
+                         approved=True, exit_code=0),                       # executed - keep
+            ActionRecord(phase=Phase.ENUM, tool="whatweb", command=["whatweb", "vhost.htb"],
+                         approved=False, exit_code=None),                   # blocked - drop
+            ActionRecord(phase=Phase.ENUM, tool="ffuf", command=["ffuf", "bad"],
+                         approved=False, exit_code=-1),                     # build-fail - keep
+        ]
+        orch = self._orch(tmp_path, state)
+        asyncio.run(orch.run_engagement(stop_after=Phase.VULN))
+        tools_targets = [(a.tool, a.command[-1]) for a in state.history]
+        assert ("whatweb", "in-scope") in tools_targets       # executed kept
+        assert ("ffuf", "bad") in tools_targets               # build-failure kept
+        assert ("whatweb", "vhost.htb") not in tools_targets  # blocked pruned -> retryable
+
+
 class TestCli:
     def _cfg(self, tmp_path, **extra):
         lines = "name: t\ntargets: ['10.10.10.5']\n"
