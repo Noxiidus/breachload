@@ -47,6 +47,8 @@ class TestEnumPhase:
         self._ran(st, "httpx")
         assert Planner()._heuristic(st, _tools()).tool == "whatweb"
         self._ran(st, "whatweb")
+        assert Planner()._heuristic(st, _tools()).tool == "appfinger"
+        self._ran(st, "appfinger")
         assert Planner()._heuristic(st, _tools()).tool == "ffuf"
 
     def test_smb_service_gets_netexec_then_enum4linux(self):
@@ -68,7 +70,7 @@ class TestEnumPhase:
     def test_no_vhostfuzz_for_ip_host(self):
         # An IP has no subdomains — fuzzing must never be proposed for it.
         st = _state_with(Phase.ENUM, [Service(port=80, name="http")])  # host is an IP
-        for tool in ("httpx", "whatweb", "ffuf"):
+        for tool in ("httpx", "whatweb", "appfinger", "ffuf"):
             self._ran(st, tool)
         assert Planner()._heuristic(st, _tools()).action == "phase_complete"
 
@@ -76,7 +78,7 @@ class TestEnumPhase:
         # Regression: enumerating :8080 must not mark :80 as done. has_action's
         # trailing-digit guard keeps the two ports distinct.
         st = _state_with(Phase.ENUM, [Service(port=8080, name="http")])
-        for tool in ("httpx", "whatweb", "ffuf"):
+        for tool in ("httpx", "whatweb", "appfinger", "ffuf"):
             self._ran(st, tool, url="http://10.10.10.5:8080")
         st.hosts["10.10.10.5"].upsert_service(Service(port=80, name="http"))
         plan = Planner()._heuristic(st, _tools())
@@ -108,7 +110,7 @@ class TestReconDepth:
         p = Planner(config=cfg)
         # advance past httpx + whatweb to the ffuf step
         from breachload.core.state import ActionRecord
-        for t in ("httpx", "whatweb"):
+        for t in ("httpx", "whatweb", "appfinger"):
             st.record_action(ActionRecord(phase=Phase.ENUM, tool=t,
                                           command=[t, "http://10.10.10.5:80"]))
         plan = p._heuristic(st, _tools())

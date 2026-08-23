@@ -312,11 +312,17 @@ class Orchestrator:
                 title=f"Privilege escalation to root via {result.method}",
                 severity=Severity.CRITICAL, host=session.host,
                 description="Autonomous escalation confirmed by reading the root proof file.",
-                evidence=result.evidence,
+                evidence=result.evidence, exploit=result.root_run,
             ))
             if result.root_flag and self.state.add_flag(result.root_flag):
                 self.emit("flag", f"captured {result.root_flag}")
                 self.audit.write("flag", flag=result.root_flag)
+            # Upgrade the session to a persistent root channel for the operator.
+            if result.root_run:
+                from .session import RootSession
+                self.session = RootSession(host=session.host, base=session,
+                                          template=result.root_run)
+                self.emit("note", f"root session ready (run root cmds via {result.method})")
         else:
             self.emit("note", f"no auto-escalation ({result.evidence}); "
                               "see the privesc playbook in the plan")

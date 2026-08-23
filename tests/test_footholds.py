@@ -105,7 +105,9 @@ class TestOrchestratorAutoFoothold:
                             _P(), AuditLog(tmp_path / "a.jsonl"), tmp_path / "s.json",
                             auto_exploit=True)
         asyncio.run(orch.run_engagement(stop_after=Phase.POST))
-        # foothold established -> session set -> POST privesc rooted via docker
-        assert orch.session is sess
+        # foothold established -> session set -> POST privesc rooted via docker,
+        # and the session was upgraded to a persistent root channel.
+        from breachload.core.session import RootSession
+        assert isinstance(orch.session, RootSession) and orch.session.base is sess
         assert "b17c258e4fe967463a10b09c5e72102b" in state.flags
         fmod._MODULES[:] = [fmod.FreepbxFoothold()]   # restore

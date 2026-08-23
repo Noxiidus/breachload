@@ -144,6 +144,10 @@ class Planner:
                         if "whatweb" in names and not state.has_action("whatweb", key):
                             return Plan("run", "whatweb", url, {},
                                         "Fingerprint the web service.")
+                        if "appfinger" in names and not state.has_action("appfinger", key):
+                            return Plan("run", "appfinger", url, {},
+                                        "Deep app fingerprint (follows redirects to the "
+                                        "real app / admin panel).")
                         if "ffuf" in names and not state.has_action("ffuf", key):
                             args: dict = {}
                             exts = (self.config.web_extensions if self.config else "") or ""

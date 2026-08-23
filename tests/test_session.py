@@ -181,3 +181,29 @@ class TestSuidEscalation:
         enum = "/usr/bin/passwd\n/usr/bin/sudo\n"
         r = attempt_escalation(s, enum, [])
         assert not r.escalated
+
+
+class TestRootSession:
+    def test_root_session_wraps_command(self):
+        from breachload.core.session import RootSession
+        base = WebshellSession.from_spec("http://h/s.php?cmd=FUZZ")
+        captured = {}
+        base.run = lambda cmd, **k: captured.setdefault("cmd", cmd) or "ok"
+        rs = RootSession(host="h", base=base, template='sudo sh -c "{CMD}"')
+        rs.run("id")
+        assert captured["cmd"] == 'sudo sh -c "id"'
+
+    def test_root_session_roundtrip(self):
+        from breachload.core.session import RootSession, Session
+        base = SshSession.from_spec("a:b@h")
+        rs = RootSession(host="h", base=base, template='sudo sh -c "{CMD}"')
+        back = Session.from_dict(rs.to_dict())
+        assert isinstance(back, RootSession) and back.template == 'sudo sh -c "{CMD}"'
+
+
+class TestEscalationRootRun:
+    def test_full_sudo_sets_root_run(self):
+        s = WebshellSession.from_spec("http://h/s.php?cmd=FUZZ")
+        s.run = lambda c, **k: "d41d8cd98f00b204e9800998ecf8427e" if "sudo cat" in c else ""
+        r = attempt_escalation(s, "(ALL : ALL) ALL", [])
+        assert r.escalated and r.root_run == 'sudo sh -c "{CMD}"'

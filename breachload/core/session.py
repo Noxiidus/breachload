@@ -75,6 +75,10 @@ class Session(ABC):
             return SshSession(host=d["host"], user=d["user"],
                               password=d.get("password", ""), key=d.get("key", ""),
                               port=d.get("port", 22))
+        if kind == "root":
+            base = Session.from_dict(d["base"])
+            if base is not None:
+                return RootSession(host=d["host"], base=base, template=d["template"])
         return None
 
 
@@ -127,3 +131,22 @@ class SshSession(Session):
         user, _, password = creds.partition(":")
         host, _, port = hostpart.partition(":")
         return cls(host=host, user=user, password=password, port=int(port) if port else 22)
+
+
+@dataclass
+class RootSession(Session):
+    """A root command channel layered on a foothold session: after autonomous
+    escalation, commands run as root via the matched vector's template ({CMD})."""
+    base: Session | None = None
+    template: str = "{CMD}"
+
+    def _argv(self, command: str) -> list[str]:
+        return self.base._argv(self.template.replace("{CMD}", command))
+
+    def run(self, command: str, *, timeout: float = 30.0, runner=None) -> str:
+        return self.base.run(self.template.replace("{CMD}", command),
+                             timeout=timeout, runner=runner)
+
+    def to_dict(self) -> dict:
+        return {"kind": "root", "host": self.host,
+                "base": self.base.to_dict(), "template": self.template}

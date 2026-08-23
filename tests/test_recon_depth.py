@@ -62,8 +62,8 @@ class TestPlannerFfufRecursion:
                                ffuf_recursion=True, recursion_depth=3)
         st = EngagementState(name="t", phase=Phase.ENUM)
         st.upsert_host("10.10.10.5").upsert_service(Service(port=80, name="http"))
-        # Drive past httpx/whatweb so the planner reaches the ffuf step.
-        for tool in ("httpx", "whatweb"):
+        # Drive past httpx/whatweb/appfinger so the planner reaches the ffuf step.
+        for tool in ("httpx", "whatweb", "appfinger"):
             st.record_action(ActionRecord(phase=Phase.ENUM, tool=tool,
                                           command=[tool, "http://10.10.10.5:80"]))
         plan = Planner(config=cfg)._heuristic(st, _tools())
