@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Autonomous, session-driven privilege escalation** (`core/session.py`, `analysis/privesc_auto.py`,
+  `session` command) — the piece that makes auto-exploit a full autonomous chain once a foothold is
+  in hand. A **Session** is a command-execution channel to an already-compromised, in-scope host:
+  **webshell** (a URL with a `FUZZ` marker, run via curl) or **ssh** (user:pass@host via sshpass /
+  key). `breachload session <cfg> --webshell '...FUZZ' | --ssh user:pass@host` registers it
+  (scope-checked, `--test` runs `id`). In the auto-exploit POST phase the engine then autonomously
+  runs the privesc enumeration through the session (`id`, `sudo -l`, SUID sweep, `getcap`, cron),
+  parses it with the existing `loot` parsers, and fires a curated escalation — full sudo, sudo
+  NOPASSWD on a scriptable binary, or the `docker` group — proving root by reading `/root/root.txt`.
+  Escalation is bounded to well-understood vectors that read the proof file, not arbitrary
+  persistence; the session host is scope-checked and every command is audited.
+
 ## [0.13.0] - 2026-08-23
 
 ### Added

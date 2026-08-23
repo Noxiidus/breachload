@@ -321,6 +321,52 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
         _write_pdf(md, report_path.with_suffix(".pdf"), cfg.name)
 
 
+@app.command()
+def session(config: Path = typer.Argument(..., help="engagement YAML"),
+            webshell: str = typer.Option(None, help="webshell URL with a FUZZ marker, "
+                                         "e.g. 'http://host/shell.php?cmd=FUZZ'"),
+            ssh: str = typer.Option(None, help="ssh foothold as 'user:pass@host[:port]'"),
+            test: bool = typer.Option(False, "--test", help="run `id` through the session")):
+    """Register a foothold session (webshell/ssh) that auto-exploit drives for privesc.
+
+    The session's host must be in scope. Stored in engagements/<name>/session.json;
+    auto-exploit uses it to autonomously enumerate and escalate in the POST phase.
+    """
+    from .core.session import Session, SshSession, WebshellSession
+    cfg = _load_config(config)
+    work = ENGAGEMENTS / cfg.name
+    sess_path = work / "session.json"
+
+    sess = None
+    try:
+        if webshell:
+            sess = WebshellSession.from_spec(webshell)
+        elif ssh:
+            sess = SshSession.from_spec(ssh)
+    except ValueError as exc:
+        console.print(f"[bold red]bad session spec:[/] {escape(str(exc))}")
+        raise typer.Exit(2) from None
+
+    if sess is not None:
+        scope = Scope.from_config(cfg.targets, cfg.exclude)
+        if not scope.allows(sess.host):
+            console.print(f"[bold red]refused:[/] session host {escape(sess.host)} is out of scope")
+            raise typer.Exit(2)
+        sess.save(sess_path)
+        console.print(f"[bold green]session set[/] ({sess.to_dict()['kind']}) on {sess.host}")
+    else:
+        sess = Session.load(sess_path)
+        if sess is None:
+            console.print("[yellow]no session set[/] - add one with --webshell or --ssh")
+            raise typer.Exit(1)
+        console.print(f"[bold]session[/] ({sess.to_dict()['kind']}) on {sess.host}")
+
+    if test:
+        out = sess.run("id")
+        console.print("[dim]$ id[/]")
+        console.print(out.strip() or "[yellow](no output)[/]", markup=False)
+
+
 @app.command(name="auto-exploit")
 def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
                  lhost: str = typer.Option(None, help="listener host for the attack plan"),
@@ -375,9 +421,16 @@ def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
                 scope=cfg.targets, engagement=cfg.name)
     rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
 
+    # A registered foothold session enables autonomous POST-phase privesc.
+    from .core.session import Session
+    sess = Session.load(work / "session.json")
+    if sess is not None:
+        console.print(f"  session  : autonomous privesc via {sess.to_dict()['kind']} "
+                      f"on {sess.host}")
+
     orch = Orchestrator(cfg, state, registry, validator, planner, audit, state_path,
                         confirm=_confirm, on_event=_emit, analyzer=Analyzer.default(),
-                        rate_limiter=rate, auto_exploit=True)
+                        rate_limiter=rate, auto_exploit=True, session=sess)
     asyncio.run(orch.run_engagement(stop_after=Phase.POST))
     state.save(state_path)
 

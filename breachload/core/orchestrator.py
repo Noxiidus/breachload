@@ -21,7 +21,7 @@ from ..tools.base import ToolAdapter, ToolResult
 from .config import EngagementConfig
 from .llm import Planner
 from .ratelimit import RateLimiter
-from .state import ActionRecord, EngagementState, Phase
+from .state import ActionRecord, EngagementState, Finding, Phase, Severity
 
 # The default automatic progression. Exploitation and beyond are excluded: they
 # require human intent, so the chain stops before them.
@@ -50,8 +50,13 @@ class Orchestrator:
         on_state: Callable[[EngagementState], None] | None = None,
         auto_exploit: bool = False,
         dry_run: bool = False,
+        session=None,
     ) -> None:
         self.config = config
+        # A foothold command-execution channel (webshell/ssh). When present in
+        # auto-exploit mode, the POST phase autonomously enumerates and escalates
+        # privileges through it. Its host must be in scope.
+        self.session = session
         # Dry-run: validate and show what WOULD run, but never execute (a safe
         # preview for learners). Actions are recorded so the planner advances.
         self.dry_run = dry_run
@@ -233,6 +238,51 @@ class Orchestrator:
             self.state.phase = phase
             self.emit("phase", f"== entering {phase.value} ==")
             self.state.save(self.state_path)
-            await self.run_phase(max_steps=max_steps)
+            if phase == Phase.POST and self.auto_exploit and self.session is not None:
+                self._autonomous_privesc()
+            else:
+                await self.run_phase(max_steps=max_steps)
             if phase == stop_after:
                 break
+
+    def _autonomous_privesc(self) -> None:
+        """Drive privilege escalation through the foothold session: enumerate, parse,
+        and fire a curated escalation, all audited. Only in auto-exploit mode."""
+        from ..analysis.privesc_auto import attempt_escalation, run_enum
+
+        session = self.session
+        if not self.validator.scope.allows(session.host):
+            self.emit("blocked", f"session host {session.host} is out of scope — refusing")
+            return
+        self.emit("run", f"autonomous privesc via session on {session.host}")
+        self.audit.write("session_enum", host=session.host)
+
+        findings, creds, raw = run_enum(session)
+        existing_titles = {f.title for f in self.state.findings}
+        existing_creds = {(c.username, c.secret, c.kind) for c in self.state.credentials}
+        for f in findings:
+            if f.title not in existing_titles:
+                self.state.add_finding(f)
+                self.emit("finding", f"[{f.severity.value}] {f.title}")
+        for c in creds:
+            if (c.username, c.secret, c.kind) not in existing_creds:
+                self.state.credentials.append(c)
+
+        result = attempt_escalation(session, raw, findings)
+        self.audit.write("session_escalation", method=result.method,
+                         escalated=result.escalated)
+        if result.escalated:
+            self.emit("finding", f"[critical] Root via {result.method}")
+            self.state.add_finding(Finding(
+                title=f"Privilege escalation to root via {result.method}",
+                severity=Severity.CRITICAL, host=session.host,
+                description="Autonomous escalation confirmed by reading the root proof file.",
+                evidence=result.evidence,
+            ))
+            if result.root_flag and self.state.add_flag(result.root_flag):
+                self.emit("flag", f"captured {result.root_flag}")
+                self.audit.write("flag", flag=result.root_flag)
+        else:
+            self.emit("note", f"no auto-escalation ({result.evidence}); "
+                              "see the privesc playbook in the plan")
+        self.state.save(self.state_path)
