@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-23
+
 ### Added
 - Four more service adapters (registry now 20): **ldap** (anonymous bind -> naming contexts +
   domain tag), **rpc** (`rpcinfo` portmapper dump), **rsync** (unauthenticated module listing),
@@ -473,7 +475,8 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/Noxiidus/breachload/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Noxiidus/breachload/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Noxiidus/breachload/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/Noxiidus/breachload/compare/v0.9.0...v0.9.1
