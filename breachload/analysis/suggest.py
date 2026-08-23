@@ -15,6 +15,7 @@ from ..core.state import EngagementState, Service, Severity
 from ..exploit.library import PayloadLibrary
 from .chains import ChainMatcher
 from .privesc_enum import playbook_lines
+from .webattacks import probe_lines
 
 _SEV_PRIORITY = {
     Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 3,
@@ -87,6 +88,7 @@ class SuggestionEngine:
         out: list[Suggestion] = []
         out += self._from_chains(state, lhost, lport)
         out += self._from_findings(state)
+        out += self._from_web_techniques(state)
         out += self._from_lateral(state)
         out += self._from_pivot(state, lhost)
         for host in state.hosts.values():
@@ -162,6 +164,24 @@ class SuggestionEngine:
                 actions=chain.render_steps(TARGET=target, LHOST=lhost, LPORT=lport,
                                            USER=user, PASS=passwd, DOMAIN=domain,
                                            PORT=_web_port(state, target)),
+            ))
+        return out
+
+    def _from_web_techniques(self, state: EngagementState) -> list[Suggestion]:
+        """One web attack-surface probe block per HTTP host - the injection classes
+        (SSTI/SQLi/LFI/upload/cmdi/SSRF/XXE/JWT) to test with first-probe payloads."""
+        out: list[Suggestion] = []
+        for host in state.hosts.values():
+            http = next((s for s in host.services.values()
+                         if s.port in _HTTP_PORTS or "http" in (s.name or "").lower()), None)
+            if http is None:
+                continue
+            scheme = "https" if http.port in _HTTPS else "http"
+            url = f"{scheme}://{host.address}:{http.port}"
+            out.append(Suggestion(
+                priority=5, title=f"Web attack-surface probes on {url}",
+                why="light, confirm-gated injection tests to find the foothold",
+                actions=probe_lines(url),
             ))
         return out
 
