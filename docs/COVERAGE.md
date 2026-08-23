@@ -113,7 +113,17 @@ existing template objects) from the DanglingTree solve.
 
 ## What breachload should NOT try to be
 
-An autonomous exploit-firing bot. The wins this session came from breachload
+By **default**, an autonomous exploit-firing bot. The wins came from breachload
 **mapping the surface** (vhostfuzz → admin panel → version) and a human taking the
-named CVE from there. Keep exploitation **guided and confirm-gated**: identify,
-name the CVE, generate a reviewed command — never auto-pop a shell unprompted.
+named CVE from there. The default posture keeps exploitation **guided and
+confirm-gated**: identify, name the CVE, generate a reviewed command — never
+auto-pop a shell unprompted.
+
+**Exception — the opt-in `auto-exploit` mode** (`docs/AUTO-EXPLOIT.md`): an
+authorized, audited, per-engagement mode that removes the confirmation prompt up to
+EXPLOIT and auto-walks through exploitation/post-exploitation. It exists for
+operators with written authorization for the whole scope, behind an operator gate.
+Even there the non-negotiables hold: **scope stays absolute** (off-scope hard-
+blocked), **DESTRUCTIVE still asks a human**, everything is audited, and only
+validated argv commands run (no shell) — so autonomous firing is bounded to what is
+expressible safely. It is a conscious, gated exception, not the default.

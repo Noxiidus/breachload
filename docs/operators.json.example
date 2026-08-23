@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy to ~/.config/breachload/operators.json (or point $BREACHLOAD_OPERATORS at it) and replace the tokens with long random secrets. NEVER commit the real file - it is git-ignored. Only the ids listed here can enable `breachload auto-exploit`.",
+  "operators": [
+    { "id": "alice", "token": "REPLACE-WITH-A-LONG-RANDOM-SECRET", "note": "engagement lead" },
+    { "id": "bob", "token": "REPLACE-WITH-ANOTHER-LONG-RANDOM-SECRET", "note": "operator" }
+  ]
+}

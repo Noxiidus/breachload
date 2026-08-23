@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Auto-exploit mode** (`breachload auto-exploit`, `core/authz.py`, `docs/AUTO-EXPLOIT.md`): an
+  opt-in, authorized, audited mode that walks an engagement autonomously through exploitation and
+  post-exploitation without per-action confirmation. Gated on three independent conditions — the
+  engagement's `auto_exploit: true` + `authorized: true` flags AND an operator that passes the
+  operator allowlist (`$BREACHLOAD_OPERATOR`/`$BREACHLOAD_TOKEN` vs a git-ignored operators file,
+  constant-time token compare). The invariants hold even here: scope stays absolute (off-scope
+  hard-blocked), DESTRUCTIVE actions still require a human, the injection guard is intact (only
+  validated argv runs, never a shell), and the authorization + every action are written to the
+  audit log. Fails closed with a specific reason when any condition is missing.
+
 ## [0.12.0] - 2026-08-23
 
 ### Added

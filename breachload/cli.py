@@ -272,6 +272,82 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
         _write_pdf(md, report_path.with_suffix(".pdf"), cfg.name)
 
 
+@app.command(name="auto-exploit")
+def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
+                 lhost: str = typer.Option(None, help="listener host for the attack plan"),
+                 lport: int = typer.Option(None, help="listener port"),
+                 yes: bool = typer.Option(False, "--yes",
+                                          help="skip the interactive 'are you sure' prompt")):
+    """AUTHORIZED autonomous mode: auto-walk recon -> exploitation -> post-exploitation.
+
+    Removes per-action confirmation up to EXPLOIT (DESTRUCTIVE actions still ask a
+    human, and off-scope targets are always hard-blocked). Requires the engagement
+    to set `auto_exploit: true` and `authorized: true`, AND the running operator to
+    pass the operator gate ($BREACHLOAD_OPERATOR / $BREACHLOAD_TOKEN vs the operators
+    file). Every action - and the authorization itself - is written to the audit log.
+    """
+    from .core.authz import gate_auto_exploit
+    from .safety.validator import Risk
+
+    cfg = _load_config(config)
+    decision = gate_auto_exploit(cfg)
+    if not decision.authorized:
+        console.print(f"[bold red]auto-exploit refused:[/] {escape(decision.reason)}")
+        console.print("[dim]the engine will not run autonomously without a passing gate. "
+                      "Use `breachload auto` for the safe, confirm-gated walk.[/]")
+        raise typer.Exit(2)
+
+    lhost = lhost or cfg.lhost or "LHOST"
+    lport = lport or cfg.lport
+    work = ENGAGEMENTS / cfg.name
+    state_path = work / "state.json"
+    state = _load_or_seed_state(cfg, state_path)
+    _warn_if_no_hosts(state, cfg)
+
+    scope = Scope.from_config(cfg.targets, cfg.exclude)
+    console.print("[bold red]== AUTO-EXPLOIT MODE ==[/]")
+    console.print(f"  operator : [bold]{escape(decision.operator or '?')}[/]")
+    console.print(f"  scope    : {', '.join(cfg.targets) or '(none)'}")
+    console.print("  bounds   : auto up to EXPLOIT; DESTRUCTIVE still asks; off-scope "
+                  "hard-blocked; all audited.")
+    if not yes and sys.stdout.isatty() and not typer.confirm(
+            "  proceed with autonomous exploitation of the scope above?", default=False):
+        console.print("[yellow]aborted[/]")
+        raise typer.Exit(0)
+
+    registry = default_registry()
+    # Threshold raised to EXPLOIT: exploit-class actions run without asking, but the
+    # scope check is unchanged (off-scope is always denied) and DESTRUCTIVE (> EXPLOIT)
+    # still routes to confirm() — a human.
+    validator = Validator(scope, allowed_binaries(registry), Risk.EXPLOIT)
+    planner = Planner(config=cfg)
+    audit = AuditLog(work / "audit.jsonl")
+    audit.write("authorization", mode="auto-exploit", operator=decision.operator,
+                scope=cfg.targets, engagement=cfg.name)
+    rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
+
+    orch = Orchestrator(cfg, state, registry, validator, planner, audit, state_path,
+                        confirm=_confirm, on_event=_emit, analyzer=Analyzer.default(),
+                        rate_limiter=rate, auto_exploit=True)
+    asyncio.run(orch.run_engagement(stop_after=Phase.POST))
+    state.save(state_path)
+
+    console.print("\n" + state.summary() + "\n")
+    suggestions = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
+    if suggestions:
+        console.print("[bold]== attack plan (remaining manual / guided steps) ==[/]\n")
+        for s in suggestions:
+            console.print(f"[bold cyan]> {escape(s.title)}[/]  [dim]{escape(s.why)}[/]")
+            for action in s.actions:
+                console.print("    " + action, markup=False)
+            console.print()
+
+    md = render_markdown(state)
+    report_path = work / "report.md"
+    report_path.write_text(md, encoding="utf-8")
+    console.print(f"[bold green]report[/] {report_path}")
+
+
 @app.command()
 def serve(config: Path = typer.Argument(..., help="engagement YAML"),
           host: str = typer.Option("127.0.0.1", help="bind host"),

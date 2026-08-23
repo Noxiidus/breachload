@@ -45,6 +45,17 @@ class EngagementConfig(BaseModel):
     # Minimum seconds between executed actions (0 = no throttle). Keeps the agent
     # from hammering a target.
     min_action_interval: float = 0.0
+    # --- auto-exploit mode (authorized, audited, scope-absolute) ----------------
+    # auto_exploit lets the engine run autonomously through exploitation and post-
+    # exploitation without per-action confirmation (up to EXPLOIT; DESTRUCTIVE is
+    # always still confirmed, and off-scope is always hard-blocked). It only takes
+    # effect when `authorized` is also true AND the running operator passes the
+    # operator gate (see core/authz.py) — otherwise the engine falls back to the
+    # normal confirm-gated behaviour.
+    auto_exploit: bool = False
+    # Per-engagement attestation that you have written authorization for this scope.
+    # Required for auto_exploit to activate — a deliberate, conscious opt-in.
+    authorized: bool = False
     notes: str = ""
 
     @field_validator("auto_threshold")

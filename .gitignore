@@ -35,3 +35,8 @@ htmlcov/
 *.swp
 .DS_Store
 Thumbs.db
+
+# ---- Secrets ----
+# Operator allowlist for the auto-exploit mode holds tokens; never commit it.
+operators.json
+.config/breachload/operators.json

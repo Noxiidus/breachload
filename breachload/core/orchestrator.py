@@ -23,9 +23,14 @@ from .llm import Planner
 from .ratelimit import RateLimiter
 from .state import ActionRecord, EngagementState, Phase
 
-# The automatic progression. Exploitation and beyond are intentionally excluded:
-# they require human intent even in full-auto, so the chain stops before them.
+# The default automatic progression. Exploitation and beyond are excluded: they
+# require human intent, so the chain stops before them.
 PHASE_ORDER = [Phase.RECON, Phase.ENUM, Phase.VULN]
+# The auto-exploit progression continues autonomously through exploitation and
+# post-exploitation. Only reachable behind the authorized, audited auto-exploit
+# gate (see core/authz.py); scope is still hard-enforced and DESTRUCTIVE actions
+# still require a human, even here.
+AUTO_EXPLOIT_ORDER = [Phase.RECON, Phase.ENUM, Phase.VULN, Phase.EXPLOIT, Phase.POST]
 
 
 class Orchestrator:
@@ -43,8 +48,13 @@ class Orchestrator:
         analyzer: Analyzer | None = None,
         rate_limiter: RateLimiter | None = None,
         on_state: Callable[[EngagementState], None] | None = None,
+        auto_exploit: bool = False,
     ) -> None:
         self.config = config
+        # Autonomous exploitation/post-exploitation. Set ONLY after the auto-exploit
+        # authorization gate has passed (the CLI enforces this); it merely extends
+        # the auto-walk — scope and DESTRUCTIVE gating are unchanged.
+        self.auto_exploit = auto_exploit
         self.state = state
         self.registry = registry
         self.validator = validator
@@ -178,17 +188,18 @@ class Orchestrator:
         """Walk the phases automatically from the current one up to `stop_after`.
 
         This is the "guide me from recon to findings" experience: each phase runs
-        to completion, then the next begins, all driven by state.
+        to completion, then the next begins, all driven by state. In auto-exploit
+        mode the walk continues through exploitation and post-exploitation.
         """
-        if self.state.phase in PHASE_ORDER:
-            start = PHASE_ORDER.index(self.state.phase)
+        order = AUTO_EXPLOIT_ORDER if self.auto_exploit else PHASE_ORDER
+        if self.state.phase in order:
+            start = order.index(self.state.phase)
         elif self.state.phase == Phase.SCOPING:
             start = 0                       # fresh engagement: begin at recon
         else:
-            # Already past the auto-walk (exploitation/post/report). Don't rewind
-            # the phase back to recon — there is nothing left to auto-run.
+            # Already past the auto-walk. Don't rewind the phase — nothing left.
             return
-        for phase in PHASE_ORDER[start:]:
+        for phase in order[start:]:
             if self._stop:
                 break
             self.state.phase = phase
