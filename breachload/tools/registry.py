@@ -21,11 +21,15 @@ from .enum4linux import Enum4linuxAdapter
 from .ffuf import FfufAdapter
 from .ftp import FtpAdapter
 from .httpx import HttpxAdapter
+from .mssql import MssqlAdapter
+from .mysql import MysqlAdapter
 from .netexec import NetexecAdapter
 from .nfs import NfsAdapter
 from .nmap import NmapAdapter
 from .nuclei import NucleiAdapter
+from .postgres import PostgresAdapter
 from .redis import RedisAdapter
+from .smtp import SmtpAdapter
 from .snmp import SnmpAdapter
 from .vhostfuzz import VhostFuzzAdapter
 from .whatweb import WhatWebAdapter
@@ -48,6 +52,10 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         NfsAdapter(),
         FtpAdapter(),
         RedisAdapter(),
+        SmtpAdapter(),
+        MysqlAdapter(),
+        PostgresAdapter(),
+        MssqlAdapter(),
     ]
     registry = {a.name: a for a in adapters}
     if load_plugins:

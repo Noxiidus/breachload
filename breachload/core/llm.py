@@ -162,6 +162,19 @@ class Planner:
                     if _is_redis(svc) and "redis" in names and not state.has_action("redis", key):
                         return Plan("run", "redis", host.address, {"port": svc.port},
                                     "Probe Redis for unauthenticated access.")
+                    if _is_smtp(svc) and "smtp" in names and not state.has_action("smtp", key):
+                        return Plan("run", "smtp", host.address, {"port": svc.port},
+                                    "Enumerate SMTP usernames via VRFY.")
+                    if _is_mysql(svc) and "mysql" in names and not state.has_action("mysql", key):
+                        return Plan("run", "mysql", host.address, {"port": svc.port},
+                                    "Test MySQL for a blank/weak root login.")
+                    if _is_postgres(svc) and "postgres" in names \
+                            and not state.has_action("postgres", key):
+                        return Plan("run", "postgres", host.address, {"port": svc.port},
+                                    "Test PostgreSQL for a trust/blank login.")
+                    if _is_mssql(svc) and "mssql" in names and not state.has_action("mssql", key):
+                        return Plan("run", "mssql", host.address, {"port": svc.port},
+                                    "Test MSSQL for a blank sa login.")
             return Plan("phase_complete", rationale="Enumeration exhausted for known services.")
 
         if state.phase == Phase.VULN:
@@ -201,6 +214,22 @@ def _is_ftp(svc) -> bool:
 
 def _is_redis(svc) -> bool:
     return (svc.name or "").lower() == "redis" or svc.port == 6379
+
+
+def _is_smtp(svc) -> bool:
+    return (svc.name or "").lower() in ("smtp", "submission") or svc.port in (25, 587, 465)
+
+
+def _is_mysql(svc) -> bool:
+    return (svc.name or "").lower() in ("mysql", "mariadb") or svc.port == 3306
+
+
+def _is_postgres(svc) -> bool:
+    return (svc.name or "").lower() in ("postgresql", "postgres") or svc.port == 5432
+
+
+def _is_mssql(svc) -> bool:
+    return (svc.name or "").lower() in ("ms-sql-s", "mssql", "ms-sql") or svc.port == 1433
 
 
 def _has_http(host) -> bool:
