@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-23
+
 ### Added
 - **Autonomous, session-driven privilege escalation** (`core/session.py`, `analysis/privesc_auto.py`,
   `session` command) — the piece that makes auto-exploit a full autonomous chain once a foothold is
@@ -18,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parses it with the existing `loot` parsers, and fires a curated escalation — full sudo, sudo
   NOPASSWD on a scriptable binary, or the `docker` group — proving root by reading `/root/root.txt`.
   Escalation is bounded to well-understood vectors that read the proof file, not arbitrary
-  persistence; the session host is scope-checked and every command is audited.
+  persistence; the session host is scope-checked and every command is audited. The curated
+  escalations cover full sudo, sudo NOPASSWD on a scriptable binary, the `docker` group, and a
+  root-owned SUID shell. Verified live on HTB Connected: it autonomously enumerated the foothold
+  through the webshell session and parsed SUID/capability findings.
 
 ## [0.13.0] - 2026-08-23
 
@@ -527,7 +532,8 @@ Initial scaffold. Deterministic core with a working recon pipeline.
 - Engagement config (YAML) with per-engagement scope and autonomy threshold.
 - Typer + Rich CLI: `breachload run`, `breachload status`.
 
-[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/Noxiidus/breachload/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/Noxiidus/breachload/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Noxiidus/breachload/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Noxiidus/breachload/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Noxiidus/breachload/compare/v0.10.0...v0.11.0
