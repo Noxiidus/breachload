@@ -35,6 +35,13 @@ class EngagementConfig(BaseModel):
     # also fuzz those file extensions.
     full_ports: bool = False
     web_extensions: str = ""
+    # udp_scan adds a top-ports UDP pass in recon (SNMP/DNS/TFTP/IKE hide on UDP).
+    # It needs root (raw sockets); without it nmap simply returns nothing and the
+    # scan is skipped gracefully. ffuf_recursion makes content discovery recurse
+    # into discovered directories up to recursion_depth levels.
+    udp_scan: bool = False
+    ffuf_recursion: bool = False
+    recursion_depth: int = 1
     # Minimum seconds between executed actions (0 = no throttle). Keeps the agent
     # from hammering a target.
     min_action_interval: float = 0.0

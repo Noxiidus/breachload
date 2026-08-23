@@ -25,12 +25,17 @@ class NmapAdapter(ToolAdapter):
             self.capabilities = ["port-scan", "service-detection", "os-detection"]
 
     def build_command(self, target: str, *, ports: str | None = None,
-                      service_scan: bool = True, extra: list[str] | None = None) -> list[str]:
+                      service_scan: bool = True, udp: bool = False,
+                      top_ports: int = 20, extra: list[str] | None = None) -> list[str]:
         # -oX - streams XML to stdout so parse() gets structured data.
         cmd = ["nmap", "-oX", "-", "-Pn"]
         if service_scan:
             cmd += ["-sV"]
-        if ports == "-":
+        if udp:
+            # UDP top-ports pass — needs root; without it nmap emits no XML and the
+            # parser reports it gracefully. Bounded to the top N to stay quick.
+            cmd += ["-sU", "--top-ports", str(top_ports)]
+        elif ports == "-":
             cmd += ["-p-"]              # all 65535 TCP ports (non-root connect scan)
         elif ports:
             cmd += ["-p", ports]

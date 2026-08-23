@@ -41,6 +41,8 @@ class FfufAdapter(ToolAdapter):
         wordlist: str = _DEFAULT_WORDLIST,
         match_codes: str = "200,204,301,302,307,401,403",
         extensions: str = "",
+        recursion: bool = False,
+        recursion_depth: int = 1,
     ) -> list[str]:
         url = target if "FUZZ" in target else f"{_as_url(target).rstrip('/')}/FUZZ"
         # -s silences the live UI; JSON goes to the OUTFILE (not stdout, which -s
@@ -55,6 +57,10 @@ class FfufAdapter(ToolAdapter):
         exts = ",".join("." + e.strip().lstrip(".") for e in extensions.split(",") if e.strip())
         if exts:
             cmd += ["-e", exts]
+        # Recurse into discovered directories (a flat common.txt run misses nested
+        # trees). Bounded depth so it can't wander indefinitely.
+        if recursion:
+            cmd += ["-recursion", "-recursion-depth", str(max(1, recursion_depth))]
         return cmd
 
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
