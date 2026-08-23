@@ -16,6 +16,7 @@ import json
 import os
 from dataclasses import dataclass
 
+from ..exploit.autofire import probe_for
 from .state import EngagementState, Phase
 
 SYSTEM_PROMPT = """You are the planning core of breachload, an autonomous pentest \
@@ -203,6 +204,22 @@ class Planner:
                                     "Test MongoDB for unauthenticated access.")
             return Plan("phase_complete", rationale="Enumeration exhausted for known services.")
 
+        if state.phase == Phase.EXPLOIT:
+            # Autonomous EXPLOIT actions are limited to the curated, READ-ONLY probes
+            # (curl argv, no shell, no code execution). RCE/write exploits are never
+            # auto-fired — they stay surfaced as guided commands. Reached only via the
+            # auto-exploit walk (or an explicit --phase exploitation, still risk-gated).
+            if "exploit-probe" in names:
+                for f in state.findings:
+                    for cve in f.cve:
+                        if probe_for(cve) and f.host:
+                            port = _port_from_key(f.service_key) or 80
+                            if not _probe_fired(state, cve, f.host, port):
+                                return Plan("run", "exploit-probe", f.host,
+                                            {"cve": cve, "port": port},
+                                            f"Auto-fire the read-only {cve} disclosure probe.")
+            return Plan("phase_complete", rationale="No auto-fireable exploit probes remain.")
+
         if state.phase == Phase.VULN:
             for host in state.hosts.values():
                 for svc in host.services.values():
@@ -320,6 +337,21 @@ def _is_fuzzable_domain(address: str) -> bool:
 
 def _is_smb(svc) -> bool:
     return (svc.name or "").lower() in _SMB_NAMES or svc.port in _SMB_PORTS
+
+
+def _port_from_key(service_key: str | None) -> int | None:
+    """The port from a 'port/proto' service key (e.g. '3000/tcp' -> 3000)."""
+    if not service_key:
+        return None
+    head = service_key.split("/", 1)[0]
+    return int(head) if head.isdigit() else None
+
+
+def _probe_fired(state, cve: str, host: str, port: int) -> bool:
+    """True once the exploit-probe for this (cve, host, port) has run — the adapter
+    records a 'Exploit probe fired: <cve> on <host>:<port>' finding."""
+    title = f"Exploit probe fired: {cve} on {host}:{port}"
+    return any(f.title == title for f in state.findings)
 
 
 def _udp_scanned(state, address: str) -> bool:

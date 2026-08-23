@@ -18,6 +18,7 @@ from importlib.metadata import entry_points
 
 from .base import ToolAdapter
 from .enum4linux import Enum4linuxAdapter
+from .exploitprobe import ExploitProbeAdapter
 from .ffuf import FfufAdapter
 from .ftp import FtpAdapter
 from .httpx import HttpxAdapter
@@ -64,6 +65,7 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         RpcAdapter(),
         RsyncAdapter(),
         MongoAdapter(),
+        ExploitProbeAdapter(),
     ]
     registry = {a.name: a for a in adapters}
     if load_plugins:
