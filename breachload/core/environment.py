@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Tools the engine or its suggestions rely on, grouped by role.
 KNOWN_TOOLS = {
-    "recon": ["nmap"],
+    "recon": ["nmap", "dig"],
     "enumeration": ["httpx", "whatweb", "ffuf", "gobuster", "enum4linux-ng", "smbclient"],
     "services": ["snmpwalk", "showmount", "redis-cli", "smtp-user-enum", "curl",
                  "ldapsearch", "rpcinfo", "rsync"],
@@ -21,7 +21,9 @@ KNOWN_TOOLS = {
     "vuln": ["nuclei", "searchsploit"],
     "exploit": ["msfvenom", "msfconsole", "hydra"],
     "active-directory": ["nxc", "netexec", "bloodhound-python", "certipy",
-                         "bloodyAD", "evil-winrm", "kerbrute", "impacket-secretsdump"],
+                         "bloodyAD", "evil-winrm", "kerbrute", "impacket-secretsdump",
+                         "impacket-GetUserSPNs", "impacket-GetNPUsers"],
+    "pivoting": ["chisel", "sshuttle", "sshpass", "scp", "proxychains"],
     "shell": ["nc", "ncat", "socat", "python3", "curl", "wget"],
 }
 

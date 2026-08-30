@@ -178,7 +178,7 @@ def _warn_if_no_hosts(state: EngagementState, cfg: EngagementConfig) -> None:
         console.print("[bold yellow]no hosts to scan[/] - check the engagement targets.")
 
 
-@app.command()
+@app.command(rich_help_panel="Setup & control")
 def init(name: str = typer.Option(None, help="engagement name"),
          targets: str = typer.Option(None, help="comma-separated targets (IPs/CIDRs/domains)"),
          lhost: str = typer.Option(None, help="your listener IP (attacker box)"),
@@ -224,7 +224,7 @@ def init(name: str = typer.Option(None, help="engagement name"),
     console.print(f"  breachload auto {out}        # recon -> plan -> report", markup=False)
 
 
-@app.command()
+@app.command(rich_help_panel="Setup & control")
 def run(config: Path = typer.Argument(..., help="engagement YAML"),
         phase: str = typer.Option(None, help="run only this phase (recon/enumeration/vuln)"),
         stop: str = typer.Option("vuln_analysis", help="auto-chain stops after this phase"),
@@ -265,7 +265,7 @@ def run(config: Path = typer.Argument(..., help="engagement YAML"),
     console.print(state.summary())
 
 
-@app.command()
+@app.command(rich_help_panel="Setup & control")
 def auto(config: Path = typer.Argument(..., help="engagement YAML"),
          lhost: str = typer.Option(None, help="your listener host for the attack plan "
                                    "(defaults to the engagement's lhost)"),
@@ -321,7 +321,7 @@ def auto(config: Path = typer.Argument(..., help="engagement YAML"),
         _write_pdf(md, report_path.with_suffix(".pdf"), cfg.name)
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def session(config: Path = typer.Argument(..., help="engagement YAML"),
             webshell: str = typer.Option(None, help="webshell URL with a FUZZ marker, "
                                          "e.g. 'http://host/shell.php?cmd=FUZZ'"),
@@ -371,7 +371,7 @@ def session(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(out.strip() or "[yellow](no output)[/]", markup=False)
 
 
-@app.command(name="auto-exploit")
+@app.command(name="auto-exploit", rich_help_panel="Setup & control")
 def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
                  lhost: str = typer.Option(None, help="listener host for the attack plan"),
                  lport: int = typer.Option(None, help="listener port"),
@@ -458,7 +458,7 @@ def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
     console.print(f"[bold green]report[/] {report_path}")
 
 
-@app.command()
+@app.command(rich_help_panel="Setup & control")
 def serve(config: Path = typer.Argument(..., help="engagement YAML"),
           host: str = typer.Option("127.0.0.1", help="bind host"),
           port: int = typer.Option(8000, help="bind port"),
@@ -528,7 +528,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     uvicorn.run(web_app, host=host, port=port, log_level="warning")
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def payloads(category: str = typer.Option(None, help="filter by category"),
              tag: str = typer.Option(None, help="filter by tag (shell, http, smb, privesc, ...)"),
              platform: str = typer.Option(None, help="filter by platform (linux/windows)"),
@@ -558,7 +558,7 @@ def payloads(category: str = typer.Option(None, help="filter by category"),
                   "--lhost <ip> --lport <port>[/]")
 
 
-@app.command()
+@app.command(rich_help_panel="Recon, enum & planning")
 def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
             lhost: str = typer.Option(None, help="your listener host for rendered payloads "
                                       "(defaults to the engagement's lhost)"),
@@ -584,7 +584,7 @@ def suggest(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print()
 
 
-@app.command(name="kb-import")
+@app.command(name="kb-import", rich_help_panel="Learn & knowledge base")
 def kb_import(nvd: Path = typer.Argument(..., help="NVD 2.0 JSON feed"),
               output: Path = typer.Option("breachload_kb.json", help="KB file to write")):
     """Convert an NVD 2.0 feed into a breachload KB file (grow the CVE knowledge base).
@@ -644,7 +644,7 @@ _INSTALL_HINTS = {
 }
 
 
-@app.command()
+@app.command(rich_help_panel="Setup & control")
 def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
                                       "MTU / large-response stall (needs it reachable)"),
            port: int = typer.Option(80, help="port to probe with --target"),
@@ -750,7 +750,7 @@ def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
                 console.print("  " + hint, markup=False)
 
 
-@app.command()
+@app.command(rich_help_panel="Learn & knowledge base")
 def explain(term: str = typer.Argument(None, help="term to explain (ssti, kerberoast, esc1, ...)")):
     """Plain-language explanation of a pentest term (offline glossary for learners)."""
     from .analysis.glossary import all_terms, lookup
@@ -773,7 +773,7 @@ def explain(term: str = typer.Argument(None, help="term to explain (ssti, kerber
         console.print(f"[dim]Learn more: {escape(entry.learn)}[/]")
 
 
-@app.command()
+@app.command(rich_help_panel="Learn & knowledge base")
 def gtfo(binary: str = typer.Argument(..., help="binary found as SUID or via `sudo -l`")):
     """Offline GTFOBins privilege-escalation lookup (find, vim, python3, tar, ...)."""
     entry = lookup(binary)
@@ -788,7 +788,7 @@ def gtfo(binary: str = typer.Argument(..., help="binary found as SUID or via `su
         console.print()
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def flag(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="file to scan for flags (e.g. loot/user.txt)"),
          text: str = typer.Option(None, help="text to scan for flags")):
@@ -813,7 +813,7 @@ def flag(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print("[yellow]no new flags found[/]")
 
 
-@app.command()
+@app.command(rich_help_panel="Post-exploitation")
 def loot(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="file to parse (linpeas / sudo -l / SUID sweep)"),
          text: str = typer.Option(None, help="text to parse")):
@@ -849,7 +849,7 @@ def loot(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(f"  cred: {c.username or '?'} / {c.secret or '?'} ({c.kind})")
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def listen(config: Path = typer.Argument(..., help="engagement YAML"),
            lhost: str = typer.Option(None, help="your box IP (default: engagement lhost)"),
            lport: int = typer.Option(None, help="listener port (default: engagement lport)"),
@@ -884,7 +884,7 @@ def listen(config: Path = typer.Argument(..., help="engagement YAML"),
             console.print("\n[yellow]listener stopped[/]")
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def sploit(config: Path = typer.Argument(..., help="engagement YAML")):
     """Search Exploit-DB (searchsploit) for every versioned service and record matches."""
     from .analysis.searchsploit import run_search
@@ -912,7 +912,7 @@ def sploit(config: Path = typer.Argument(..., help="engagement YAML")):
         console.print(f"  [{f.severity.value}] {escape(f.title)}")
 
 
-@app.command()
+@app.command(rich_help_panel="Active Directory")
 def bloodhound(config: Path = typer.Argument(..., help="engagement YAML"),
                scan: list[Path] = typer.Option(None, help="BloodHound JSON file(s) to parse")):
     """Parse BloodHound JSON into AD attack findings (kerberoast, AS-REP, ACL edges)."""
@@ -946,7 +946,7 @@ def bloodhound(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(f"  [{f.severity.value}] {escape(f.title)}")
 
 
-@app.command()
+@app.command(rich_help_panel="Active Directory")
 def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
          scan: Path = typer.Option(None, help="certipy find output file to parse"),
          text: str = typer.Option(None, help="certipy find output as text")):
@@ -979,7 +979,7 @@ def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
             console.print("    " + f.exploit, markup=False)
 
 
-@app.command()
+@app.command(rich_help_panel="Post-exploitation")
 def pivot(config: Path = typer.Argument(..., help="engagement YAML"),
          via: str = typer.Option(..., "--via", help="the compromised edge host to pivot through"),
          subnet: str = typer.Option(None, help="internal subnet to reach (e.g. 172.16.5.0/24)"),
@@ -996,7 +996,7 @@ def pivot(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print("  " + line, markup=False)
 
 
-@app.command()
+@app.command(rich_help_panel="Active Directory")
 def adchain(config: Path = typer.Argument(..., help="engagement YAML")):
     """Compose the AD findings (BloodHound/ADCS/roasting) into an ordered path to DA."""
     from .analysis.adchain import plan_ad_chain, render_chain
@@ -1015,7 +1015,7 @@ def adchain(config: Path = typer.Argument(..., help="engagement YAML")):
         console.print("  " + line, markup=False)
 
 
-@app.command()
+@app.command(rich_help_panel="Active Directory")
 def creds(config: Path = typer.Argument(..., help="engagement YAML"),
           add: str = typer.Option(None, help="add a credential as 'user:secret' (or just 'user')"),
           kind: str = typer.Option("password", help="password | hash | key | ticket"),
@@ -1054,7 +1054,7 @@ def _is_ip_literal(value: str) -> bool:
         return False
 
 
-@app.command()
+@app.command(rich_help_panel="Recon, enum & planning")
 def hosts(config: Path = typer.Argument(..., help="engagement YAML"),
           ip: str = typer.Option(None, help="target IP to map the vhosts to "
                                   "(default: the first IP in scope/state)"),
@@ -1122,7 +1122,7 @@ def hosts(config: Path = typer.Argument(..., help="engagement YAML"),
     console.print(f"[bold green]added[/] {len(missing)} entry(ies) to /etc/hosts")
 
 
-@app.command()
+@app.command(rich_help_panel="Post-exploitation")
 def privesc(config: Path = typer.Argument(..., help="engagement YAML"),
             lhost: str = typer.Option(None, help="your box IP for the transfer commands "
                                       "(defaults to the engagement's lhost)"),
@@ -1145,7 +1145,7 @@ def privesc(config: Path = typer.Argument(..., help="engagement YAML"),
             console.print(line, markup=False)   # commands contain [ ] { } | -> verbatim
 
 
-@app.command()
+@app.command(rich_help_panel="Post-exploitation")
 def winprivesc(config: Path = typer.Argument(..., help="engagement YAML"),
                lhost: str = typer.Option(None, help="your box IP for the transfer commands"),
                http_port: int = typer.Option(8000, help="port for your winPEAS web server"),
@@ -1187,7 +1187,7 @@ def winprivesc(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(f"  [{f.severity.value}] {escape(f.title)}")
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def crack(config: Path = typer.Argument(..., help="engagement YAML"),
           hash: str = typer.Option(None, "--hash", help="a single hash to identify/crack"),
           user: str = typer.Option(None, help="username to attach a cracked password to"),
@@ -1245,7 +1245,7 @@ def crack(config: Path = typer.Argument(..., help="engagement YAML"),
                       "across hosts/services.[/]")
 
 
-@app.command()
+@app.command(rich_help_panel="Active Directory")
 def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
              dc: str = typer.Option(..., "--dc", help="domain controller IP"),
              domain: str = typer.Option(..., help="AD domain (e.g. corp.local)"),
@@ -1323,7 +1323,7 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
                   f"run `crack` to attack the hashes.")
 
 
-@app.command()
+@app.command(rich_help_panel="Reporting & audit")
 def audit(config: Path = typer.Argument(..., help="engagement YAML"),
           verify: bool = typer.Option(True, "--verify/--no-verify",
                                       help="verify the audit hash chain")):
@@ -1345,7 +1345,7 @@ def audit(config: Path = typer.Argument(..., help="engagement YAML"),
             raise typer.Exit(1)
 
 
-@app.command()
+@app.command(rich_help_panel="Setup & control")
 def status(config: Path = typer.Argument(..., help="engagement YAML")):
     """Show current known state for an engagement."""
     cfg = _load_config(config)
@@ -1356,7 +1356,7 @@ def status(config: Path = typer.Argument(..., help="engagement YAML")):
     console.print(_load_state(state_path).summary())
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def payload(config: Path = typer.Argument(..., help="engagement YAML"),
             payload: str = typer.Option(..., help="msfvenom payload type"),
             lhost: str = typer.Option(..., help="your listener host (attacker IP)"),
@@ -1392,7 +1392,7 @@ def payload(config: Path = typer.Argument(..., help="engagement YAML"),
     console.print(f"  {artifact.description}")
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def poc(config: Path = typer.Argument(..., help="engagement YAML"),
         index: int = typer.Option(None, help="finding index (0-based, see report order)"),
         title: str = typer.Option(None, help="match a finding by title substring")):
@@ -1426,7 +1426,7 @@ def _select_finding(state: EngagementState, index: int | None, title: str | None
     return None
 
 
-@app.command()
+@app.command(rich_help_panel="Exploitation")
 def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
             artifact: str = typer.Option(..., help="artifact name (see `status`)"),
             target: str = typer.Option(..., help="target host or URL (must be in scope)"),
@@ -1477,7 +1477,7 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print(result.run.stderr.strip()[:500])
 
 
-@app.command()
+@app.command(rich_help_panel="Reporting & audit")
 def report(config: Path = typer.Argument(..., help="engagement YAML"),
            output: Path = typer.Option(None, help="output path (default: <engagement>/report.md)"),
            html: bool = typer.Option(False, "--html", help="also write a styled HTML report"),
