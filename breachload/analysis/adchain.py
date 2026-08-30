@@ -1,10 +1,10 @@
-"""AD kill-chain composer — order the AD findings into a path to Domain Admin.
+"""AD kill-chain composer - order the AD findings into a path to Domain Admin.
 
 BloodHound/ADCS/roasting parsers each emit *isolated* findings ("X is
 kerberoastable", "ESC1 on template Y", "GenericAll over Z"). What an operator
 actually wants is the *order*: which of these, given what we already hold, gets to
 Domain Admin fastest and with least noise. This module ranks the findings into an
-ordered kill-chain — highest-leverage primitive first — and attaches the concrete
+ordered kill-chain - highest-leverage primitive first - and attaches the concrete
 next command for each step.
 
 Pure function over the finding list (no I/O). It reads finding *titles* (the stable
@@ -88,7 +88,7 @@ def plan_ad_chain(findings: list[Finding], *, have_creds: bool = False) -> AdCha
         if m:
             chain.steps.append(ChainStep(
                 _RANK["adcs-esc"] + 1, "ADCS-DANGLING", m.group(1).strip(),
-                "Dangling template the CA still publishes — recreate/own it as ESC1.",
+                "Dangling template the CA still publishes - recreate/own it as ESC1.",
                 f.exploit or "recreate the template object as ESC1, then certipy req",
                 needs_creds=True))
             continue
@@ -105,7 +105,7 @@ def plan_ad_chain(findings: list[Finding], *, have_creds: bool = False) -> AdCha
         if m:
             chain.steps.append(ChainStep(
                 _RANK["asrep-roast"], "AS-REP-ROAST", m.group(1).strip(),
-                "No pre-auth required — roast without any credential, crack offline.",
+                "No pre-auth required - roast without any credential, crack offline.",
                 f.exploit or "impacket-GetNPUsers <domain>/ -usersfile users.txt "
                              "-no-pass -dc-ip <dc>"))
             continue
@@ -173,6 +173,6 @@ def render_chain(chain: AdChain, *, have_creds: bool = False) -> list[str]:
         gate = ""
         if s.needs_creds and not have_creds:
             gate = "  [needs a domain credential first]"
-        lines.append(f"{i}. [{s.technique}] {s.target} — {s.why}{gate}")
+        lines.append(f"{i}. [{s.technique}] {s.target} - {s.why}{gate}")
         lines.append(f"     $ {s.command}")
     return lines

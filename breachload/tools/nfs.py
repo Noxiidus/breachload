@@ -1,4 +1,4 @@
-"""NFS adapter — lists exported shares via `showmount -e`.
+"""NFS adapter - lists exported shares via `showmount -e`.
 
 Exported NFS shares (especially world-readable or `no_root_squash`) are a common
 foothold/loot vector. Read-only enumeration, RECON risk.

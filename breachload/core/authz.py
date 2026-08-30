@@ -8,7 +8,7 @@ file kept OUTSIDE the repository.
 
 Honesty about what this is: a local allowlist gates casual/accidental use and,
 crucially, records *who* authorized an autonomous run in the audit trail. It is
-an authorization control, not tamper-proof DRM — anyone who can edit the source
+an authorization control, not tamper-proof DRM - anyone who can edit the source
 can bypass a local check. The controls that actually keep the tool bounded to
 authorized targets are the **scope allowlist** (off-scope is always hard-blocked,
 even in auto-exploit mode) and the **audit log**. This gate adds accountability
@@ -75,7 +75,7 @@ def authorize_operator(operators: list[Operator] | None = None, *,
 
     Reads id/token from the environment when not passed explicitly (tests pass
     them directly). A missing operators file, unknown id, or mismatched token all
-    deny — the mode fails closed.
+    deny - the mode fails closed.
     """
     operators = load_operators() if operators is None else operators
     operator_id = operator_id if operator_id is not None else os.environ.get("BREACHLOAD_OPERATOR")

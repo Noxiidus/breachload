@@ -1,4 +1,4 @@
-"""whatweb adapter — HTTP fingerprinting.
+"""whatweb adapter - HTTP fingerprinting.
 
 Runs whatweb with JSON logging and folds detected technologies into the matching
 HTTP service. Parsing prefers whatweb's JSON output over its coloured text.
@@ -40,7 +40,7 @@ class WhatWebAdapter(ToolAdapter):
     def parse(self, result: ToolResult, state: EngagementState) -> list[str]:
         entries = _load_json_entries(result.stdout)
         if not entries:
-            # Exit 0 with no JSON means whatweb connected but got nothing usable —
+            # Exit 0 with no JSON means whatweb connected but got nothing usable -
             # typically a root that hangs/streams. Say so instead of a bare miss.
             if result.exit_code == 0:
                 return ["whatweb: connected but no data (root may hang or stream; "
@@ -160,7 +160,7 @@ def _record_redirect(
         return None
     parsed = urlparse(loc)
     rhost = parsed.hostname or ""
-    # Ignore same-host and bare-IP redirects — neither reveals a new vhost.
+    # Ignore same-host and bare-IP redirects - neither reveals a new vhost.
     if not rhost or rhost == from_host or _is_ip(rhost):
         return None
     rscheme = parsed.scheme or "http"
@@ -174,7 +174,7 @@ def _record_redirect(
         service_key=f"{from_port}/tcp",
         description=(
             f"{scheme}://{from_host}:{from_port} redirects to {loc}. Enumeration "
-            f"will pivot to {rhost}; the name must resolve to the target — add it "
+            f"will pivot to {rhost}; the name must resolve to the target - add it "
             f"to /etc/hosts (e.g. '<target-ip> {rhost}') if it does not already."
         ),
         evidence=loc,

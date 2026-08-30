@@ -159,7 +159,7 @@ def _load_or_seed_state(cfg: EngagementConfig, state_path: Path) -> EngagementSt
             unresolved.append(target)
     if unresolved:
         console.print(f"[yellow]not seeding unresolved target(s):[/] {', '.join(unresolved)} "
-                      "— add them to /etc/hosts to enumerate, or they'll be picked up "
+                      "- add them to /etc/hosts to enumerate, or they'll be picked up "
                       "if a redirect reveals them.")
     return state
 
@@ -417,7 +417,7 @@ def auto_exploit(config: Path = typer.Argument(..., help="engagement YAML"),
     registry = default_registry()
     # Threshold raised to EXPLOIT: exploit-class actions run without asking, but the
     # scope check is unchanged (off-scope is always denied) and DESTRUCTIVE (> EXPLOIT)
-    # still routes to confirm() — a human.
+    # still routes to confirm() - a human.
     validator = Validator(scope, allowed_binaries(registry), Risk.EXPLOIT)
     planner = Planner(config=cfg)
     audit = AuditLog(work / "audit.jsonl")
@@ -490,7 +490,7 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
     orch = Orchestrator(cfg, state, registry, validator, Planner(config=cfg), audit, state_path,
                         # Orchestrator.confirm is async-capable at runtime via
-                        # inspect.isawaitable — the type stub of confirm is sync,
+                        # inspect.isawaitable - the type stub of confirm is sync,
                         # so we suppress the annotation-only mismatch here.
                         confirm=hub.request_confirm,  # type: ignore[arg-type]
                         on_event=hub.emit,
@@ -1284,7 +1284,7 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
         console.print("  " + " ".join(userenum_command(domain, dc, userlist)), markup=False)
         console.print("  " + " ".join(asrep_command(domain, dc, userlist)), markup=False)
     else:
-        console.print("  [yellow](no user list — pass --users or collect usernames first)[/]")
+        console.print("  [yellow](no user list - pass --users or collect usernames first)[/]")
     if user and password:
         console.print("  " + " ".join(kerberoast_command(domain, dc, user, password)),
                       markup=False)
@@ -1328,7 +1328,7 @@ def browser(url: str = typer.Argument(..., help="URL to render and analyse (clie
             config: Path = typer.Option(None, help="engagement YAML to record findings into")):
     """Headless-browser client-side scan: auth forms, CSRF, DOM-XSS sinks, reflected XSS.
 
-    Renders the page with a real browser (JavaScript executed) and analyses the DOM —
+    Renders the page with a real browser (JavaScript executed) and analyses the DOM -
     the attack surface a curl-based scan can't see. Needs the optional Playwright
     backend (`pip install playwright && playwright install chromium`).
     """
@@ -1359,12 +1359,12 @@ def browser(url: str = typer.Argument(..., help="URL to render and analyse (clie
 
 @app.command(rich_help_panel="Setup & control")
 def mcp():
-    """Run breachload as an MCP server (stdio) — expose its safe tools to any LLM agent.
+    """Run breachload as an MCP server (stdio) - expose its safe tools to any LLM agent.
 
     Speaks JSON-RPC over stdin/stdout. Point an MCP client (Claude Code, etc.) at
     `breachload mcp`. Exposes the deterministic, non-firing surface: fingerprint->CVE,
     AD kill-chain composition, roast parsing, hash identification, pivot planning,
-    the glossary, and GTFOBins — never firing a tool at a target.
+    the glossary, and GTFOBins - never firing a tool at a target.
     """
     from .mcp.server import serve
     serve()
@@ -1384,7 +1384,7 @@ def audit(config: Path = typer.Argument(..., help="engagement YAML"),
             console.print("[yellow]no audit records yet[/]")
             return
         if res.ok:
-            console.print(f"[bold green]audit chain intact[/] — {res.records} records, "
+            console.print(f"[bold green]audit chain intact[/] - {res.records} records, "
                           "no tampering detected")
         else:
             console.print(f"[bold red]audit chain BROKEN[/] at line {res.broken_at}: "

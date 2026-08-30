@@ -1,7 +1,7 @@
 """Minimal, dependency-free PDF writer for reports.
 
 Renders plain text (the Markdown report reads fine as text) into a valid,
-multi-page PDF using the built-in Courier font — no fonts to embed, no third-
+multi-page PDF using the built-in Courier font - no fonts to embed, no third-
 party libraries, works everywhere. It is intentionally a text PDF, not a styled
 layout; the goal is a portable, printable deliverable.
 """
@@ -47,11 +47,14 @@ def _obj(num: int, body: bytes) -> bytes:
 
 # Common non-latin-1 punctuation that would otherwise become "?" in the PDF.
 _UNICODE_ASCII = str.maketrans({
-    "—": "-", "–": "-",            # em / en dash
-    "‘": "'", "’": "'",            # curly single quotes
-    "“": '"', "”": '"',            # curly double quotes
-    "…": "...",                          # ellipsis
-    " ": " ",                            # non-breaking space
+    "—": "-", "–": "-",      # em / en dash
+    "‘": "'", "’": "'",      # curly single quotes
+    "“": '"', "”": '"',      # curly double quotes
+    "…": "...",                     # ellipsis
+    " ": " ",                       # non-breaking space
+    "·": "-",                       # middle dot
+    "→": "->",                      # right arrow
+    "✅": "[OK]", "❔": "[?]",  # emoji that may appear in report text
 })
 
 

@@ -3,7 +3,7 @@
 breachload is a copilot: it does not hold a live shell in its deterministic core,
 so it *drives* the enumeration by generating the exact, ready-to-run commands to
 transfer and run linpeas/pspy over a foothold, then hands the output back to
-`breachload loot` — which parses SUID/sudo/capabilities/kernel into findings and
+`breachload loot` - which parses SUID/sudo/capabilities/kernel into findings and
 (via the kernel suggester + GTFOBins) names the escalation.
 
 Everything here is text for the operator to run against the foothold. The

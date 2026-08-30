@@ -1,4 +1,4 @@
-"""EventHub — bridges the engine to connected dashboard clients.
+"""EventHub - bridges the engine to connected dashboard clients.
 
 The orchestrator's `on_event(event, message)` feeds `emit`, which broadcasts to
 every subscribed client and keeps a replay log for late joiners. The
@@ -6,7 +6,7 @@ confirmation gate is bridged too: `request_confirm` (used as the orchestrator's
 async confirm callback) broadcasts a confirm request and awaits the client's
 approve/deny, delivered back via `resolve_confirm`.
 
-Pure asyncio, no framework dependency — so it is fully unit-testable.
+Pure asyncio, no framework dependency - so it is fully unit-testable.
 """
 
 from __future__ import annotations

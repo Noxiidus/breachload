@@ -50,11 +50,11 @@ class EngagementConfig(BaseModel):
     # exploitation without per-action confirmation (up to EXPLOIT; DESTRUCTIVE is
     # always still confirmed, and off-scope is always hard-blocked). It only takes
     # effect when `authorized` is also true AND the running operator passes the
-    # operator gate (see core/authz.py) — otherwise the engine falls back to the
+    # operator gate (see core/authz.py) - otherwise the engine falls back to the
     # normal confirm-gated behaviour.
     auto_exploit: bool = False
     # Per-engagement attestation that you have written authorization for this scope.
-    # Required for auto_exploit to activate — a deliberate, conscious opt-in.
+    # Required for auto_exploit to activate - a deliberate, conscious opt-in.
     authorized: bool = False
     # Local paths to helper binaries the autonomous escalation stages onto a
     # foothold before firing a vector that needs them (e.g.

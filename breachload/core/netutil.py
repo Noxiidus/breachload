@@ -1,4 +1,4 @@
-"""Small host/URL helpers shared across adapters — IPv6-aware.
+"""Small host/URL helpers shared across adapters - IPv6-aware.
 
 A raw IPv6 literal (``dead:beef::1``) must be wrapped in brackets before it goes
 into a URL or a ``host:port`` string, or the colons are ambiguous and the URL is

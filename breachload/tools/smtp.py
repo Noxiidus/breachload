@@ -1,4 +1,4 @@
-"""SMTP adapter — username enumeration via VRFY (smtp-user-enum).
+"""SMTP adapter - username enumeration via VRFY (smtp-user-enum).
 
 Valid usernames leaked over SMTP VRFY/RCPT seed password spraying and reveal
 system users. Uses smtp-user-enum with a short built-in username list; ACTIVE risk

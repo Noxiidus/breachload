@@ -1,4 +1,4 @@
-"""MSSQL adapter — tests a default `sa` login via netexec (nxc).
+"""MSSQL adapter - tests a default `sa` login via netexec (nxc).
 
 Reuses nxc's mssql module (the binary is already in the allowlist) to probe the
 classic `sa` account with a blank password. A successful login is HIGH: sa often

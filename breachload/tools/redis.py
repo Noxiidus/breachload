@@ -1,4 +1,4 @@
-"""Redis adapter — detects an unauthenticated Redis instance via redis-cli INFO.
+"""Redis adapter - detects an unauthenticated Redis instance via redis-cli INFO.
 
 An unauthenticated Redis is high-impact: it often leads to RCE (module load,
 cron/authorized_keys write via CONFIG SET). Read-only probe here (INFO), so

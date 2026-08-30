@@ -1,4 +1,4 @@
-"""Version → CVE mapping.
+"""Version -> CVE mapping.
 
 Maps a discovered service's product/version to known CVEs using a local
 knowledge base (`data/vuln_kb.json`). Fully offline. The KB is intentionally a

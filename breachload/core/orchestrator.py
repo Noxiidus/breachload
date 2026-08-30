@@ -1,4 +1,4 @@
-"""Orchestrator — the reasoning loop that ties everything together.
+"""Orchestrator - the reasoning loop that ties everything together.
 
   state -> planner decides -> safety validates -> tool runs -> parser updates
   state -> audit logs -> repeat
@@ -72,7 +72,7 @@ class Orchestrator:
         self.dry_run = dry_run
         # Autonomous exploitation/post-exploitation. Set ONLY after the auto-exploit
         # authorization gate has passed (the CLI enforces this); it merely extends
-        # the auto-walk — scope and DESTRUCTIVE gating are unchanged.
+        # the auto-walk - scope and DESTRUCTIVE gating are unchanged.
         self.auto_exploit = auto_exploit
         self.state = state
         self.registry = registry
@@ -102,7 +102,7 @@ class Orchestrator:
     def request_stop(self) -> None:
         """Kill-switch: stop the engagement after the current action."""
         self._stop = True
-        self.emit("stopped", "kill-switch engaged — halting after current action")
+        self.emit("stopped", "kill-switch engaged - halting after current action")
 
     def _tool_catalog(self) -> list[dict]:
         return [
@@ -148,7 +148,7 @@ class Orchestrator:
         self.audit.write("validate", command=command, decision=decision.__dict__)
 
         if not decision.allowed:
-            self.emit("blocked", f"BLOCKED: {' '.join(command)} — {decision.reason}")
+            self.emit("blocked", f"BLOCKED: {' '.join(command)} - {decision.reason}")
             self._record(plan, command, approved=False)
             return True  # keep going; the planner may pick something else
 
@@ -174,12 +174,12 @@ class Orchestrator:
 
         self.emit("run", f"$ {' '.join(command)}\n  why: {plan.rationale}")
         # A single tool failing (crash, timeout, unparseable output) must not
-        # abort the whole engagement — log it, record it, and move on. The record
+        # abort the whole engagement - log it, record it, and move on. The record
         # also stops the planner from re-proposing the same failing action.
         try:
             result = await adapter.run(command)
             notes = adapter.parse(result, self.state)
-        except Exception as exc:  # noqa: BLE001 — deliberately broad: isolate tool failures
+        except Exception as exc:  # noqa: BLE001 - deliberately broad: isolate tool failures
             self.emit("error", f"{plan.tool} failed: {exc}")
             self._record(plan, command, exit_code=-1)
             self.audit.write("tool_error", command=command, error=str(exc))
@@ -240,7 +240,7 @@ class Orchestrator:
         elif self.state.phase == Phase.SCOPING:
             start = 0                       # fresh engagement: begin at recon
         else:
-            # Already past the auto-walk. Don't rewind the phase — nothing left.
+            # Already past the auto-walk. Don't rewind the phase - nothing left.
             return
         for phase in order[start:]:
             if self._stop:
@@ -315,7 +315,7 @@ class Orchestrator:
         domain = next((t.split(":", 1)[1] for t in dc.tags
                        if t.startswith("domain:")), "")
         # Prefer a validated password credential, but fall back to any password we
-        # hold (roasting is cheap and non-destructive — worth a try).
+        # hold (roasting is cheap and non-destructive - worth a try).
         pw_creds = [c for c in self.state.credentials
                     if c.kind == "password" and c.username and c.secret]
         cred = next((c for c in pw_creds if c.validated), None) or \
@@ -400,10 +400,10 @@ class Orchestrator:
         and fire a curated escalation, all audited. Only in auto-exploit mode."""
         session = self.session
         if not self.validator.scope.allows(session.host):
-            self.emit("blocked", f"session host {session.host} is out of scope — refusing")
+            self.emit("blocked", f"session host {session.host} is out of scope - refusing")
             return
         # Route WinRM sessions through the Windows autonomous privesc, everything
-        # else through the Linux one — same shape, different enum/escalation vectors.
+        # else through the Linux one - same shape, different enum/escalation vectors.
         if session.to_dict().get("kind") == "winrm":
             self._autonomous_privesc_windows()
             return

@@ -1,7 +1,7 @@
 """Path-MTU / large-response stall probe.
 
 A too-high VPN tun MTU (HTB pushes 1500) silently stalls every HTTP response
-larger than ~1 MTU while tiny responses return instantly — which looks exactly
+larger than ~1 MTU while tiny responses return instantly - which looks exactly
 like "the app homepage hangs" and makes fingerprinting come back empty. This
 probe distinguishes the two: it times a tiny ranged GET against a full GET. If
 the small request succeeds fast but the full one stalls, MTU is the likely cause
@@ -82,7 +82,7 @@ def ranged_fingerprint(target: str, *, port: int = 80, scheme: str = "http",
     """Fingerprint a stalling endpoint via a tiny ranged GET.
 
     When a full GET hangs (MTU or a streaming root), the first few KB still come
-    back instantly with a `Range` request — enough to read the Server header, any
+    back instantly with a `Range` request - enough to read the Server header, any
     X-Powered-By, and the <title>. Returns a small {field: value} dict.
     """
     if runner is None and shutil.which("curl") is None:

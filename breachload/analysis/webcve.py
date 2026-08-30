@@ -3,7 +3,7 @@
 The banner-based `CveMatcher` only inspects a service's product/name, which
 carries the *server* (Apache, nginx) but not the *web application* running on it.
 Web-app tech (WordPress, Grafana, Gitea, Nginx UI, ...) is fingerprinted by
-whatweb/httpx and lands in the service **notes** instead — so a fingerprinted
+whatweb/httpx and lands in the service **notes** instead - so a fingerprinted
 "Nginx UI 2.3.2" was previously never mapped to a CVE. This matcher closes that
 gap: it scans the whole fingerprint (product, name, banner, notes) for a known
 web app, optionally range-matches its version, and attaches a ready-to-run,
@@ -12,7 +12,7 @@ confirm-gated exploitation hint to the finding.
 Two match modes, per KB entry:
 - with a version `range`: fire only when a version is discoverable in the
   fingerprint and falls in range (a strong lead);
-- with an empty `range`: fire on the app token alone as a lead to verify — many
+- with an empty `range`: fire on the app token alone as a lead to verify - many
   web-app CVEs affect a wide range or need a manual version check anyway.
 
 Fully offline. The KB (`data/webapp_kb.json`) is curated and HTB-relevant;

@@ -1,4 +1,4 @@
-"""DNS adapter — attempt a zone transfer and harvest records.
+"""DNS adapter - attempt a zone transfer and harvest records.
 
 A misconfigured DNS server that allows AXFR hands over the whole zone: every host,
 subdomain, and internal name in one request. It is a classic, high-value early win
@@ -106,5 +106,5 @@ class DnsAdapter(ToolAdapter):
                 remediation="Restrict zone transfers to authorised secondary servers "
                             "(allow-transfer) only.",
             ))
-        notes.append(f"dns: AXFR succeeded for {domain} — {len(addresses)} host(s) found")
+        notes.append(f"dns: AXFR succeeded for {domain} - {len(addresses)} host(s) found")
         return notes

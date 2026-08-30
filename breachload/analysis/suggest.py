@@ -1,4 +1,4 @@
-"""Rule-based next-step engine — "autopilot" without an LLM.
+"""Rule-based next-step engine - "autopilot" without an LLM.
 
 Reads the structured state (open services + findings) and emits a prioritized,
 copy-paste-ready plan drawn from the offline payload library. This is what makes
@@ -145,7 +145,7 @@ class SuggestionEngine:
                 actions.append(f"# reuse across all {len(hosts)} hosts (password reuse is common)")
             out.append(Suggestion(
                 priority=2, title=f"Lateral movement with {cred.username}",
-                why=f"captured {cred.kind} credential — reuse across hosts/services",
+                why=f"captured {cred.kind} credential - reuse across hosts/services",
                 actions=actions,
             ))
         return out
@@ -254,7 +254,7 @@ class SuggestionEngine:
     def _post_shell(self, lhost: str) -> Suggestion:
         # Drive the whole privesc-enum flow (transfer + run linpeas/pspy with the
         # real LHOST, then feed output back to `loot`) rather than a few loose
-        # library one-liners — this is the copilot naming the next moves.
+        # library one-liners - this is the copilot naming the next moves.
         return Suggestion(
             priority=8, title="Once you have a shell - privilege-escalation enumeration",
             why="Stabilize the shell, enumerate SUID/sudo/caps/cron/kernel, then let "

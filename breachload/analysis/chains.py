@@ -2,7 +2,7 @@
 
 Matches known machine profiles (legacy Windows SMB, anonymous FTP, Tomcat
 manager, path-traversal, ...) against the state and returns ready-made,
-multi-step playbooks. Data-driven (`data/chains.json`) and fully offline — this
+multi-step playbooks. Data-driven (`data/chains.json`) and fully offline - this
 is the closest thing to "autopilot" without an LLM: recognizable situations map
 to concrete plans.
 """

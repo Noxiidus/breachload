@@ -2,7 +2,7 @@
 
 Reports which external tools and wordlists are actually available, so the agent
 (and the operator) can tell up front what will run and what will be skipped.
-Pure `shutil.which` / path checks — no execution.
+Pure `shutil.which` / path checks - no execution.
 """
 
 from __future__ import annotations

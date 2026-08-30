@@ -1,4 +1,4 @@
-"""breachload — autonomous pentest copilot.
+"""breachload - autonomous pentest copilot.
 
 Deterministic core (state, scope, parsing) + LLM reasoning for decisions.
 """

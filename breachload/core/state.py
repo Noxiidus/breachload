@@ -108,7 +108,7 @@ class Finding(BaseModel):
     # falls back to a severity->band label when this is absent.
     cvss: float | None = None
     # Proof status: "suspected" (inferred from a fingerprint/version/heuristic) vs
-    # "confirmed" (we actually proved it — a probe hit, a shell, a read secret).
+    # "confirmed" (we actually proved it - a probe hit, a shell, a read secret).
     # Confirmed findings carry `proof` = the concrete evidence of exploitation.
     validation: str = "suspected"       # suspected | confirmed
     proof: str = ""
@@ -123,7 +123,7 @@ class Finding(BaseModel):
 
 
 class Artifact(BaseModel):
-    """A generated offensive artifact — payload, PoC, shellcode, script.
+    """A generated offensive artifact - payload, PoC, shellcode, script.
 
     Generation is unrestricted (it produces a file, it does not touch a target),
     so artifacts are first-class records independent of the scope-gated action
@@ -191,7 +191,7 @@ class EngagementState(BaseModel):
 
         Lets the planner avoid re-running the same tool on the same target. The
         match rejects an adjacent digit on either side so a numeric needle isn't a
-        false sub-string of a longer one — e.g. host:port ``10.10.10.5:80`` must
+        false sub-string of a longer one - e.g. host:port ``10.10.10.5:80`` must
         not match ``10.10.10.5:8080``, nor host ``10.10.10.5`` match
         ``10.10.10.50`` (trailing) or ``210.10.10.5`` (leading).
         """
@@ -243,7 +243,7 @@ class EngagementState(BaseModel):
 
     def summary(self) -> str:
         """Compact, LLM-friendly view of what we know. No raw output."""
-        lines = [f"Engagement '{self.name}' — phase: {self.phase}"]
+        lines = [f"Engagement '{self.name}' - phase: {self.phase}"]
         for host in self.hosts.values():
             svcs = ", ".join(
                 f"{s.key} {s.name or '?'} {s.product or ''} {s.version or ''}".strip()

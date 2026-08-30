@@ -1,4 +1,4 @@
-"""SNMP adapter — reads an SNMP tree with a default/guessable community.
+"""SNMP adapter - reads an SNMP tree with a default/guessable community.
 
 A readable SNMP service (community `public`) leaks system info, running
 processes, installed software, listening ports, and sometimes credentials.
@@ -21,7 +21,7 @@ _INTERESTING = {
     "1.3.6.1.2.1.1.6.0": "sysLocation",
     "1.3.6.1.2.1.1.4.0": "sysContact",
 }
-# "community" is deliberately excluded — it is an SNMP concept and appears all
+# "community" is deliberately excluded - it is an SNMP concept and appears all
 # over benign MIB values, so it would flood findings with false positives.
 _CRED_HINTS = ("password", "passwd", "pwd", "secret", "cred")
 

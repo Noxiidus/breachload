@@ -1,4 +1,4 @@
-"""Client-side / browser analysis — the surface a curl-based scanner can't see.
+"""Client-side / browser analysis - the surface a curl-based scanner can't see.
 
 Modern apps render in the browser: forms, auth flows, DOM sinks, and reflected
 input only exist after JavaScript runs. This module drives a headless browser to
@@ -8,7 +8,7 @@ login/auth forms, CSRF-tokenless state-changing forms, DOM-XSS sinks, external
 
 The browser itself is behind an injectable ``driver`` protocol, so the analysis is
 pure and fully unit-tested without Playwright. The real driver (``PlaywrightDriver``)
-is optional: if Playwright isn't installed, the CLI says so and degrades — it never
+is optional: if Playwright isn't installed, the CLI says so and degrades - it never
 crashes the run.
 """
 
@@ -66,7 +66,7 @@ def analyze_page(page: RenderedPage) -> list[Finding]:
                 title="POST form without a CSRF token",
                 severity=Severity.MEDIUM, host=host,
                 description=f"The POST form to {form.get('action') or '(self)'} carries "
-                            "no anti-CSRF token — a candidate for cross-site request "
+                            "no anti-CSRF token - a candidate for cross-site request "
                             "forgery. Verify server-side CSRF protection.",
                 evidence=_form_ev(form),
                 remediation="Add and validate a per-session anti-CSRF token."))
@@ -88,7 +88,7 @@ def analyze_page(page: RenderedPage) -> list[Finding]:
         out.append(Finding(
             title="External script sources loaded",
             severity=Severity.INFO, host=host,
-            description="The page loads scripts from other origins — a supply-chain "
+            description="The page loads scripts from other origins - a supply-chain "
                         "surface. Confirm SRI/pinning on: " + ", ".join(ext[:8]),
             evidence="\n".join(ext[:20])))
     return out
@@ -111,8 +111,8 @@ def probe_reflected_xss(driver: Driver, url: str, params: list[str]) -> list[Fin
             title=f"Reflected input in the DOM via '{p}'",
             severity=sev, host=host,
             description=f"The '{p}' parameter is reflected into the rendered page"
-                        + (" unescaped — a strong reflected-XSS candidate; try a "
-                           "real payload." if raw else " (encoded — verify context)."),
+                        + (" unescaped - a strong reflected-XSS candidate; try a "
+                           "real payload." if raw else " (encoded - verify context)."),
             evidence=f"canary reflected for {p}={_XSS_CANARY}",
             exploit=f"{_set_param(url, p, '<script>alert(1)</script>')}"))
     return out

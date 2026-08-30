@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from ..core.state import EngagementState, Finding, Host, Service, Severity
 
 # Product words that add noise to a searchsploit query (they are descriptors, not
-# the software name) — dropped so "Apache httpd" -> "apache".
+# the software name) - dropped so "Apache httpd" -> "apache".
 _NOISE = {"httpd", "server", "daemon", "service", "http", "the", "software"}
 _RCE_RE = re.compile(r"remote code execution|\brce\b|command execution|metasploit",
                      re.IGNORECASE)

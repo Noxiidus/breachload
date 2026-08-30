@@ -1,4 +1,4 @@
-"""Offline glossary — plain-language explanations for `breachload explain`.
+"""Offline glossary - plain-language explanations for `breachload explain`.
 
 A learner shouldn't have to leave the tool to find out what "kerberoast" or "ESC1"
 means. Each entry is a short *what it is / why it matters / what breachload does*
@@ -29,7 +29,7 @@ _TERMS: list[Term] = [
          "Freemarker), so your input becomes template code.",
          "It usually escalates straight to remote code execution on the server.",
          "The web attack-surface probe suggests the {{7*7}}=49 test and per-engine RCE payloads.",
-         "HackTricks: SSTI · PayloadsAllTheThings/Server Side Template Injection",
+         "HackTricks: SSTI - PayloadsAllTheThings/Server Side Template Injection",
          ["template injection", "jinja2"]),
     Term("sqli", "SQL Injection",
          "Untrusted input is concatenated into a SQL query, letting you change the query.",

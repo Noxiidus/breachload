@@ -1,6 +1,6 @@
-"""enum4linux-ng adapter — SMB / NetBIOS / host enumeration.
+"""enum4linux-ng adapter - SMB / NetBIOS / host enumeration.
 
-enum4linux-ng writes JSON to a file (``-oJ <prefix>`` → ``<prefix>.json``), so
+enum4linux-ng writes JSON to a file (``-oJ <prefix>`` -> ``<prefix>.json``), so
 this adapter uses the OUTFILE_MARKER mechanism and parses the file, falling back
 to stdout if the file is missing. The JSON schema varies by version, so parsing
 is deliberately defensive.
@@ -60,7 +60,7 @@ class Enum4linuxAdapter(ToolAdapter):
             svc.notes.append(f"workgroup: {workgroup}")
         host.upsert_service(svc)
 
-        # Null session — a real finding.
+        # Null session - a real finding.
         sessions = data.get("sessions", {}) or {}
         if _truthy(sessions.get("Null session") or sessions.get("null_session")):
             state.add_finding(Finding(
@@ -72,7 +72,7 @@ class Enum4linuxAdapter(ToolAdapter):
             ))
             notes.append(f"{host_name}: NULL SESSION allowed")
 
-        # Shares — readable ones are findings.
+        # Shares - readable ones are findings.
         shares = data.get("shares", {}) or {}
         for share_name, info in _as_items(shares):
             access = info.get("access") if isinstance(info, dict) else None
@@ -88,7 +88,7 @@ class Enum4linuxAdapter(ToolAdapter):
                 ))
             notes.append(f"{host_name} share: {share_name}")
 
-        # Users — record usernames as (unvalidated) credential leads.
+        # Users - record usernames as (unvalidated) credential leads.
         users = data.get("users", {}) or {}
         usernames = _usernames(users)
         for uname in usernames:

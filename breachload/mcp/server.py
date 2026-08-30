@@ -3,11 +3,11 @@
 Rather than pull in the MCP SDK, this speaks the Model Context Protocol directly
 over stdio (newline-delimited JSON-RPC 2.0): `initialize`, `tools/list`,
 `tools/call`. It is deliberately scoped to breachload's SAFE, DETERMINISTIC surface
-— the parsers, the planner, the knowledge base, the report renderer. It never fires
+- the parsers, the planner, the knowledge base, the report renderer. It never fires
 a tool at a target and never bypasses the scope/validator layers; an agent that
 wants to *run* something still goes through the CLI with its confirm/scope gates.
 
-That division is the whole point: the intelligence (any agent — including the one
+That division is the whole point: the intelligence (any agent - including the one
 reading this) drives, while breachload contributes the trustworthy, reviewed pieces
 (fingerprint->CVE, AD chain composition, hash identification, roast parsing, the
 report). Think of it as giving a coding agent a security co-processor it can call.
@@ -194,7 +194,7 @@ def handle(request: dict) -> dict | None:
             return err(-32602, f"unknown tool: {name}")
         try:
             return ok(entry[2](params.get("arguments") or {}))
-        except Exception as exc:  # noqa: BLE001 — report tool errors as content, not crash
+        except Exception as exc:  # noqa: BLE001 - report tool errors as content, not crash
             return ok({"content": [{"type": "text", "text": f"error: {exc}"}],
                        "isError": True})
     if rid is None:

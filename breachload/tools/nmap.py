@@ -1,4 +1,4 @@
-"""nmap adapter — the reference implementation of the adapter pattern.
+"""nmap adapter - the reference implementation of the adapter pattern.
 
 Runs nmap with XML output and folds hosts/services/versions into state. Parsing
 uses nmap's -oX so we never scrape human-readable text.
@@ -32,7 +32,7 @@ class NmapAdapter(ToolAdapter):
         if service_scan:
             cmd += ["-sV"]
         if udp:
-            # UDP top-ports pass — needs root; without it nmap emits no XML and the
+            # UDP top-ports pass - needs root; without it nmap emits no XML and the
             # parser reports it gracefully. Bounded to the top N to stay quick.
             cmd += ["-sU", "--top-ports", str(top_ports)]
         elif ports == "-":

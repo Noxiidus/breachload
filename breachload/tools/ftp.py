@@ -1,4 +1,4 @@
-"""FTP adapter — checks for anonymous login and lists the root via curl.
+"""FTP adapter - checks for anonymous login and lists the root via curl.
 
 Anonymous FTP is a frequent foothold/loot source. Uses curl (always present) so
 no extra dependency. Read-only (list), RECON risk.
@@ -55,4 +55,4 @@ class FtpAdapter(ToolAdapter):
                 evidence="\n".join(entries[:30]),
             ))
         listing = ", ".join(e.split()[-1] for e in entries[:10]) if entries else "(empty)"
-        return [f"ftp: anonymous login OK — root: {listing}"]
+        return [f"ftp: anonymous login OK - root: {listing}"]

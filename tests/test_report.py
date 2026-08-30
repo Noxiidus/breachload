@@ -41,7 +41,7 @@ class TestRenderMarkdown:
         self.md = render_markdown(_populated())
 
     def test_header_and_summary(self):
-        assert self.md.startswith("# Engagement report — acme")
+        assert self.md.startswith("# Engagement report - acme")
         assert "## Summary" in self.md
         assert "Hosts: **1**" in self.md
         assert "1 critical" in self.md and "1 info" in self.md
@@ -111,7 +111,7 @@ class TestReproSteps:
 
     def test_repro_does_not_match_leading_digit_host(self):
         # A finding on 10.10.10.5 must not pull in a command that targeted
-        # 210.10.10.5 (leading-digit collision) — the guard is on both sides.
+        # 210.10.10.5 (leading-digit collision) - the guard is on both sides.
         st = EngagementState(name="acme")
         st.upsert_host("10.10.10.5")
         st.add_finding(Finding(title="issue", severity=Severity.HIGH, host="10.10.10.5"))
@@ -144,7 +144,7 @@ class TestReproSteps:
 class TestEmptyState:
     def test_minimal_report_no_crash(self):
         md = render_markdown(EngagementState(name="empty"))
-        assert md.startswith("# Engagement report — empty")
+        assert md.startswith("# Engagement report - empty")
         assert "no findings" in md
         # Optional sections are omitted when empty.
         assert "## Findings" not in md

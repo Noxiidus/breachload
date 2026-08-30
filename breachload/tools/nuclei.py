@@ -1,4 +1,4 @@
-"""nuclei adapter — templated vulnerability scanning.
+"""nuclei adapter - templated vulnerability scanning.
 
 Each match becomes a Finding with mapped severity. Uses nuclei's JSONL output
 (one JSON object per line) so parsing is line-oriented and robust.
@@ -68,7 +68,7 @@ class NucleiAdapter(ToolAdapter):
             matched = m.get("matched-at") or m.get("host") or ""
             host_name = urlparse(_as_url(matched)).hostname or matched
             title = info.get("name") or m.get("template-id") or "nuclei match"
-            # classification.cve-id may be a list or a single string — normalize,
+            # classification.cve-id may be a list or a single string - normalize,
             # so we never iterate over the characters of a bare CVE string.
             raw_cve = (info.get("classification", {}) or {}).get("cve-id") or []
             cve_ids = [raw_cve] if isinstance(raw_cve, str) else list(raw_cve)

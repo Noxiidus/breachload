@@ -1,4 +1,4 @@
-"""Analyzer — folds CVE matches and correlations into state findings.
+"""Analyzer - folds CVE matches and correlations into state findings.
 
 Runs after tool output has updated state (typically once per orchestrator step).
 Deduplicates so repeated runs are idempotent, and returns only the newly added

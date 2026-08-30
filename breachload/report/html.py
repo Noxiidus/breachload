@@ -1,7 +1,7 @@
 """Self-contained HTML report renderer.
 
 The Markdown report (`engine.render_markdown`) is the machine-diffable record; this
-is the shareable one — a single styled HTML file (inline CSS, no assets, no network)
+is the shareable one - a single styled HTML file (inline CSS, no assets, no network)
 an operator can hand to a client or open in a browser. Same state, same ordering, a
 severity-coloured executive summary up top.
 
@@ -69,10 +69,10 @@ def render_html(state: EngagementState) -> str:
     parts = [
         "<!doctype html>", "<html lang='en'><head><meta charset='utf-8'>",
         "<meta name='viewport' content='width=device-width, initial-scale=1'>",
-        f"<title>Engagement report — {_esc(state.name)}</title>",
+        f"<title>Engagement report - {_esc(state.name)}</title>",
         f"<style>{_CSS}</style></head><body>",
-        f"<h1>Engagement report — {_esc(state.name)}</h1>",
-        f"<p class='sub'>Generated {now} · phase reached: {_esc(state.phase.value)}</p>",
+        f"<h1>Engagement report - {_esc(state.name)}</h1>",
+        f"<p class='sub'>Generated {now} - phase reached: {_esc(state.phase.value)}</p>",
     ]
     parts += _summary(state)
     parts += _findings(state)
@@ -126,7 +126,7 @@ def _findings(state: EngagementState) -> list[str]:
 
 def _finding_block(f: Finding) -> list[str]:
     color = _SEV_COLOR.get(f.severity, "#495057")
-    loc = " · ".join(x for x in (f.host, f.service_key) if x)
+    loc = " - ".join(x for x in (f.host, f.service_key) if x)
     out = [f"<div class='finding' style='border-left-color:{color}'>",
            f"<h3><span class='badge' style='background:{color}'>"
            f"{_esc(f.severity.value.upper())}</span> {_esc(f.title)}</h3>"]
@@ -146,7 +146,7 @@ def _finding_block(f: Finding) -> list[str]:
         out.append(f"<p>{_esc(f.description)}</p>")
     if f.exploit:
         out.append("<p><strong>Guided exploit</strong> "
-                   "(review before running — confirm-gated):</p>")
+                   "(review before running - confirm-gated):</p>")
         out.append(f"<pre>{_esc(f.exploit.strip())}</pre>")
     if f.remediation:
         out.append(f"<p><strong>Remediation:</strong> {_esc(f.remediation)}</p>")
@@ -166,10 +166,10 @@ def _hosts(state: EngagementState) -> list[str]:
         os_ = _esc(host.os_guess or "?")
         if not host.services:
             out.append(f"<tr><td>{_esc(host.address)}</td><td>{os_}</td>"
-                       "<td>—</td><td>—</td><td>—</td></tr>")
+                       "<td>-</td><td>-</td><td>-</td></tr>")
             continue
         for svc in sorted(host.services.values(), key=lambda s: s.port):
-            product = _esc(" ".join(x for x in (svc.product, svc.version) if x) or "—")
+            product = _esc(" ".join(x for x in (svc.product, svc.version) if x) or "-")
             out.append(f"<tr><td>{_esc(host.address)}</td><td>{os_}</td>"
                        f"<td>{_esc(svc.key)}</td><td>{_esc(svc.name or '?')}</td>"
                        f"<td>{product}</td></tr>")
@@ -184,8 +184,8 @@ def _credentials(state: EngagementState) -> list[str]:
            "<table><tr><th>Username</th><th>Secret</th><th>Kind</th>"
            "<th>Service</th><th>Validated</th></tr>"]
     for c in state.credentials:
-        out.append(f"<tr><td>{_esc(c.username or '—')}</td><td>{_esc(c.secret or '—')}</td>"
-                   f"<td>{_esc(c.kind)}</td><td>{_esc(c.service_key or '—')}</td>"
+        out.append(f"<tr><td>{_esc(c.username or '-')}</td><td>{_esc(c.secret or '-')}</td>"
+                   f"<td>{_esc(c.kind)}</td><td>{_esc(c.service_key or '-')}</td>"
                    f"<td>{'yes' if c.validated else 'no'}</td></tr>")
     out.append("</table>")
     return out

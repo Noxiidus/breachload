@@ -1,7 +1,7 @@
-"""netexec (nxc) adapter — SMB host + Active Directory enrichment.
+"""netexec (nxc) adapter - SMB host + Active Directory enrichment.
 
 An unauthenticated `nxc smb <target>` reveals the NetBIOS name, OS, SMB signing
-and — crucially on a Domain Controller — the AD domain. That domain feeds the
+and - crucially on a Domain Controller - the AD domain. That domain feeds the
 correlator's DC detection and the whole AD attack-chain playbook. With
 credentials it also enumerates shares and users. Parsing is defensive because
 netexec's line format shifts between versions.
@@ -63,7 +63,7 @@ class NetexecAdapter(ToolAdapter):
             dom = _DOMAIN_RE.search(info)
             if dom:
                 domain = dom.group(1).strip().lower()
-                # WORKGROUP (or the host's own name) is not an AD domain — don't tag
+                # WORKGROUP (or the host's own name) is not an AD domain - don't tag
                 # it, or the AD chains would try authenticated enum against a
                 # standalone host.
                 if (domain not in ("workgroup", netbios.lower())
@@ -83,7 +83,7 @@ class NetexecAdapter(ToolAdapter):
                 state.add_finding(Finding(
                     title=f"Administrative access as {domain}\\{user}",
                     severity=Severity.HIGH,
-                    description="netexec reported Pwn3d! — local admin on this host."))
+                    description="netexec reported Pwn3d! - local admin on this host."))
             notes.append(note)
 
         for share, perm in dict.fromkeys(_SHARE_RE.findall(text)):

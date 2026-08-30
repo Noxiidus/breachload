@@ -1,7 +1,7 @@
-"""RPC adapter — dumps the portmapper (rpcinfo) to reveal RPC services.
+"""RPC adapter - dumps the portmapper (rpcinfo) to reveal RPC services.
 
-An exposed portmapper (111) lists the RPC programs and their ports — NFS, mountd,
-NIS, rquotad — pointing at the next enumeration step. Read-only (RECON).
+An exposed portmapper (111) lists the RPC programs and their ports - NFS, mountd,
+NIS, rquotad - pointing at the next enumeration step. Read-only (RECON).
 """
 
 from __future__ import annotations

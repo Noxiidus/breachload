@@ -1,4 +1,4 @@
-"""Foothold session — a command-execution channel to an already-compromised host.
+"""Foothold session - a command-execution channel to an already-compromised host.
 
 The recon/enum tools run as argv (no shell) against *untrusted* targets. A session
 is different: it runs shell commands on a host you have ALREADY compromised and are
@@ -6,9 +6,9 @@ authorized to be on (a webshell, or SSH with looted creds). That is the channel 
 autonomous post-exploitation phase drives to enumerate and escalate privileges.
 
 Two kinds:
-- **WebshellSession** — a URL template with a ``FUZZ`` marker where the (URL-encoded)
+- **WebshellSession** - a URL template with a ``FUZZ`` marker where the (URL-encoded)
   command goes, e.g. ``http://host/shell.php?cmd=FUZZ``. Runs via curl.
-- **SshSession** — user + password (via sshpass) or key, runs the command over ssh.
+- **SshSession** - user + password (via sshpass) or key, runs the command over ssh.
 
 Both take an injectable ``runner(argv) -> (returncode, stdout, stderr)`` for tests.
 A session is created only for a host already in scope (the CLI enforces that), and

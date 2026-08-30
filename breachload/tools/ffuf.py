@@ -1,4 +1,4 @@
-"""ffuf adapter — HTTP content discovery (directory/file brute-forcing).
+"""ffuf adapter - HTTP content discovery (directory/file brute-forcing).
 
 Active by risk class: it hammers the target with requests. Discovered paths are
 recorded as notes on the HTTP service and surfaced as INFO findings so they show
@@ -27,7 +27,7 @@ class FfufAdapter(ToolAdapter):
     # noisy live UI) also suppresses `-o /dev/stdout`, so the two together yield
     # plain text, not JSON. Route JSON through a tool-managed OUTFILE instead.
     # Suffix is "" (the marker IS the file): ffuf's `-o PATH` writes to exactly
-    # PATH — unlike tools whose flag appends an extension to the base path.
+    # PATH - unlike tools whose flag appends an extension to the base path.
     output_file_suffix: str | None = ""
 
     def __post_init__(self) -> None:
@@ -83,7 +83,7 @@ class FfufAdapter(ToolAdapter):
         if not results:
             return ["ffuf: no paths discovered"]
 
-        # Group by (host, port) — derived from each result URL — so notes attach
+        # Group by (host, port) - derived from each result URL - so notes attach
         # to the exact web service, not all lumped onto port 80.
         by_endpoint: dict[tuple[str, int], list[str]] = {}
         notes: list[str] = []

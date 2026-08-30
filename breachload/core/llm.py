@@ -2,7 +2,7 @@
 
 The model's job is narrow and well-defined: given the structured state summary
 and the list of available tools, decide the next action and explain why. It does
-NOT parse output and it does NOT get to bypass the safety layer — whatever it
+NOT parse output and it does NOT get to bypass the safety layer - whatever it
 proposes is validated in code before running.
 
 The client is optional: if no API key is configured, breachload falls back to a
@@ -28,7 +28,7 @@ and a list of available tools. Decide the single best next action.
 
 Rules:
 - Propose exactly one tool invocation, or signal that the current phase is complete.
-- You never invent hosts, ports, or services — reason only from the provided state.
+- You never invent hosts, ports, or services - reason only from the provided state.
 - You explain your reasoning concisely: what you expect to learn and why now.
 - Scope and command safety are enforced by a separate deterministic layer; do not \
 worry about it, just propose the technically best next step.
@@ -88,7 +88,7 @@ class Planner:
             # The first content block of a text response is a TextBlock; guard the
             # access so the block-type union (thinking/tool-use/...) type-checks.
             text = getattr(msg.content[0], "text", "").strip()
-        except Exception:  # noqa: BLE001 — resilience: never let the planner crash the run
+        except Exception:  # noqa: BLE001 - resilience: never let the planner crash the run
             return self._heuristic(state, tools)
         return self._parse_plan(text, state, tools)
 
@@ -107,7 +107,7 @@ class Planner:
             return self._heuristic(state, tools)
 
     def _heuristic(self, state: EngagementState, tools: list[dict]) -> Plan:
-        """Zero-LLM planner: capability- and state-driven, drives recon→enum→vuln.
+        """Zero-LLM planner: capability- and state-driven, drives recon->enum->vuln.
 
         Deterministic enough to walk an engagement end-to-end without the API,
         and a clear reference for what the LLM planner is expected to do.
@@ -217,7 +217,7 @@ class Planner:
         if state.phase == Phase.EXPLOIT:
             # Autonomous EXPLOIT actions are limited to the curated, READ-ONLY probes
             # (curl argv, no shell, no code execution). RCE/write exploits are never
-            # auto-fired — they stay surfaced as guided commands. Reached only via the
+            # auto-fired - they stay surfaced as guided commands. Reached only via the
             # auto-exploit walk (or an explicit --phase exploitation, still risk-gated).
             if "exploit-probe" in names:
                 for f in state.findings:
@@ -235,7 +235,7 @@ class Planner:
                 for svc in host.services.values():
                     key = f"{host.address}:{svc.port}"
                     if _is_http(svc) and "nuclei" in names and not state.has_action("nuclei", key):
-                        # Auto-select nuclei templates for the detected stack — a
+                        # Auto-select nuclei templates for the detected stack - a
                         # targeted, faster scan than the full template set. If the
                         # fingerprint already names a CVE, confirm that exact one.
                         cve_ids = _service_cve_ids(state, host, svc)
@@ -381,7 +381,7 @@ def _nuclei_cve_ids(svc) -> list[str]:
 
 def _service_cve_ids(state, host, svc) -> list[str]:
     """CVE ids for a service from BOTH its fingerprint notes and any finding that
-    the web-CVE matcher already attached to it — so a KB lead (which lands as a
+    the web-CVE matcher already attached to it - so a KB lead (which lands as a
     Finding, not a note) still routes nuclei to the exact template.
     """
     ids = _nuclei_cve_ids(svc)
@@ -422,14 +422,14 @@ def _port_from_key(service_key: str | None) -> int | None:
 
 
 def _probe_fired(state, cve: str, host: str, port: int) -> bool:
-    """True once the exploit-probe for this (cve, host, port) has run — the adapter
+    """True once the exploit-probe for this (cve, host, port) has run - the adapter
     records a 'Exploit probe fired: <cve> on <host>:<port>' finding."""
     title = f"Exploit probe fired: {cve} on {host}:{port}"
     return any(f.title == title for f in state.findings)
 
 
 def _udp_scanned(state, address: str) -> bool:
-    """True once a UDP nmap pass (-sU) has been run against `address` — so the
+    """True once a UDP nmap pass (-sU) has been run against `address` - so the
     RECON planner asks for it exactly once even when it finds no UDP services."""
     for a in state.history:
         if a.tool == "nmap" and "-sU" in a.command and address in a.command:

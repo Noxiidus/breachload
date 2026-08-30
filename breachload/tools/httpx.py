@@ -1,4 +1,4 @@
-"""httpx adapter — HTTP service fingerprint enrichment.
+"""httpx adapter - HTTP service fingerprint enrichment.
 
 Runs projectdiscovery's httpx over a web service and folds its structured probe
 (status code, page title, web server, detected technologies) into the matching
@@ -36,9 +36,9 @@ class HttpxAdapter(ToolAdapter):
         entries = _json_lines(result.stdout)
         if not entries:
             # No JSON often means the `httpx` on PATH is the Python HTTP client,
-            # not ProjectDiscovery's prober (a common name collision) — name it so
+            # not ProjectDiscovery's prober (a common name collision) - name it so
             # the operator doesn't chase a phantom failure.
-            return [f"httpx: no parseable JSON (exit {result.exit_code}) — ensure the "
+            return [f"httpx: no parseable JSON (exit {result.exit_code}) - ensure the "
                     "`httpx` on PATH is ProjectDiscovery's prober, not the python client"]
 
         notes: list[str] = []

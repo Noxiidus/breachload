@@ -1,4 +1,4 @@
-"""PostgreSQL adapter — tests for a trust/blank postgres login.
+"""PostgreSQL adapter - tests for a trust/blank postgres login.
 
 Many misconfigured Postgres instances allow the built-in `postgres` superuser with
 no password (trust auth). Probes one login with the psql client (`-w` = never

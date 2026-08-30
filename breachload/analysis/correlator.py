@@ -1,6 +1,6 @@
 """Cross-service correlation.
 
-Rules that reason over combinations of state — the kind of leads a human notices
+Rules that reason over combinations of state - the kind of leads a human notices
 by looking at the whole picture rather than one service. Each rule inspects a
 host and yields findings. Add rules here as patterns emerge.
 """
@@ -49,7 +49,7 @@ class Correlator:
         return out
 
     def _domain_controller(self, host: Host) -> list[Finding]:
-        """Kerberos + LDAP on one host is a strong Domain Controller signal — the
+        """Kerberos + LDAP on one host is a strong Domain Controller signal - the
         entry point to the whole Active Directory attack surface."""
         ports = {s.port for s in host.services.values()}
         if 88 not in ports or not ({389, 636, 3268} & ports):

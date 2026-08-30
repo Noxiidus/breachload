@@ -46,7 +46,7 @@ DASHBOARD_HTML = """<!doctype html>
 <body>
 <header>
   <h1>breachload</h1>
-  <span id="conn" class="down">connecting…</span>
+  <span id="conn" class="down">connecting...</span>
   <span id="phase"></span>
   <button id="stop">Stop engagement</button>
   <span id="flags"></span>

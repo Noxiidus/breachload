@@ -5,10 +5,10 @@ line. This is both the compliance trail and the raw material for the report.
 Never truncated, never rewritten.
 
 Each record carries a ``hash`` = SHA-256 over the record's content plus the
-previous record's hash — a hash chain. Editing or deleting any past line breaks
+previous record's hash - a hash chain. Editing or deleting any past line breaks
 every subsequent hash, so ``verify_chain`` can prove the log was not tampered with
 after the fact. This is a genuine integrity guarantee for the evidence trail (it
-detects tampering; it is not a signature — it does not prove *who* wrote it).
+detects tampering; it is not a signature - it does not prove *who* wrote it).
 """
 
 from __future__ import annotations

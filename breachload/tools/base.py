@@ -1,7 +1,7 @@
 """Tool adapter contract.
 
 Each adapter knows how to (a) build a command line and (b) parse that tool's
-output into structured state updates. Parsing lives here, in code — never in the
+output into structured state updates. Parsing lives here, in code - never in the
 LLM. An adapter declares its binary, its risk class, and its capabilities so the
 orchestrator and validator can reason about it.
 

@@ -1,9 +1,9 @@
-"""BloodHound ingestion — turn a collection into AD attack findings.
+"""BloodHound ingestion - turn a collection into AD attack findings.
 
 Parses BloodHound / SharpHound / bloodhound-python JSON (a users.json, groups.json,
-computers.json, …) into findings: kerberoastable and AS-REP-roastable accounts,
+computers.json, ...) into findings: kerberoastable and AS-REP-roastable accounts,
 unconstrained delegation, and the dangerous outbound ACL edges (GenericAll,
-WriteOwner, …) that BloodHound is really used to find — each with the concrete
+WriteOwner, ...) that BloodHound is really used to find - each with the concrete
 follow-up command. Defensive parsing: the schema varies across versions, so
 missing keys are skipped, not fatal.
 """
@@ -62,13 +62,13 @@ def parse_bloodhound(data: dict) -> list[Finding]:
         if p.get("hasspn"):
             out.append(Finding(
                 title=f"Kerberoastable account: {name}", severity=Severity.HIGH,
-                description="Account has an SPN — request its TGS and crack it offline.",
+                description="Account has an SPN - request its TGS and crack it offline.",
                 cve=[], exploit=f"impacket-GetUserSPNs <domain>/<user>:<pass> -request "
                                 f"-dc-ip <dc>   # target {name}; then hashcat -m 13100"))
         if p.get("dontreqpreauth"):
             out.append(Finding(
                 title=f"AS-REP roastable account: {name}", severity=Severity.HIGH,
-                description="Pre-auth not required — grab the AS-REP and crack it.",
+                description="Pre-auth not required - grab the AS-REP and crack it.",
                 exploit=f"impacket-GetNPUsers <domain>/ -usersfile users.txt -no-pass "
                         f"-dc-ip <dc>   # {name}; then hashcat -m 18200"))
         if p.get("unconstraineddelegation"):

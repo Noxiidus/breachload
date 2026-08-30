@@ -2,8 +2,8 @@
 
 Given a foothold Session (see core/session.py), this runs the privilege-escalation
 enumeration *through the session*, parses the output with the existing post-
-exploitation parsers, and — for a curated set of high-confidence, easily-scripted
-vectors — fires the escalation and proves root by reading /root/root.txt.
+exploitation parsers, and - for a curated set of high-confidence, easily-scripted
+vectors - fires the escalation and proves root by reading /root/root.txt.
 
 Only reached inside the authorized auto-exploit mode. Escalation is bounded to
 well-understood vectors that read a root-owned proof file (a flag), not arbitrary
@@ -20,7 +20,7 @@ from ..core.state import Credential, Finding
 from .flags import find_flags
 from .postexploit import loot
 
-# The enumeration commands run over the session — a curated "mini-linpeas" of
+# The enumeration commands run over the session - a curated "mini-linpeas" of
 # portable, read-only shell one-liners whose output feeds the existing loot parsers.
 ENUM_COMMANDS = [
     "id",
@@ -50,7 +50,7 @@ class EscalationResult:
     evidence: str = ""
     root_flag: str | None = None
     # A command template ({CMD}) that runs an arbitrary command as root via the
-    # matched vector — used to build a persistent RootSession after escalation.
+    # matched vector - used to build a persistent RootSession after escalation.
     root_run: str = ""
     findings: list[Finding] = field(default_factory=list)
     credentials: list[Credential] = field(default_factory=list)

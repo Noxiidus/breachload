@@ -1,4 +1,4 @@
-"""LDAP adapter — tests for an anonymous bind and reads the naming contexts.
+"""LDAP adapter - tests for an anonymous bind and reads the naming contexts.
 
 An anonymous LDAP bind often leaks the domain structure and, on many boxes, user
 objects with descriptions that hold passwords. Read-only base query here (RECON);

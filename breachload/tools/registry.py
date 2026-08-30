@@ -1,4 +1,4 @@
-"""Tool registry — the set of adapters breachload knows about.
+"""Tool registry - the set of adapters breachload knows about.
 
 The validator's binary allowlist is derived from here, so adding a tool in one
 place both enables it for the planner and authorizes its binary.
@@ -91,7 +91,7 @@ def merge_plugins(registry: dict[str, ToolAdapter]) -> dict[str, ToolAdapter]:
                     _log.warning("plugin adapter %r shadows a built-in; ignoring", adapter.name)
                     continue
                 registry[adapter.name] = adapter
-        except Exception:  # noqa: BLE001 — one bad plugin must not crash the tool
+        except Exception:  # noqa: BLE001 - one bad plugin must not crash the tool
             _log.exception("failed to load tool plugin %r", getattr(ep, "name", "?"))
     return registry
 

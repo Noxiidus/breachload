@@ -1,4 +1,4 @@
-"""MongoDB adapter — tests for unauthenticated access via mongosh.
+"""MongoDB adapter - tests for unauthenticated access via mongosh.
 
 A MongoDB with no auth lets anyone list databases and read collections. Probes
 with mongosh listing databases; a successful list is HIGH. ACTIVE risk. The eval

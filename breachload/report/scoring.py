@@ -1,6 +1,6 @@
 """Severity <-> CVSS band helpers for reports.
 
-We never *fabricate* a precise CVSS vector — when a finding carries a real base
+We never *fabricate* a precise CVSS vector - when a finding carries a real base
 score (from the CVE KB) we show it; otherwise we show the qualitative band that the
 finding's severity maps to under the CVSS v3.1 rating scale. This keeps the report
 honest: a number only when we actually have one, a band otherwise.

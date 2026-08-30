@@ -1,7 +1,7 @@
-"""rsync adapter — lists exposed rsync modules (often world-readable/writable).
+"""rsync adapter - lists exposed rsync modules (often world-readable/writable).
 
 An unauthenticated rsync daemon (873) frequently exposes modules you can pull from
-or push to — a direct file-read/write primitive. Read-only listing here (RECON).
+or push to - a direct file-read/write primitive. Read-only listing here (RECON).
 """
 
 from __future__ import annotations

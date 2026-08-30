@@ -1,14 +1,14 @@
-"""Windows autonomous privilege escalation — enum through a WinRM session, then act.
+"""Windows autonomous privilege escalation - enum through a WinRM session, then act.
 
 Mirrors `privesc_auto.py` (Linux) for Windows. A `WinrmSession` runs the enum
 one-liners in-process; the parser turns their output into findings + credentials, and
 `attempt_escalation` fires the curated vectors that pay off first on a stock Windows
 box:
 
-* **SeImpersonatePrivilege** — the classic PrintSpoofer / potato path (service accts).
-* **AlwaysInstallElevated** — HKLM+HKCU both 1 -> `msiexec /quiet /qn /i evil.msi` runs as SYSTEM.
+* **SeImpersonatePrivilege** - the classic PrintSpoofer / potato path (service accts).
+* **AlwaysInstallElevated** - HKLM+HKCU both 1 -> `msiexec /quiet /qn /i evil.msi` runs as SYSTEM.
 * **Unquoted service path** with a writable interstitial dir -> drop a binary in the gap.
-* **Autologon / stored creds** — `winlogon` DefaultPassword / cmdkey list -> cred reuse.
+* **Autologon / stored creds** - `winlogon` DefaultPassword / cmdkey list -> cred reuse.
 
 Every action goes through the session (so it is audited by the orchestrator's session
 wrapper), and every escalation *proves* root by reading the local admin flag

@@ -7,7 +7,7 @@ answers differently from the baseline, so the planner can enumerate it next.
 
 All requests go to the in-scope ``-u`` host (the same server); only the Host
 header changes. Discovered names still need to resolve (usually via /etc/hosts)
-and be in scope before they are enumerated — both enforced elsewhere.
+and be in scope before they are enumerated - both enforced elsewhere.
 """
 
 from __future__ import annotations

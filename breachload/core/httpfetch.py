@@ -1,4 +1,4 @@
-"""Resilient curl fetch policy — one place that knows how to GET a page reliably.
+"""Resilient curl fetch policy - one place that knows how to GET a page reliably.
 
 The recurring field failure is a large or slow HTTP response that stalls (a too-high
 VPN tun MTU, a throttled app, a streaming body) so a plain ``curl`` hangs until the
@@ -6,12 +6,12 @@ timeout and the adapter comes back empty. This module encodes the mitigations as
 pure argv builder (no I/O, trivially testable):
 
 * ``--retry`` with ``--retry-connrefused`` so a transient reset/refuse self-heals;
-* a byte cap via a ``Range: 0-<n>`` request so we pull just the head of a page — all
-  a fingerprinter needs — instead of waiting on a giant body that would stall;
+* a byte cap via a ``Range: 0-<n>`` request so we pull just the head of a page - all
+  a fingerprinter needs - instead of waiting on a giant body that would stall;
 * an explicit ``--max-time`` ceiling so a genuine stall aborts with partial output
   (still parseable) rather than blocking the whole run.
 
-argv-only, no shell — the same discipline the tool adapters use.
+argv-only, no shell - the same discipline the tool adapters use.
 """
 
 from __future__ import annotations

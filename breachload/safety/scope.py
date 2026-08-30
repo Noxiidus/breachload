@@ -1,4 +1,4 @@
-"""Scope enforcement — the hard boundary of an autonomous pentest agent.
+"""Scope enforcement - the hard boundary of an autonomous pentest agent.
 
 Every target an action touches is checked here, in deterministic code, BEFORE
 execution. The LLM is never trusted to respect scope on its own. An out-of-scope
@@ -78,8 +78,8 @@ def extract_targets(args: list[str]) -> set[str]:
     anywhere, a bare IPv6 literal as a whole argument, SMB/UNC authorities
     (``//host/share``, ``\\\\host\\share``), a whole-argument ``host:port``, and a
     whole-argument hostname. Hostnames are only taken when the argument really is
-    a host — so file paths like ``wordlists/common.txt`` are not misread as
-    targets — but a host must never slip through scope just because it is wrapped
+    a host - so file paths like ``wordlists/common.txt`` are not misread as
+    targets - but a host must never slip through scope just because it is wrapped
     in an SMB path, carries a port, hides behind URL credentials, or is an IPv6
     literal that the IPv4/hostname patterns don't recognise.
     """
@@ -93,7 +93,7 @@ def extract_targets(args: list[str]) -> set[str]:
         for m in _AUTHORITY_RE.findall(arg):        # //host or \\host
             if _try_ip(m) or _HOST_RE.fullmatch(m):
                 found.add(m)
-        # A bare IP literal as a whole argument, including IPv6 — which _IP_RE
+        # A bare IP literal as a whole argument, including IPv6 - which _IP_RE
         # (IPv4-only) and _HOST_RE do not catch, e.g. `nmap dead:beef::1` or a
         # bracketed `[::1]`. Without this an out-of-scope IPv6 target slips past.
         stripped = token.strip("[]")

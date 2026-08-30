@@ -3,7 +3,7 @@
 The Windows counterpart to `privesc_enum`/`postexploit` (Linux): a playbook to
 transfer and run winPEAS/PrivescCheck over a foothold, plus parsers that turn the
 collected output (`whoami /priv`, winPEAS, `reg query`) into findings for the
-classic Windows privesc vectors — token privileges (potato family), always-install-
+classic Windows privesc vectors - token privileges (potato family), always-install-
 elevated, unquoted service paths, and stored/autologon credentials.
 
 Text/string only; the operator runs the commands and feeds the output back.

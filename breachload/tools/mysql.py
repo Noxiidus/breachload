@@ -1,4 +1,4 @@
-"""MySQL/MariaDB adapter — tests for a blank/weak root login.
+"""MySQL/MariaDB adapter - tests for a blank/weak root login.
 
 Default or blank database credentials are a recurring foothold. Probes a single
 common login (root with no password) using the mysql client; a successful

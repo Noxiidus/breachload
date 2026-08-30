@@ -3,7 +3,7 @@
 Renders the structured engagement state into a Markdown report: an executive
 summary, host/service inventory, findings ordered by severity, collected
 credentials, generated artifacts, and an activity timeline from the audit-worthy
-action history. Plain-Python string building — no template engine dependency.
+action history. Plain-Python string building - no template engine dependency.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 from ..core.state import EngagementState, Finding, Severity
 
-# High → low, for ordering and summary display.
+# High -> low, for ordering and summary display.
 _SEVERITY_ORDER = [
     Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO,
 ]
@@ -50,7 +50,7 @@ def _audit_integrity(audit_path) -> list[str]:
     res = verify_chain(Path(audit_path))
     if res.records == 0:
         return []
-    status = ("intact — no tampering detected" if res.ok
+    status = ("intact - no tampering detected" if res.ok
               else f"BROKEN at line {res.broken_at} ({res.detail})")
     return ["## Audit integrity", "",
             f"- Records: **{res.records}**",
@@ -62,9 +62,9 @@ def _audit_integrity(audit_path) -> list[str]:
 def _header(state: EngagementState) -> list[str]:
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     return [
-        f"# Engagement report — {state.name}",
+        f"# Engagement report - {state.name}",
         "",
-        f"*Generated {now} · phase reached: {state.phase.value}*",
+        f"*Generated {now} - phase reached: {state.phase.value}*",
         "",
     ]
 
@@ -80,7 +80,7 @@ def _summary(state: EngagementState) -> list[str]:
         f"- Hosts: **{len(state.hosts)}**",
         f"- Open services: **{sum(len(h.services) for h in state.hosts.values())}**",
         f"- Findings: **{len(state.findings)}** ({sev_line})",
-        f"- Confirmed (proven): **{confirmed}** · suspected: "
+        f"- Confirmed (proven): **{confirmed}** - suspected: "
         f"**{len(state.findings) - confirmed}**",
         f"- Credentials: **{len(state.credentials)}**",
         f"- Artifacts: **{len(state.artifacts)}**",
@@ -89,7 +89,7 @@ def _summary(state: EngagementState) -> list[str]:
 
 
 def _attack_path(state: EngagementState) -> list[str]:
-    """A plain-language narrative of the engagement so far — a study document, not
+    """A plain-language narrative of the engagement so far - a study document, not
     just a data dump. Deterministic prose synthesised from state."""
     if not state.hosts and not state.findings:
         return []
@@ -124,7 +124,7 @@ def _attack_path(state: EngagementState) -> list[str]:
     if state.credentials:
         kinds = ", ".join(sorted({c.kind for c in state.credentials}))
         out.append("")
-        out.append(f"Collected **{len(state.credentials)} credential(s)** ({kinds}) — "
+        out.append(f"Collected **{len(state.credentials)} credential(s)** ({kinds}) - "
                    "reuse them across hosts/services and for privilege escalation.")
     privesc = [f for f in state.findings
                if any(w in f.title.lower() for w in ("privilege", "privesc", "suid",
@@ -151,10 +151,10 @@ def _hosts(state: EngagementState) -> list[str]:
         os_ = _cell(host.os_guess or "?")
         addr = _cell(host.address)
         if not host.services:
-            out.append(f"| {addr} | {os_} | — | — | — |")
+            out.append(f"| {addr} | {os_} | - | - | - |")
             continue
         for svc in sorted(host.services.values(), key=lambda s: s.port):
-            product = _cell(" ".join(x for x in (svc.product, svc.version) if x) or "—")
+            product = _cell(" ".join(x for x in (svc.product, svc.version) if x) or "-")
             out.append(f"| {addr} | {os_} | {svc.key} | {_cell(svc.name or '?')} | {product} |")
     out.append("")
     return out
@@ -172,8 +172,8 @@ def _findings(state: EngagementState) -> list[str]:
 
 def _finding_block(f: Finding, state: EngagementState) -> list[str]:
     from .scoring import score_label
-    loc = " · ".join(x for x in (f.host, f.service_key) if x)
-    badge = "✅ CONFIRMED" if f.validation == "confirmed" else "❔ suspected"
+    loc = " - ".join(x for x in (f.host, f.service_key) if x)
+    badge = "[CONFIRMED]" if f.validation == "confirmed" else "[suspected]"
     out = [f"### [{f.severity.value.upper()}] {f.title}", ""]
     out.append(f"**Status:** {badge}  ")
     out.append(f"**CVSS:** {score_label(f)}  ")
@@ -204,7 +204,7 @@ def _repro_steps(f: Finding, state: EngagementState) -> list[str]:
     if not f.host:
         return []
     # Adjacent-digit guard on both sides so host 10.10.10.5 matches neither
-    # 10.10.10.50 (trailing) nor 210.10.10.5 (leading) — the same prefix-collision
+    # 10.10.10.50 (trailing) nor 210.10.10.5 (leading) - the same prefix-collision
     # fix state.has_action uses, applied identically here.
     host_re = re.compile(r"(?<!\d)" + re.escape(f.host) + r"(?!\d)")
     steps = [
@@ -227,8 +227,8 @@ def _credentials(state: EngagementState) -> list[str]:
            "|----------|--------|------|---------|-----------|"]
     for c in state.credentials:
         out.append(
-            f"| {_cell(c.username or '—')} | {_cell(c.secret or '—')} | {_cell(c.kind)} | "
-            f"{_cell(c.service_key or '—')} | {'yes' if c.validated else 'no'} |"
+            f"| {_cell(c.username or '-')} | {_cell(c.secret or '-')} | {_cell(c.kind)} | "
+            f"{_cell(c.service_key or '-')} | {'yes' if c.validated else 'no'} |"
         )
     out.append("")
     return out
@@ -241,8 +241,8 @@ def _artifacts(state: EngagementState) -> list[str]:
            "|------|------|------|----------|------|"]
     for a in state.artifacts:
         out.append(
-            f"| {_cell(a.name)} | {_cell(a.kind)} | {_cell(a.tool or '—')} | "
-            f"{_cell(a.platform or '—')} | {_cell(a.path or '—')} |"
+            f"| {_cell(a.name)} | {_cell(a.kind)} | {_cell(a.tool or '-')} | "
+            f"{_cell(a.platform or '-')} | {_cell(a.path or '-')} |"
         )
     out.append("")
     return out
@@ -260,6 +260,6 @@ def _timeline(state: EngagementState) -> list[str]:
     out = ["## Activity timeline", ""]
     for a in state.history:
         status = "blocked/skipped" if not a.approved else f"exit {a.exit_code}"
-        out.append(f"- `{a.phase.value}` **{a.tool}** — {_render_command(a.command)} ({status})")
+        out.append(f"- `{a.phase.value}` **{a.tool}** - {_render_command(a.command)} ({status})")
     out.append("")
     return out

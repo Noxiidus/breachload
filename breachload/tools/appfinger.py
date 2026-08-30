@@ -1,11 +1,11 @@
-"""Application fingerprinting adapter — deep web-app detection.
+"""Application fingerprinting adapter - deep web-app detection.
 
 whatweb/httpx often miss the *application* when the root redirects (e.g. a PBX or
 admin panel) or hides its name behind a generic server banner. This adapter fetches
 the URL following redirects (`curl -sL`), then matches the title / meta-generator /
 body / headers against a curated signature table for the apps breachload has CVEs
 and auto-foothold modules for. A hit records a ``webapp: <App> <version>`` note, so
-the web-CVE matcher fires and (in auto-exploit mode) the auto-foothold can trigger —
+the web-CVE matcher fires and (in auto-exploit mode) the auto-foothold can trigger -
 without a human seeding the finding.
 
 Single request per host, read-only (RECON risk).
@@ -93,7 +93,7 @@ class AppFingerAdapter(ToolAdapter):
         # -L follows redirects (root -> /admin login is how many apps hide), -i
         # includes headers (some apps only reveal via X-Generator/X-Jenkins). The
         # resilient policy adds retries and a 128 KB Range cap so a large/slow body
-        # (classic MTU stall) can't hang the fingerprint — the head is enough.
+        # (classic MTU stall) can't hang the fingerprint - the head is enough.
         return fetch_argv(_as_url(target), follow=True, include_headers=True,
                           max_bytes=131072, timeout=20, retries=2)
 

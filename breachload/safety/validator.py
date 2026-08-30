@@ -3,9 +3,9 @@
 The LLM proposes a command; this gate decides whether it may run. Three checks,
 all deterministic:
 
-  1. Binary allowlist — only known, registered tools.
-  2. Scope — every target in the args must be in scope.
-  3. Risk class — destructive/intrusive commands require confirmation even in
+  1. Binary allowlist - only known, registered tools.
+  2. Scope - every target in the args must be in scope.
+  3. Risk class - destructive/intrusive commands require confirmation even in
      full-auto mode (or are blocked entirely below the configured threshold).
 
 Nothing here trusts the model. If the model asks for `rm`, a shell pipe, or a
@@ -22,14 +22,14 @@ from .scope import Scope, extract_targets
 
 class Risk(IntEnum):
     PASSIVE = 0      # whois, dns, cert lookups
-    RECON = 1        # nmap discovery, whatweb — noisy but non-intrusive
-    ACTIVE = 2       # dir brute, nuclei, enum — touches the target actively
+    RECON = 1        # nmap discovery, whatweb - noisy but non-intrusive
+    ACTIVE = 2       # dir brute, nuclei, enum - touches the target actively
     INTRUSIVE = 3    # brute-force auth, sqlmap dumping
     EXPLOIT = 4      # exploit execution, shells, writes
     DESTRUCTIVE = 5  # anything that can damage/DoS the target
 
 
-# Shell metacharacters that must never appear in a proposed argv token —
+# Shell metacharacters that must never appear in a proposed argv token -
 # commands run via argv list (no shell), so these signal an injection attempt.
 _FORBIDDEN = (";", "|", "&", "$(", "`", ">", "<", "\n")
 
