@@ -14,7 +14,7 @@ ExecStart=/usr/sbin/dahdi_cfg -c /etc/dahdi/system.conf
 ExecStart=-/opt/app/bin/run.sh
 $ cat /etc/init.d/* 2>/dev/null | grep -E '(^|[[:space:]])(\\.|source)[[:space:]]+/' | head -40
 [ -r /etc/dahdi/init.conf ] && . /etc/dahdi/init.conf
-$ cat /etc/cron.d/* /var/spool/cron/crontabs/* /etc/crontab 2>/dev/null | grep -vE '^[[:space:]]*#' | head -60
+$ cat /etc/cron.d/* crontab cron
 */5 * * * * root /opt/scripts/backup.sh
 """
 
