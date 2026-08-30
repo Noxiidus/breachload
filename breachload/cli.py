@@ -1323,6 +1323,40 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
                   f"run `crack` to attack the hashes.")
 
 
+@app.command(rich_help_panel="Recon, enum & planning")
+def browser(url: str = typer.Argument(..., help="URL to render and analyse (client-side)"),
+            config: Path = typer.Option(None, help="engagement YAML to record findings into")):
+    """Headless-browser client-side scan: auth forms, CSRF, DOM-XSS sinks, reflected XSS.
+
+    Renders the page with a real browser (JavaScript executed) and analyses the DOM —
+    the attack surface a curl-based scan can't see. Needs the optional Playwright
+    backend (`pip install playwright && playwright install chromium`).
+    """
+    from .analysis.browser import BrowserScan, PlaywrightDriver, available
+    if not available():
+        console.print("[yellow]Playwright not installed[/] - run: "
+                      "pip install playwright && playwright install chromium")
+        raise typer.Exit(1)
+    findings = BrowserScan(PlaywrightDriver()).scan(url)
+    console.print(f"[bold green]browser[/] {len(findings)} client-side finding(s) on {url}\n")
+    for f in findings:
+        console.print(f"  [{f.severity.value}] {escape(f.title)}")
+        if f.exploit:
+            console.print("    " + f.exploit, markup=False)
+    if config and findings:
+        cfg = _load_config(config)
+        state_path = ENGAGEMENTS / cfg.name / "state.json"
+        state = _load_state(state_path) if state_path.exists() else \
+            EngagementState(name=cfg.name)
+        existing = {fx.title for fx in state.findings}
+        for f in findings:
+            if f.title not in existing:
+                state.add_finding(f)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state.save(state_path)
+        console.print(f"[dim]recorded into {state_path}[/]")
+
+
 @app.command(rich_help_panel="Setup & control")
 def mcp():
     """Run breachload as an MCP server (stdio) — expose its safe tools to any LLM agent.

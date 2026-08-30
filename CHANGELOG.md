@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-30
+
+Competitor-inspired capabilities (Strix / HexStrike-AI), plus the live-test learnings
+from HTB Helix folded back in.
+
+### Added
+- **Proof / validation tracking**: every `Finding` now carries `validation`
+  (`suspected` | `confirmed`) and a `proof` string. The autonomous foothold, Linux &
+  Windows privesc, and Kerberoast paths mark their findings **confirmed** with the
+  concrete evidence (a read flag, an opened session, a recovered hash). Reports (MD +
+  HTML) show a CONFIRMED/SUSPECTED badge, the proof, and a confirmed-vs-suspected count
+  — honest about what is proven vs merely inferred (Strix's differentiator).
+- **MCP server** (`breachload mcp`): a dependency-free stdio JSON-RPC server exposing
+  breachload's SAFE, deterministic surface to any LLM agent (Claude Code, etc.) —
+  `fingerprint_to_cve`, `ad_killchain`, `parse_roast`, `identify_hash`, `pivot_plan`,
+  `explain_term`, `gtfobins`, `parse_nmap_xml`. It never fires at a target and never
+  bypasses scope/validator; the agent drives, breachload contributes the trustworthy
+  reviewed pieces (HexStrike-AI's MCP idea, on top of our stronger safety model).
+- **Client-side / browser scanning** (`analysis/browser` + `browser` command): a
+  headless-browser (Playwright, optional extra `[browser]`) renders the page with
+  JavaScript executed and analyses the *rendered* DOM for the surface a curl scan can't
+  see — login/auth forms, CSRF-tokenless POST forms, DOM-XSS sinks, external
+  (supply-chain) scripts, and reflected-input XSS via a canary probe. The browser is
+  behind an injectable driver so the analysis is fully unit-tested without Playwright.
+
+### Fixed / Improved (from the Helix live test)
+- **vhost wordlist 5k -> 20k** so a vhost-gated app (e.g. NiFi on `flow.<domain>`) is
+  actually discovered, and `#`-prefixed wordlist comment lines no longer become bogus
+  vhosts.
+- **Apache NiFi** appfinger signature + `webapp_kb` entry (CVE-2023-34468, unauth API
+  RCE) + nuclei tag — breachload now autonomously surfaces the NiFi RCE lead with the
+  full ExecuteProcess + flowfile-readback + sensitive-value-decrypt recipe.
+
 ## [0.19.0] - 2026-08-30
 
 ### Added
