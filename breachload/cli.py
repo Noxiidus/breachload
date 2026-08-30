@@ -936,6 +936,25 @@ def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def adchain(config: Path = typer.Argument(..., help="engagement YAML")):
+    """Compose the AD findings (BloodHound/ADCS/roasting) into an ordered path to DA."""
+    from .analysis.adchain import plan_ad_chain, render_chain
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet - run recon / bloodhound / adcs first[/]")
+        raise typer.Exit(1)
+    state = _load_state(state_path)
+    have_creds = any(c.validated for c in state.credentials) or bool(state.credentials)
+    chain = plan_ad_chain(list(state.findings), have_creds=have_creds)
+    ordered = chain.ordered()
+    console.print(f"[bold green]adchain[/] {len(ordered)} step(s) "
+                  f"(creds held: {have_creds})")
+    for line in render_chain(chain, have_creds=have_creds):
+        console.print("  " + line, markup=False)
+
+
+@app.command()
 def creds(config: Path = typer.Argument(..., help="engagement YAML"),
           add: str = typer.Option(None, help="add a credential as 'user:secret' (or just 'user')"),
           kind: str = typer.Option("password", help="password | hash | key | ticket"),
