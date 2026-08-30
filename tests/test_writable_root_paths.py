@@ -9,7 +9,7 @@ $ find / -writable -type f 2>/dev/null | grep -vE '^/(proc|sys|dev|run)' | head 
 /etc/dahdi/init.conf
 /opt/app/config/settings.py
 /tmp/junk
-$ cat /etc/systemd/system/*.service /lib/systemd/system/*.service 2>/dev/null | grep -iE 'ExecStart' | head -60
+$ cat /etc/systemd/system/*.service ExecStart | head -60
 ExecStart=/usr/sbin/dahdi_cfg -c /etc/dahdi/system.conf
 ExecStart=-/opt/app/bin/run.sh
 $ cat /etc/init.d/* 2>/dev/null | grep -E '(^|[[:space:]])(\\.|source)[[:space:]]+/' | head -40
