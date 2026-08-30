@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-30
+
+### Added
+- **DNS adapter** (`tools/dns`): `dig axfr @<ns> <domain>` — a successful zone transfer harvests every
+  A/AAAA into the state as known hosts (tagged with their DNS name), and the transfer itself lands as
+  a HIGH finding; refusal degrades to a quiet note. Scheduled on port 53 in the ENUM heuristic.
+- **Active Kerberos** (`analysis/kerberos` + `kerberos` command): AS-REP roast and Kerberoast command
+  builders (`impacket-GetNPUsers`/`GetUserSPNs`, `kerbrute userenum`), plus a parser that turns
+  `$krb5asrep$…`/`$krb5tgs$…` output into findings **and** `kind="hash"` credentials that flow straight
+  into the `crack` loop. `--run` fires the AS-REP roast for real; `--parse-file` ingests offline output.
+- **Windows autonomous privesc** (`analysis/winprivesc_auto` + `core/session.WinrmSession`): a
+  `evil-winrm` session channel with a matching autonomous privesc — WinRM enum (`whoami /all`,
+  registry AlwaysInstallElevated, wmic services, Winlogon autologon, cmdkey, schtasks), parsed into
+  SeImpersonate / AlwaysInstallElevated / unquoted-service-path / autologon-credential findings, then a
+  curated escalation (PrintSpoofer, msiexec MSI) proved by reading `C:\\Users\\Administrator\\Desktop\\root.txt`.
+  Routed automatically by the orchestrator when the session kind is `winrm`.
+- **More auto-foothold modules**: Apache OFBiz auth-bypass Groovy RCE (`CVE-2023-51467`) and Metabase
+  pre-auth H2-JDBC RCE (`CVE-2023-38646`). Both drop a webshell to a served path and return a live
+  `WebshellSession`, reachable from the KB.
+
 ## [0.17.0] - 2026-08-30
 
 ### Added

