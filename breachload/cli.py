@@ -1323,6 +1323,19 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
                   f"run `crack` to attack the hashes.")
 
 
+@app.command(rich_help_panel="Setup & control")
+def mcp():
+    """Run breachload as an MCP server (stdio) — expose its safe tools to any LLM agent.
+
+    Speaks JSON-RPC over stdin/stdout. Point an MCP client (Claude Code, etc.) at
+    `breachload mcp`. Exposes the deterministic, non-firing surface: fingerprint->CVE,
+    AD kill-chain composition, roast parsing, hash identification, pivot planning,
+    the glossary, and GTFOBins — never firing a tool at a target.
+    """
+    from .mcp.server import serve
+    serve()
+
+
 @app.command(rich_help_panel="Reporting & audit")
 def audit(config: Path = typer.Argument(..., help="engagement YAML"),
           verify: bool = typer.Option(True, "--verify/--no-verify",
