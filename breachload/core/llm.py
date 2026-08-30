@@ -85,7 +85,9 @@ class Planner:
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user}],
             )
-            text = msg.content[0].text.strip()
+            # The first content block of a text response is a TextBlock; guard the
+            # access so the block-type union (thinking/tool-use/...) type-checks.
+            text = getattr(msg.content[0], "text", "").strip()
         except Exception:  # noqa: BLE001 — resilience: never let the planner crash the run
             return self._heuristic(state, tools)
         return self._parse_plan(text, state, tools)
