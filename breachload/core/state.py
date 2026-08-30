@@ -114,7 +114,7 @@ class Finding(BaseModel):
     proof: str = ""
     discovered_at: str = Field(default_factory=_now)
 
-    def confirm(self, proof: str = "") -> "Finding":
+    def confirm(self, proof: str = "") -> Finding:
         """Mark this finding proven, optionally attaching the exploitation evidence."""
         self.validation = "confirmed"
         if proof:
