@@ -39,11 +39,16 @@ class NucleiAdapter(ToolAdapter):
         *,
         severity: str | None = None,
         tags: str | None = None,
+        template_id: str | None = None,
     ) -> list[str]:
         cmd = ["nuclei", "-u", _as_url(target), "-jsonl", "-silent"]
         if severity:
             cmd += ["-severity", severity]
-        if tags:
+        # A specific template id (e.g. a CVE) takes precedence over broad tags:
+        # a fingerprint-confirmed lead deserves a single-template check.
+        if template_id:
+            cmd += ["-id", template_id]
+        elif tags:
             cmd += ["-tags", tags]
         return cmd
 

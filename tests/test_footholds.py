@@ -7,7 +7,11 @@ from breachload.core.config import EngagementConfig
 from breachload.core.orchestrator import Orchestrator
 from breachload.core.session import WebshellSession
 from breachload.core.state import EngagementState, Finding, Phase, Severity
-from breachload.exploit.footholds import FreepbxFoothold, foothold_for
+from breachload.exploit.footholds import (
+    FreepbxFoothold,
+    GlpiHtmlawedFoothold,
+    foothold_for,
+)
 from breachload.safety.audit import AuditLog
 from breachload.safety.scope import Scope
 from breachload.safety.validator import Risk, Validator
@@ -19,8 +23,35 @@ class TestFootholdRegistry:
         m = foothold_for("CVE-2025-57819")
         assert isinstance(m, FreepbxFoothold)
 
+    def test_glpi_registered(self):
+        assert isinstance(foothold_for("CVE-2022-35914"), GlpiHtmlawedFoothold)
+
     def test_unknown_cve(self):
         assert foothold_for("CVE-0000-0000") is None
+
+
+class TestGlpiEstablish:
+    def test_establishes_webshell_session(self):
+        calls = []
+
+        def runner(argv, timeout):
+            calls.append(argv)
+            if "shell.php" in argv[-1]:
+                return 0, "uid=33(www-data) gid=33(www-data)", ""
+            return 0, "", ""
+
+        sess = GlpiHtmlawedFoothold().establish("10.10.10.7", 80, runner=runner,
+                                                sleeper=lambda s: None)
+        assert isinstance(sess, WebshellSession)
+        assert "vendor/htmlawed/htmlawed/shell.php?cmd=FUZZ" in sess.template
+        assert any("htmLawedTest.php" in tok for a in calls for tok in a)
+        assert any("hhook=system" in tok for a in calls for tok in a)
+
+    def test_returns_none_when_shell_never_appears(self):
+        sess = GlpiHtmlawedFoothold().establish("10.10.10.7", 80, attempts=2,
+                                                runner=lambda argv, t: (0, "", ""),
+                                                sleeper=lambda s: None)
+        assert sess is None
 
 
 class TestFreepbxEstablish:

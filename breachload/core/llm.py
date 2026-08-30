@@ -14,6 +14,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import os
+import re
 from dataclasses import dataclass
 
 from ..exploit.autofire import probe_for
@@ -230,11 +231,20 @@ class Planner:
                     key = f"{host.address}:{svc.port}"
                     if _is_http(svc) and "nuclei" in names and not state.has_action("nuclei", key):
                         # Auto-select nuclei templates for the detected stack — a
-                        # targeted, faster scan than the full template set.
+                        # targeted, faster scan than the full template set. If the
+                        # fingerprint already names a CVE, confirm that exact one.
+                        cve_ids = _nuclei_cve_ids(svc)
                         tags = _nuclei_tags(svc)
-                        args = {"tags": tags} if tags else {}
-                        why = (f"Scan the web service with nuclei (tags: {tags})."
-                               if tags else "Scan the web service for known vulnerabilities.")
+                        if cve_ids:
+                            args = {"template_id": ",".join(cve_ids)}
+                            why = (f"Confirm the fingerprinted lead with nuclei "
+                                   f"(-id {args['template_id']}).")
+                        elif tags:
+                            args = {"tags": tags}
+                            why = f"Scan the web service with nuclei (tags: {tags})."
+                        else:
+                            args = {}
+                            why = "Scan the web service for known vulnerabilities."
                         return Plan("run", "nuclei", _svc_url(host.address, svc), args, why)
             return Plan("phase_complete", rationale="Vulnerability scan complete.")
 
@@ -311,7 +321,25 @@ _NUCLEI_TAG_MAP = {
     "confluence": "confluence", "phpmyadmin": "phpmyadmin", "spring": "springboot",
     "struts": "struts", "laravel": "laravel", "wso2": "wso2", "zabbix": "zabbix",
     "cacti": "cacti", "solr": "solr", "coldfusion": "coldfusion", "citrix": "citrix",
+    # Expanded stack coverage (matches the webapp CVE KB).
+    "freepbx": "freepbx", "moodle": "moodle", "nextcloud": "nextcloud",
+    "owncloud": "owncloud", "pfsense": "pfsense", "fortinet": "fortinet",
+    "fortios": "fortinet", "fortigate": "fortinet", "glpi": "glpi",
+    "roundcube": "roundcube", "zimbra": "zimbra", "ofbiz": "ofbiz", "wso2 ": "wso2",
+    "teamcity": "teamcity", "craftcms": "craftcms", "craft cms": "craftcms",
+    "metabase": "metabase", "webmin": "webmin", "nagios": "nagios", "sharepoint": "sharepoint",
+    "exchange": "exchange", "outlook web": "exchange", "vcenter": "vmware", "vmware": "vmware",
+    "openfire": "openfire", "rocketchat": "rocketchat", "rocket.chat": "rocketchat",
+    "wordpress plugin": "wpplugin", "elasticsearch": "elasticsearch", "kafka": "kafka",
+    "keycloak": "keycloak", "airflow": "airflow", "django": "django", "flask": "werkzeug",
+    "werkzeug": "werkzeug", "symfony": "symfony", "prometheus": "prometheus",
+    "harbor": "harbor", "minio": "minio", "consul": "consul", "traefik": "traefik",
+    "ivanti": "ivanti", "sonicwall": "sonicwall", "papercut": "papercut", "phpinfo": "phpinfo",
 }
+
+# nuclei can target one template by CVE id (`-id CVE-...`). We pull ids out of the
+# fingerprint notes so a KB-confirmed vuln gets a one-template confirmation run.
+_CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.IGNORECASE)
 
 
 def _nuclei_tags(svc) -> str:
@@ -322,6 +350,22 @@ def _nuclei_tags(svc) -> str:
         if token in haystack and tag not in tags:
             tags.append(tag)
     return ",".join(tags)
+
+
+def _nuclei_cve_ids(svc) -> list[str]:
+    """CVE ids named in a service's notes, upper-cased and de-duplicated in order.
+
+    When appfinger/webcve has already pinned a CVE to the fingerprint, feeding that
+    id to `nuclei -id` confirms it with a single template instead of the whole tag
+    set -- fast, low-noise validation of the exact lead.
+    """
+    haystack = " ".join([svc.product or "", svc.name or "", *svc.notes])
+    ids: list[str] = []
+    for m in _CVE_RE.findall(haystack):
+        cid = m.upper()
+        if cid not in ids:
+            ids.append(cid)
+    return ids
 
 
 def _has_http(host) -> bool:

