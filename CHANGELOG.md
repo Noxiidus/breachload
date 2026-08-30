@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-30
+
+### Added
+- **Deeper fingerprint -> CVE**: the web-app CVE knowledge base grew from 17 to 34 entries (FreePBX,
+  Moodle, Nextcloud, pfSense, FortiOS, GLPI, Roundcube, Zabbix, Zimbra, Apache OFBiz, WSO2, ColdFusion,
+  Citrix, TeamCity, Laravel Ignition, Magento, Craft CMS, Apache 2.4.49 traversal, PHP-CGI). The nuclei
+  auto-tag map gained ~30 tokens to match, and `appfinger` gained 16 new signatures so the widened KB
+  actually fires from a fingerprint.
+- **Nuclei CVE-id passthrough** (`nuclei -id CVE-...`): when a fingerprint already names a CVE, the
+  planner confirms that exact template instead of the whole tag set — fast, low-noise validation.
+- **GLPI htmLawed auto-foothold** (`CVE-2022-35914`): a second auto-foothold module — the unauth
+  `hhook=system` test page drops a webshell into the web-served vendor dir and returns a live session.
+- **Resilient HTTP fetch policy** (`core/httpfetch`): a shared curl argv builder with retries
+  (`--retry-connrefused`) and a `Range: 0-<n>` byte cap so a large/slow body (the classic VPN-MTU
+  stall) can't hang a fingerprint — the head is enough. Wired into `appfinger`; `--retry-connrefused`
+  also spliced into the read-only autofire probes.
+- **AD kill-chain composer** (`analysis/adchain` + `adchain` command): orders the isolated AD findings
+  (BloodHound / ADCS / roasting) into a ranked path to Domain Admin — DCSync > ADCS ESC > unconstrained
+  delegation > RBCD > AS-REP > Kerberoast > ACL abuse — each step carrying its next command and a
+  "needs a credential first" gate.
+- **HTML report** (`report/html` + `report --html`): a self-contained, styled, escape-safe HTML report
+  (severity summary bar + badges, host/finding/credential/timeline sections) alongside the Markdown one.
+
 ## [0.16.0] - 2026-08-23
 
 ### Added
