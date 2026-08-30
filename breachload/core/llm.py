@@ -167,6 +167,9 @@ class Planner:
                                 and not state.has_action("enum4linux-ng", host.address):
                             return Plan("run", "enum4linux-ng", host.address, {},
                                         "Enumerate SMB shares, users, and null sessions.")
+                    if _is_dns(svc) and "dns" in names and not state.has_action("dns", key):
+                        return Plan("run", "dns", host.address, {"port": svc.port},
+                                    "Attempt a DNS zone transfer (AXFR) to dump the zone.")
                     if _is_snmp(svc) and "snmp" in names and not state.has_action("snmp", key):
                         return Plan("run", "snmp", host.address, {"port": svc.port},
                                     "Read the SNMP tree with community 'public'.")
@@ -263,6 +266,11 @@ def _is_http(svc) -> bool:
 
 def _is_snmp(svc) -> bool:
     return (svc.name or "").lower().startswith("snmp") or svc.port == 161
+
+
+def _is_dns(svc) -> bool:
+    return (svc.name or "").lower().startswith("domain") \
+        or (svc.name or "").lower() == "dns" or svc.port == 53
 
 
 def _is_nfs(svc) -> bool:

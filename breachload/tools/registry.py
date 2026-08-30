@@ -18,6 +18,7 @@ from importlib.metadata import entry_points
 
 from .appfinger import AppFingerAdapter
 from .base import ToolAdapter
+from .dns import DnsAdapter
 from .enum4linux import Enum4linuxAdapter
 from .exploitprobe import ExploitProbeAdapter
 from .ffuf import FfufAdapter
@@ -55,6 +56,7 @@ def default_registry(load_plugins: bool = True) -> dict[str, ToolAdapter]:
         Enum4linuxAdapter(),
         NetexecAdapter(),
         VhostFuzzAdapter(),
+        DnsAdapter(),
         SnmpAdapter(),
         NfsAdapter(),
         FtpAdapter(),
