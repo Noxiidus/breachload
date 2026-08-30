@@ -107,7 +107,19 @@ class Finding(BaseModel):
     # Optional CVSS v3.1 base score (0.0-10.0) when the KB knows it; the report
     # falls back to a severity->band label when this is absent.
     cvss: float | None = None
+    # Proof status: "suspected" (inferred from a fingerprint/version/heuristic) vs
+    # "confirmed" (we actually proved it — a probe hit, a shell, a read secret).
+    # Confirmed findings carry `proof` = the concrete evidence of exploitation.
+    validation: str = "suspected"       # suspected | confirmed
+    proof: str = ""
     discovered_at: str = Field(default_factory=_now)
+
+    def confirm(self, proof: str = "") -> "Finding":
+        """Mark this finding proven, optionally attaching the exploitation evidence."""
+        self.validation = "confirmed"
+        if proof:
+            self.proof = proof
+        return self
 
 
 class Artifact(BaseModel):

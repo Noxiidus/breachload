@@ -92,6 +92,8 @@ def _hash_finding(kind: str, user: str, h: str, mode: str,
                     f"(hashcat -m {mode}) and reuse the plaintext.",
         evidence=h[:400],
         exploit=f"hashcat -m {mode} '{h[:60]}...' /usr/share/wordlists/rockyou.txt",
+        # We actually pulled the hash off the wire — that is proof, not a guess.
+        validation="confirmed", proof=f"recovered {kind} hash for {user}",
     )
 
 

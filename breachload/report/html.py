@@ -87,10 +87,11 @@ def _summary(state: EngagementState) -> list[str]:
     counts = Counter(f.severity for f in state.findings)
     total = sum(counts.values())
     n_svc = sum(len(h.services) for h in state.hosts.values())
+    confirmed = sum(1 for f in state.findings if f.validation == "confirmed")
     cards = [
         ("Hosts", len(state.hosts)), ("Services", n_svc),
-        ("Findings", total), ("Credentials", len(state.credentials)),
-        ("Flags", len(state.flags)),
+        ("Findings", total), ("Confirmed", confirmed),
+        ("Credentials", len(state.credentials)), ("Flags", len(state.flags)),
     ]
     out = ["<h2>Executive summary</h2>", "<div class='cards'>"]
     for label, n in cards:
@@ -130,6 +131,12 @@ def _finding_block(f: Finding) -> list[str]:
            f"<h3><span class='badge' style='background:{color}'>"
            f"{_esc(f.severity.value.upper())}</span> {_esc(f.title)}</h3>"]
     from .scoring import score_label
+    if f.validation == "confirmed":
+        out.append("<p><span class='badge' style='background:#2b8a3e'>CONFIRMED</span>"
+                   + (f" <span class='muted'>{_esc(f.proof)}</span>" if f.proof else "")
+                   + "</p>")
+    else:
+        out.append("<p><span class='badge' style='background:#868e96'>SUSPECTED</span></p>")
     out.append(f"<p class='muted'>CVSS: {_esc(score_label(f))}</p>")
     if loc:
         out.append(f"<p class='muted'>Location: {_esc(loc)}</p>")

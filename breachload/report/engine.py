@@ -73,12 +73,15 @@ def _summary(state: EngagementState) -> list[str]:
     counts = Counter(f.severity for f in state.findings)
     parts = [f"{counts[s]} {s.value}" for s in _SEVERITY_ORDER if counts[s]]
     sev_line = ", ".join(parts) if parts else "no findings"
+    confirmed = sum(1 for f in state.findings if f.validation == "confirmed")
     return [
         "## Summary",
         "",
         f"- Hosts: **{len(state.hosts)}**",
         f"- Open services: **{sum(len(h.services) for h in state.hosts.values())}**",
         f"- Findings: **{len(state.findings)}** ({sev_line})",
+        f"- Confirmed (proven): **{confirmed}** · suspected: "
+        f"**{len(state.findings) - confirmed}**",
         f"- Credentials: **{len(state.credentials)}**",
         f"- Artifacts: **{len(state.artifacts)}**",
         "",
@@ -170,8 +173,12 @@ def _findings(state: EngagementState) -> list[str]:
 def _finding_block(f: Finding, state: EngagementState) -> list[str]:
     from .scoring import score_label
     loc = " · ".join(x for x in (f.host, f.service_key) if x)
+    badge = "✅ CONFIRMED" if f.validation == "confirmed" else "❔ suspected"
     out = [f"### [{f.severity.value.upper()}] {f.title}", ""]
+    out.append(f"**Status:** {badge}  ")
     out.append(f"**CVSS:** {score_label(f)}  ")
+    if f.validation == "confirmed" and f.proof:
+        out.append(f"**Proof:** {f.proof}  ")
     if loc:
         out.append(f"**Location:** {loc}  ")
     if f.cve:

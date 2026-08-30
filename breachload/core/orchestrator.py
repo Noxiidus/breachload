@@ -292,6 +292,8 @@ class Orchestrator:
                         severity=Severity.CRITICAL, host=f.host, cve=[cve],
                         description="Autonomous auto-foothold module gained code execution "
                                     "and opened a session for post-exploitation.",
+                        validation="confirmed",
+                        proof=f"live session opened on {f.host} via {module.name}",
                     ))
                     self.state.save(self.state_path)
                     return
@@ -377,6 +379,7 @@ class Orchestrator:
                 description="Autonomous Windows escalation confirmed by reading the "
                             "Administrator root flag.",
                 evidence=result.proof, exploit=result.root_run,
+                validation="confirmed", proof=result.proof,
             ))
             if result.proof and self.state.add_flag(result.proof):
                 self.emit("flag", f"captured {result.proof}")
@@ -430,6 +433,7 @@ class Orchestrator:
                 severity=Severity.CRITICAL, host=session.host,
                 description="Autonomous escalation confirmed by reading the root proof file.",
                 evidence=result.evidence, exploit=result.root_run,
+                validation="confirmed", proof=result.evidence,
             ))
             if result.root_flag and self.state.add_flag(result.root_flag):
                 self.emit("flag", f"captured {result.root_flag}")
