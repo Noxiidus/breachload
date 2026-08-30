@@ -936,6 +936,23 @@ def adcs(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def pivot(config: Path = typer.Argument(..., help="engagement YAML"),
+         via: str = typer.Option(..., "--via", help="the compromised edge host to pivot through"),
+         subnet: str = typer.Option(None, help="internal subnet to reach (e.g. 172.16.5.0/24)"),
+         ssh_user: str = typer.Option(None, "--ssh-user", help="SSH user on the edge host"),
+         lhost: str = typer.Option(None, help="attacker host (defaults to engagement lhost)")):
+    """Generate tunnelling commands (sshuttle/chisel/ligolo/ssh-fwd) to reach an internal subnet."""
+    from .analysis.pivot import pivot_plan, render_pivot
+    cfg = _load_config(config)
+    lhost = lhost or cfg.lhost or "LHOST"
+    opts = pivot_plan(lhost, via_host=via, subnet=subnet, ssh_user=ssh_user)
+    console.print(f"[bold green]pivot[/] {len(opts)} option(s) via {via} "
+                  f"-> {subnet or 'internal side'}\n")
+    for line in render_pivot(opts):
+        console.print("  " + line, markup=False)
+
+
+@app.command()
 def adchain(config: Path = typer.Argument(..., help="engagement YAML")):
     """Compose the AD findings (BloodHound/ADCS/roasting) into an ordered path to DA."""
     from .analysis.adchain import plan_ad_chain, render_chain

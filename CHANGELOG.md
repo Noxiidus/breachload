@@ -29,6 +29,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "needs a credential first" gate.
 - **HTML report** (`report/html` + `report --html`): a self-contained, styled, escape-safe HTML report
   (severity summary bar + badges, host/finding/credential/timeline sections) alongside the Markdown one.
+- **Pivoting / tunnelling planner** (`analysis/pivot` + `pivot` command): from a compromised edge host,
+  generates ready copy-paste tunnelling commands (sshuttle, chisel reverse SOCKS, ligolo-ng tun, SSH
+  dynamic/local forwards) to reach an internal subnet, with LHOST/foothold/subnet filled in and a
+  one-liner on when to pick each — closing the "how do I reach the second network?" gap.
+
+### Fixed
+- **nuclei CVE-id passthrough was dead in the pipeline**: it keyed off service notes, but the web-CVE
+  matcher records its lead as a Finding — so the planner now unions note-CVEs with the CVEs of findings
+  attached to the service. (`docs/BUGHUNT-2026-08-30.md`)
+- **adchain misclassified UPN users as computers**: a name with a dot was treated as a computer, so
+  `GenericWrite` over `jdoe@corp.local` wrongly produced an RBCD step; a computer is now a `$`-SAM name
+  or a 2+-dot FQDN, excluding UPNs and bare domains.
 
 ## [0.16.0] - 2026-08-23
 
