@@ -1,0 +1,13 @@
+name: helix
+mode: full-auto
+ctf: true
+targets:
+  - 10.129.245.123
+  - helix.htb
+  - "*.helix.htb"
+auto_threshold: active
+lhost: 10.10.15.6
+notes: |
+  HTB "Helix" (Medium, Linux). Authorized lab via HTB VPN (eu-free-1).
+  Live breachload dogfood run to prove the recon->enum->vuln->suggest chain.
+  Attacker tun0 = 10.10.15.6, MTU 1300.

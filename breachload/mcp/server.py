@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 PROTOCOL_VERSION = "2024-11-05"
 
@@ -32,8 +33,8 @@ def _content(text: str) -> dict:
 
 def _tool_parse_nmap(args: dict) -> dict:
     from ..core.state import EngagementState
-    from ..tools.nmap import NmapAdapter
     from ..tools.base import ToolResult
+    from ..tools.nmap import NmapAdapter
     st = EngagementState(name="mcp")
     a = NmapAdapter()
     a.parse(ToolResult(exit_code=0, stdout="", stderr="",
