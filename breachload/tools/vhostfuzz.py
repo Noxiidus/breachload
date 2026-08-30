@@ -13,6 +13,7 @@ and be in scope before they are enumerated — both enforced elsewhere.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -72,7 +73,9 @@ class VhostFuzzAdapter(ToolAdapter):
         for r in results:
             fuzz = (r.get("input") or {}).get("FUZZ")
             base = urlparse(r.get("url", "")).hostname or ""
-            if not fuzz or not base:
+            # Skip wordlist comment lines (SecLists prefixes some entries with '#')
+            # and any non-label junk, so '#www' never becomes a bogus vhost.
+            if not fuzz or not base or not re.match(r"^[A-Za-z0-9_-]+$", fuzz):
                 continue
             vhost = f"{fuzz}.{base}"
             status, length = r.get("status"), r.get("length")
