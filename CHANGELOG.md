@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Runtime-error harness** — three complementary safety nets so bugs surface offline,
+  not on a live engagement:
+  - **`doctor --self-test`**: runs every registered adapter's `build_command` through
+    the Validator (offline, no network) and reports any adapter whose default command
+    the safety layer refuses or that crashes on invocation. CI now runs this.
+  - **hypothesis property fuzz** (`tests/test_fuzz_parsers.py`): ~200 adversarial
+    inputs per parser (Kerberos AS-REP/TGS, WinRM enum, ADCS certipy, BloodHound JSON,
+    DNS, appfinger, CVE version-spec, autofire, adchain, snmp/nfs/ftp/netexec) —
+    catches "parser crashes on garbled tool output" regressions before they hit runtime.
+  - **mypy** (soft config in `pyproject.toml`; runs in CI): a first static pass fixed
+    a foothold `establish()` base signature that missed the `scheme` kwarg used by every
+    subclass, a `Session | None` annotation the CLI needed for the winrm branch, and a
+    variable-shadow (`v = Validator(...)`) that would have collided with a later loop.
+
+### Fixed
+- **`FootholdModule.establish` base signature** now includes `scheme=` and `attempts=`
+  to match every concrete subclass (Freepbx/GLPI/OFBiz/Metabase). Surfaced by mypy —
+  the mismatch was a call-arg error the orchestrator was already relying on.
+
 ## [0.18.0] - 2026-08-30
 
 ### Added

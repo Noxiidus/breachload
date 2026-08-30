@@ -150,14 +150,14 @@ class Planner:
                                         "Deep app fingerprint (follows redirects to the "
                                         "real app / admin panel).")
                         if "ffuf" in names and not state.has_action("ffuf", key):
-                            args: dict = {}
+                            ffuf_args: dict[str, object] = {}
                             exts = (self.config.web_extensions if self.config else "") or ""
                             if exts:
-                                args["extensions"] = exts
+                                ffuf_args["extensions"] = exts
                             if self.config and self.config.ffuf_recursion:
-                                args["recursion"] = True
-                                args["recursion_depth"] = self.config.recursion_depth
-                            return Plan("run", "ffuf", url, args,
+                                ffuf_args["recursion"] = True
+                                ffuf_args["recursion_depth"] = self.config.recursion_depth
+                            return Plan("run", "ffuf", url, ffuf_args,
                                         "Discover hidden content on the web service.")
                     if _is_smb(svc):
                         if "netexec" in names and not state.has_action("netexec", host.address):

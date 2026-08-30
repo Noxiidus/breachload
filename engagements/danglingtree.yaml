@@ -2,8 +2,9 @@ name: danglingtree
 mode: full-auto
 ctf: true
 targets:
-  - 10.129.71.139
+  - 10.129.105.90
   - danglingtree.htb
+  - dc.danglingtree.htb
   - "*.danglingtree.htb"
 auto_threshold: active
 notes: |

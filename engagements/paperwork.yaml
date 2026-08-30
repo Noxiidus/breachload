@@ -1,0 +1,13 @@
+name: paperwork
+mode: full-auto
+ctf: true
+targets:
+  - 10.129.104.250
+  - paperwork.htb
+  - "*.paperwork.htb"
+auto_threshold: active
+lhost: 10.10.14.110
+notes: |
+  HTB "Paperwork" (Easy, Linux). Authorized lab via HTB VPN (eu-free-1).
+  Live breachload dogfooding run: recon -> enum -> vuln -> exploit path.
+  Attacker tun0 = 10.10.14.110. IP reassigned after box reset (was .248.117).

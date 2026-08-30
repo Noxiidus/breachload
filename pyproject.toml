@@ -16,7 +16,8 @@ dependencies = [
 
 [project.optional-dependencies]
 web = ["fastapi>=0.110", "uvicorn>=0.29"]
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "fastapi>=0.110", "httpx>=0.27"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "fastapi>=0.110", "httpx>=0.27",
+       "hypothesis>=6.100"]
 
 [project.scripts]
 breachload = "breachload.cli:app"
@@ -42,3 +43,14 @@ ignore = ["B008"]
 # The dashboard is a single embedded HTML/JS template string; line length there
 # reflects markup, not Python.
 "breachload/web/dashboard.py" = ["E501"]
+
+[tool.mypy]
+# Static type check to catch runtime-shaped bugs (None-deref, wrong-type calls)
+# before they surface on a live engagement. We stay pragmatic: --ignore-missing-imports
+# for the many optional deps, and no --strict — the codebase deliberately leans on
+# duck-typing for adapter kwargs.
+ignore_missing_imports = true
+no_strict_optional = true
+# Adapter subclasses narrow the base's **kwargs signature by design; we do not
+# want that legitimate pattern flagged.
+disable_error_code = ["override"]

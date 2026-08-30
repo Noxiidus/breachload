@@ -338,7 +338,7 @@ def session(config: Path = typer.Argument(..., help="engagement YAML"),
     work = ENGAGEMENTS / cfg.name
     sess_path = work / "session.json"
 
-    sess = None
+    sess: Session | None = None
     try:
         if webshell:
             sess = WebshellSession.from_spec(webshell)
@@ -489,7 +489,11 @@ def serve(config: Path = typer.Argument(..., help="engagement YAML"),
     hub = EventHub()
     rate = RateLimiter(cfg.min_action_interval) if cfg.min_action_interval > 0 else None
     orch = Orchestrator(cfg, state, registry, validator, Planner(config=cfg), audit, state_path,
-                        confirm=hub.request_confirm, on_event=hub.emit,
+                        # Orchestrator.confirm is async-capable at runtime via
+                        # inspect.isawaitable — the type stub of confirm is sync,
+                        # so we suppress the annotation-only mismatch here.
+                        confirm=hub.request_confirm,  # type: ignore[arg-type]
+                        on_event=hub.emit,
                         analyzer=Analyzer.default(), rate_limiter=rate,
                         on_state=lambda st: hub.emit_state(st.dashboard_payload()))
     hub.emit_state(state.dashboard_payload())   # seed the initial snapshot
@@ -645,13 +649,49 @@ def doctor(target: str = typer.Option(None, help="probe this host for the VPN "
                                       "MTU / large-response stall (needs it reachable)"),
            port: int = typer.Option(80, help="port to probe with --target"),
            install: bool = typer.Option(False, "--install",
-                                        help="print an install command for each missing tool")):
+                                        help="print an install command for each missing tool"),
+           self_test: bool = typer.Option(False, "--self-test",
+                                          help="run every adapter's build_command "
+                                          "against the Validator (offline invariant check)")):
     """Check which external tools and wordlists are available on this machine.
 
     With --target, also probe the path for the MTU / large-response stall that
     makes web fingerprinting silently return nothing over a mis-MTU'd VPN.
     With --install, print the command to install each missing tool.
+    With --self-test, run every registered adapter's default build_command through
+    the Validator to catch a broken adapter contract without touching a target.
     """
+    if self_test:
+        from .safety.scope import Scope
+        from .safety.validator import Risk, Validator
+        from .tools.registry import allowed_binaries, default_registry
+        reg = default_registry()
+        scope = Scope.from_config(["10.10.10.0/24"])
+        validator = Validator(scope, allowed_binaries(reg), Risk.EXPLOIT)
+        console.print(f"[bold]self-test[/] {len(reg)} registered adapter(s)\n")
+        failures = 0
+        for adapter in reg.values():
+            try:
+                cmd = adapter.build_command("10.10.10.5")
+                decision = validator.check(cmd, adapter.risk)
+                if decision.allowed:
+                    console.print(f"  [green]+[/] {adapter.name:<14} "
+                                  f"[dim]{adapter.risk.name}[/]")
+                else:
+                    failures += 1
+                    console.print(f"  [red]-[/] {adapter.name:<14} "
+                                  f"[red]REFUSED[/] [dim]({escape(decision.reason)})[/]")
+            except Exception as exc:  # noqa: BLE001
+                failures += 1
+                console.print(f"  [red]!] {adapter.name:<14} "
+                              f"[red]CRASHED[/] [dim]({escape(type(exc).__name__)}: "
+                              f"{escape(str(exc))[:80]})[/]", markup=False)
+        if failures:
+            console.print(f"\n[bold red]{failures} adapter(s) failed the self-test[/]")
+            raise typer.Exit(1)
+        console.print("\n[bold green]all adapters pass the self-test[/]")
+        return
+
     if target:
         from .core.netprobe import probe_path_mtu
         console.print(f"[bold]MTU / large-response probe[/] -> {target}:{port}\n")

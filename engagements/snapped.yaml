@@ -1,0 +1,12 @@
+name: snapped
+mode: full-auto
+ctf: true
+targets:
+  - 10.129.105.1
+  - snapped.htb
+  - "*.snapped.htb"
+auto_threshold: active
+lhost: 10.10.14.110
+notes: |
+  HTB "Snapped" (Hard, Linux). Authorized lab via HTB VPN (eu-free-1).
+  Live breachload dogfooding run. Attacker tun0 = 10.10.14.110.
