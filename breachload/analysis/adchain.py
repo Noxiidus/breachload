@@ -149,8 +149,18 @@ def plan_ad_chain(findings: list[Finding], *, have_creds: bool = False) -> AdCha
 
 
 def _looks_like_computer(name: str) -> bool:
-    n = name.strip().rstrip("$").upper()
-    return name.strip().endswith("$") or n.endswith("$") or "." in name
+    """A computer-account target (for RBCD), not a user/group/domain.
+
+    Computer accounts show up as a SAM name ending ``$`` or an FQDN host
+    (``web01.corp.local``, 2+ dots). A UPN (``jdoe@corp.local``) or a bare domain
+    (``corp.local``, one dot) is not a computer, so RBCD does not apply.
+    """
+    n = name.strip()
+    if n.endswith("$"):
+        return True
+    if "@" in n:                    # UPN user / group@domain
+        return False
+    return n.count(".") >= 2        # FQDN host, not a 2-label domain
 
 
 def render_chain(chain: AdChain, *, have_creds: bool = False) -> list[str]:

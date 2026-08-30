@@ -74,3 +74,17 @@ class TestNucleiCveIds:
         cmd = NucleiAdapter().build_command("http://x", template_id="CVE-2022-46169")
         assert "-id" in cmd and "CVE-2022-46169" in cmd
         assert "-tags" not in cmd
+
+    def test_planner_uses_cve_from_finding(self):
+        # The web-CVE matcher lands a Finding (not a note); the planner must still
+        # route nuclei to that exact template.
+        from breachload.core.state import Finding, Severity
+        st = EngagementState(name="t", phase=Phase.VULN)
+        h = st.upsert_host("10.10.10.9")
+        h.upsert_service(Service(port=80, name="http", notes=["webapp: Cacti 1.2.22"]))
+        st.add_finding(Finding(title="Cacti RCE (CVE-2022-46169)", severity=Severity.CRITICAL,
+                               host="10.10.10.9", service_key="80/tcp",
+                               cve=["CVE-2022-46169"]))
+        plan = Planner()._heuristic(st, _tools())
+        assert plan.tool == "nuclei"
+        assert plan.args.get("template_id") == "CVE-2022-46169"

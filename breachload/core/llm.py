@@ -233,7 +233,7 @@ class Planner:
                         # Auto-select nuclei templates for the detected stack — a
                         # targeted, faster scan than the full template set. If the
                         # fingerprint already names a CVE, confirm that exact one.
-                        cve_ids = _nuclei_cve_ids(svc)
+                        cve_ids = _service_cve_ids(state, host, svc)
                         tags = _nuclei_tags(svc)
                         if cve_ids:
                             args = {"template_id": ",".join(cve_ids)}
@@ -365,6 +365,21 @@ def _nuclei_cve_ids(svc) -> list[str]:
         cid = m.upper()
         if cid not in ids:
             ids.append(cid)
+    return ids
+
+
+def _service_cve_ids(state, host, svc) -> list[str]:
+    """CVE ids for a service from BOTH its fingerprint notes and any finding that
+    the web-CVE matcher already attached to it — so a KB lead (which lands as a
+    Finding, not a note) still routes nuclei to the exact template.
+    """
+    ids = _nuclei_cve_ids(svc)
+    for f in state.findings:
+        if f.host == host.address and (f.service_key or "") in ("", svc.key):
+            for cid in f.cve or []:
+                cid = cid.upper()
+                if _CVE_RE.fullmatch(cid) and cid not in ids:
+                    ids.append(cid)
     return ids
 
 
