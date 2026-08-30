@@ -183,7 +183,10 @@ def _record_redirect(
 
 
 def _as_url(target: str) -> str:
-    return target if "://" in target else f"http://{target}"
+    if "://" in target:
+        return target
+    from ..core.netutil import bracket
+    return f"http://{bracket(target)}"
 
 
 def _split_target(target: str) -> tuple[str, int, str]:

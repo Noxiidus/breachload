@@ -56,6 +56,11 @@ class EngagementConfig(BaseModel):
     # Per-engagement attestation that you have written authorization for this scope.
     # Required for auto_exploit to activate — a deliberate, conscious opt-in.
     authorized: bool = False
+    # Local paths to helper binaries the autonomous escalation stages onto a
+    # foothold before firing a vector that needs them (e.g.
+    # {"printspoofer": "/opt/PrintSpoofer.exe", "chisel": "/opt/chisel"}). Empty ->
+    # the engine assumes the helper is already present (best effort).
+    tool_paths: dict[str, str] = Field(default_factory=dict)
     notes: str = ""
 
     @field_validator("auto_threshold")

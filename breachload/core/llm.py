@@ -437,4 +437,5 @@ def _udp_scanned(state, address: str) -> bool:
 def _svc_url(host: str, svc) -> str:
     https = (svc.name or "").lower() in ("https", "ssl/http") or svc.port in _HTTPS_PORTS
     scheme = "https" if https else "http"
-    return f"{scheme}://{host}:{svc.port}"
+    from .netutil import host_url
+    return host_url(host, svc.port, scheme)

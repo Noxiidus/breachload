@@ -302,7 +302,8 @@ class Orchestrator:
             if (c.username, c.secret, c.kind) not in existing_creds:
                 self.state.credentials.append(c)
 
-        result = attempt_win_escalation(session, enum)
+        tool_paths = dict(getattr(self.config, "tool_paths", {}) or {})
+        result = attempt_win_escalation(session, enum, tool_paths=tool_paths)
         self.audit.write("session_escalation_windows", method=result.vector,
                          escalated=result.escalated)
         if result.escalated:

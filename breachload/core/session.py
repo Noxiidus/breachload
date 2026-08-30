@@ -50,6 +50,34 @@ class Session(ABC):
         _code, out, err = runner(self._argv(command), timeout)
         return out if out else err
 
+    def upload(self, local_path: str, remote_path: str, *, timeout: float = 120.0,
+               runner=None) -> bool:
+        """Stage a local file onto the foothold at ``remote_path``.
+
+        The default implementation base64-encodes the file and writes it via the
+        command channel (works over any shell, including a webshell). Channels with
+        a native transfer (scp/evil-winrm) override this. Returns True on a verified
+        upload (the remote file exists and is non-empty).
+        """
+        import base64
+        import os
+        try:
+            with open(local_path, "rb") as fh:
+                blob = base64.b64encode(fh.read()).decode("ascii")
+        except OSError:
+            return False
+        # Chunk the base64 to keep each command within URL/arg length limits.
+        self.run(f"rm -f {remote_path}", timeout=timeout, runner=runner)
+        for i in range(0, len(blob), 2048):
+            chunk = blob[i:i + 2048]
+            self.run(f"printf %s {chunk} >> {remote_path}.b64",
+                     timeout=timeout, runner=runner)
+        self.run(f"base64 -d {remote_path}.b64 > {remote_path}; "
+                 f"rm -f {remote_path}.b64", timeout=timeout, runner=runner)
+        out = self.run(f"test -s {remote_path} && echo OK", timeout=timeout, runner=runner)
+        _ = os  # keep import meaningful for the OSError guard above
+        return "OK" in (out or "")
+
     @abstractmethod
     def to_dict(self) -> dict: ...
 
@@ -123,6 +151,22 @@ class SshSession(Session):
         return ["sshpass", "-p", self.password, "ssh", *opts,
                 f"{self.user}@{self.host}", command]
 
+    def upload(self, local_path: str, remote_path: str, *, timeout: float = 120.0,
+               runner=None) -> bool:
+        """Native scp transfer (falls back to the base64 channel on failure)."""
+        runner = runner or _default_runner
+        opts = ["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                "-P", str(self.port)]
+        dest = f"{self.user}@{self.host}:{remote_path}"
+        if self.key:
+            argv = ["scp", *opts, "-i", self.key, local_path, dest]
+        else:
+            argv = ["sshpass", "-p", self.password, "scp", *opts, local_path, dest]
+        code, _out, _err = runner(argv, timeout)
+        if code == 0:
+            return True
+        return super().upload(local_path, remote_path, timeout=timeout, runner=runner)
+
     def to_dict(self) -> dict:
         return {"kind": "ssh", "host": self.host, "user": self.user,
                 "password": self.password, "key": self.key, "port": self.port}
@@ -154,6 +198,28 @@ class WinrmSession(Session):
     def _argv(self, command: str) -> list[str]:
         return ["evil-winrm", "-i", self.host, "-u", self.user,
                 "-p", self.password, "-P", str(self.port), "-c", command]
+
+    def upload(self, local_path: str, remote_path: str, *, timeout: float = 180.0,
+               runner=None) -> bool:
+        """Upload by writing a base64 blob out with PowerShell (works over `-c`)."""
+        import base64
+        try:
+            with open(local_path, "rb") as fh:
+                blob = base64.b64encode(fh.read()).decode("ascii")
+        except OSError:
+            return False
+        rp = remote_path.replace("'", "''")
+        self.run(f"Remove-Item -Force '{rp}.b64' -ErrorAction SilentlyContinue",
+                 timeout=timeout, runner=runner)
+        for i in range(0, len(blob), 3000):
+            chunk = blob[i:i + 3000]
+            self.run(f"Add-Content -Path '{rp}.b64' -Value '{chunk}' -NoNewline",
+                     timeout=timeout, runner=runner)
+        self.run(f"[IO.File]::WriteAllBytes('{rp}', "
+                 f"[Convert]::FromBase64String((Get-Content '{rp}.b64' -Raw))); "
+                 f"Remove-Item -Force '{rp}.b64'", timeout=timeout, runner=runner)
+        out = self.run(f"if (Test-Path '{rp}') {{ 'OK' }}", timeout=timeout, runner=runner)
+        return "OK" in (out or "")
 
     def to_dict(self) -> dict:
         return {"kind": "winrm", "host": self.host, "user": self.user,

