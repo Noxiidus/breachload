@@ -25,7 +25,11 @@ _TGS_RE = re.compile(r"\$krb5tgs\$[^\s]+")
 # The account name is embedded in the hash: $krb5asrep$23$user@REALM:...
 _ASREP_USER_RE = re.compile(r"\$krb5asrep\$\d+\$([^@:]+)@", re.IGNORECASE)
 # hashcat TGS format: $krb5tgs$23$*user$realm$spn*$checksum$edata
-_TGS_USER_RE = re.compile(r"\$krb5tgs\$\d+\$\*([^$*]+)\$", re.IGNORECASE)
+# The user field itself can contain a `$` (machine-accounts end in `$`), so the
+# stop character is the following `$REALM$` — i.e. `$` followed by an uppercase
+# letter/digit start of the realm, not the plain `$` inside `WEB01$`.
+_TGS_USER_RE = re.compile(
+    r"\$krb5tgs\$\d+\$\*([^*]+?)\$[A-Z0-9]", re.IGNORECASE)
 
 
 def asrep_command(domain: str, dc_ip: str, userlist: str,

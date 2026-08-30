@@ -65,3 +65,10 @@ class TestParse:
     def test_empty(self):
         assert parse_roast("") == []
         assert creds_from_roast("nothing here") == []
+
+    def test_machine_account_tgs_user_intact(self):
+        # A machine-account SPN target ("WEB01$") keeps its trailing $ in the
+        # extracted username, so we don't mis-attribute the hash to "WEB01".
+        text = "$krb5tgs$23$*WEB01$$CORP.LOCAL$MSSQLSvc~web*$aaaa$bbbb"
+        creds = creds_from_roast(text)
+        assert creds and creds[0].username == "WEB01$"
