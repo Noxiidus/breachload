@@ -1319,8 +1319,9 @@ def deliver(config: Path = typer.Argument(..., help="engagement YAML"),
 @app.command()
 def report(config: Path = typer.Argument(..., help="engagement YAML"),
            output: Path = typer.Option(None, help="output path (default: <engagement>/report.md)"),
+           html: bool = typer.Option(False, "--html", help="also write a styled HTML report"),
            pdf: bool = typer.Option(False, "--pdf", help="also write a PDF next to the Markdown")):
-    """Render a Markdown report (and optionally PDF) from the engagement state."""
+    """Render a Markdown report (optionally HTML/PDF) from the engagement state."""
     cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     state_path = work / "state.json"
@@ -1334,6 +1335,12 @@ def report(config: Path = typer.Argument(..., help="engagement YAML"),
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(markdown, encoding="utf-8")
     console.print(f"[bold green]report[/] {out_path}")
+
+    if html:
+        from .report.html import render_html
+        html_path = out_path.with_suffix(".html")
+        html_path.write_text(render_html(state), encoding="utf-8")
+        console.print(f"[bold green]report[/] {html_path}")
 
     if pdf:
         _write_pdf(markdown, out_path.with_suffix(".pdf"), cfg.name)
