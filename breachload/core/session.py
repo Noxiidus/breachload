@@ -75,6 +75,11 @@ class Session(ABC):
             return SshSession(host=d["host"], user=d["user"],
                               password=d.get("password", ""), key=d.get("key", ""),
                               port=d.get("port", 22))
+        if kind == "winrm":
+            return WinrmSession(host=d["host"], user=d["user"],
+                                password=d.get("password", ""),
+                                port=d.get("port", 5985),
+                                scheme=d.get("scheme", "http"))
         if kind == "root":
             base = Session.from_dict(d["base"])
             if base is not None:
@@ -131,6 +136,39 @@ class SshSession(Session):
         user, _, password = creds.partition(":")
         host, _, port = hostpart.partition(":")
         return cls(host=host, user=user, password=password, port=int(port) if port else 22)
+
+
+@dataclass
+class WinrmSession(Session):
+    """Windows Remote Management channel (evil-winrm), for Windows post-exploitation.
+
+    ``evil-winrm`` accepts a `-c` (one-shot command) argv; the command is passed as a
+    single positional string (no shell on the attacker side; the target expands it in
+    PowerShell). The Windows autonomous privesc parser owns the output shape.
+    """
+    user: str = ""
+    password: str = ""
+    port: int = 5985
+    scheme: str = "http"
+
+    def _argv(self, command: str) -> list[str]:
+        return ["evil-winrm", "-i", self.host, "-u", self.user,
+                "-p", self.password, "-P", str(self.port), "-c", command]
+
+    def to_dict(self) -> dict:
+        return {"kind": "winrm", "host": self.host, "user": self.user,
+                "password": self.password, "port": self.port, "scheme": self.scheme}
+
+    @classmethod
+    def from_spec(cls, spec: str) -> WinrmSession:
+        """`user:pass@host[:port]` -> a WinRM session (defaults port 5985)."""
+        creds, _, hostpart = spec.partition("@")
+        if not hostpart:
+            raise ValueError("winrm spec must be user:pass@host[:port]")
+        user, _, password = creds.partition(":")
+        host, _, port = hostpart.partition(":")
+        return cls(host=host, user=user, password=password,
+                   port=int(port) if port else 5985)
 
 
 @dataclass

@@ -326,13 +326,14 @@ def session(config: Path = typer.Argument(..., help="engagement YAML"),
             webshell: str = typer.Option(None, help="webshell URL with a FUZZ marker, "
                                          "e.g. 'http://host/shell.php?cmd=FUZZ'"),
             ssh: str = typer.Option(None, help="ssh foothold as 'user:pass@host[:port]'"),
+            winrm: str = typer.Option(None, help="winrm foothold as 'user:pass@host[:port]'"),
             test: bool = typer.Option(False, "--test", help="run `id` through the session")):
-    """Register a foothold session (webshell/ssh) that auto-exploit drives for privesc.
+    """Register a foothold session (webshell/ssh/winrm) that auto-exploit drives for privesc.
 
     The session's host must be in scope. Stored in engagements/<name>/session.json;
     auto-exploit uses it to autonomously enumerate and escalate in the POST phase.
     """
-    from .core.session import Session, SshSession, WebshellSession
+    from .core.session import Session, SshSession, WebshellSession, WinrmSession
     cfg = _load_config(config)
     work = ENGAGEMENTS / cfg.name
     sess_path = work / "session.json"
@@ -343,6 +344,8 @@ def session(config: Path = typer.Argument(..., help="engagement YAML"),
             sess = WebshellSession.from_spec(webshell)
         elif ssh:
             sess = SshSession.from_spec(ssh)
+        elif winrm:
+            sess = WinrmSession.from_spec(winrm)
     except ValueError as exc:
         console.print(f"[bold red]bad session spec:[/] {escape(str(exc))}")
         raise typer.Exit(2) from None
@@ -357,13 +360,14 @@ def session(config: Path = typer.Argument(..., help="engagement YAML"),
     else:
         sess = Session.load(sess_path)
         if sess is None:
-            console.print("[yellow]no session set[/] - add one with --webshell or --ssh")
+            console.print("[yellow]no session set[/] - add one with --webshell, --ssh or --winrm")
             raise typer.Exit(1)
         console.print(f"[bold]session[/] ({sess.to_dict()['kind']}) on {sess.host}")
 
     if test:
-        out = sess.run("id")
-        console.print("[dim]$ id[/]")
+        probe = "whoami" if sess.to_dict()["kind"] == "winrm" else "id"
+        out = sess.run(probe)
+        console.print(f"[dim]$ {probe}[/]")
         console.print(out.strip() or "[yellow](no output)[/]", markup=False)
 
 

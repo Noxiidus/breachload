@@ -280,15 +280,68 @@ class Orchestrator:
                     return
                 self.emit("note", f"auto-foothold {cve} did not land; foothold stays guided")
 
+    def _autonomous_privesc_windows(self) -> None:
+        """Windows counterpart of the autonomous privesc: WinRM enum + curated escalation."""
+        from ..analysis.winprivesc_auto import (
+            _to_findings,
+            attempt_win_escalation,
+            run_win_enum,
+        )
+        session = self.session
+        self.emit("run", f"autonomous Windows privesc via WinRM on {session.host}")
+        self.audit.write("session_enum_windows", host=session.host)
+
+        enum = run_win_enum(session)
+        existing_titles = {f.title for f in self.state.findings}
+        existing_creds = {(c.username, c.secret, c.kind) for c in self.state.credentials}
+        for f in _to_findings(enum, host=session.host):
+            if f.title not in existing_titles:
+                self.state.add_finding(f)
+                self.emit("finding", f"[{f.severity.value}] {f.title}")
+        for c in enum.creds:
+            if (c.username, c.secret, c.kind) not in existing_creds:
+                self.state.credentials.append(c)
+
+        result = attempt_win_escalation(session, enum)
+        self.audit.write("session_escalation_windows", method=result.vector,
+                         escalated=result.escalated)
+        if result.escalated:
+            self.emit("finding", f"[critical] SYSTEM via {result.vector}")
+            self.state.add_finding(Finding(
+                title=f"Privilege escalation to SYSTEM via {result.vector}",
+                severity=Severity.CRITICAL, host=session.host,
+                description="Autonomous Windows escalation confirmed by reading the "
+                            "Administrator root flag.",
+                evidence=result.proof, exploit=result.root_run,
+            ))
+            if result.proof and self.state.add_flag(result.proof):
+                self.emit("flag", f"captured {result.proof}")
+                self.audit.write("flag", flag=result.proof)
+            if result.root_run:
+                from .session import RootSession
+                self.session = RootSession(host=session.host, base=session,
+                                          template=result.root_run)
+                self.emit("note", f"SYSTEM session ready (run SYSTEM cmds via "
+                                  f"{result.vector})")
+        else:
+            self.emit("note", "no auto-escalation Windows vector matched; see "
+                              "winprivesc for the playbook")
+        self.state.save(self.state_path)
+
     def _autonomous_privesc(self) -> None:
         """Drive privilege escalation through the foothold session: enumerate, parse,
         and fire a curated escalation, all audited. Only in auto-exploit mode."""
-        from ..analysis.privesc_auto import attempt_escalation, run_enum
-
         session = self.session
         if not self.validator.scope.allows(session.host):
             self.emit("blocked", f"session host {session.host} is out of scope — refusing")
             return
+        # Route WinRM sessions through the Windows autonomous privesc, everything
+        # else through the Linux one — same shape, different enum/escalation vectors.
+        if session.to_dict().get("kind") == "winrm":
+            self._autonomous_privesc_windows()
+            return
+
+        from ..analysis.privesc_auto import attempt_escalation, run_enum
         self.emit("run", f"autonomous privesc via session on {session.host}")
         self.audit.write("session_enum", host=session.host)
 
