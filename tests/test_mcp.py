@@ -66,6 +66,19 @@ class TestTools:
         out = _call("gtfobins", {"binary": "find"})
         assert out  # returns something (entry json or 'no entry')
 
+    def test_parse_nmap_xml_reads_real_xml(self):
+        xml = ('<?xml version="1.0"?><nmaprun><host>'
+               '<address addr="10.10.10.5" addrtype="ipv4"/>'
+               '<ports><port portid="22" protocol="tcp"><state state="open"/>'
+               '<service name="ssh" product="OpenSSH"/></port></ports>'
+               '</host></nmaprun>')
+        out = _call("parse_nmap_xml", {"xml": xml})
+        assert "10.10.10.5" in out and "ssh" in out
+
+    def test_fingerprint_no_lead_message(self):
+        out = _call("fingerprint_to_cve", {"fingerprint": "totally unknown app 9.9"})
+        assert "no known-CVE leads" in out
+
     def test_tool_error_is_reported_not_raised(self):
         # Missing required arg -> handled as isError content, not a crash.
         resp = handle({"jsonrpc": "2.0", "id": 9, "method": "tools/call",

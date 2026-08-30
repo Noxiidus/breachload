@@ -36,7 +36,11 @@ class Driver:
         raise NotImplementedError
 
 
-_XSS_CANARY = "blxss7q3z"
+# The canary carries angle brackets + quotes so we can actually tell whether the
+# app reflects them RAW (real XSS candidate) or HTML-encodes them (safe). A plain
+# alphanumeric canary can't distinguish the two and would over-report.
+_XSS_MARK = "blxss7q3z"
+_XSS_CANARY = f"<{_XSS_MARK}>"
 _SINK_RE = re.compile(r"(innerHTML|document\.write|eval\(|outerHTML|insertAdjacentHTML|"
                       r"\.src\s*=\s*location|setAttribute\(\s*['\"]on)", re.IGNORECASE)
 _CSRF_HINT = re.compile(r"csrf|xsrf|authenticity_token|__requestverificationtoken|_token",
@@ -102,10 +106,13 @@ def probe_reflected_xss(driver: Driver, url: str, params: list[str]) -> list[Fin
         test = _set_param(url, p, _XSS_CANARY)
         page = driver.render(test)
         html = page.html or ""
-        if _XSS_CANARY not in html:
+        # Not reflected at all if even the marker text is absent.
+        if _XSS_MARK not in html:
             continue
-        # Reflected unescaped (canary appears raw, not HTML-entity-encoded).
-        raw = _XSS_CANARY in html and f"&lt;{_XSS_CANARY}" not in html
+        # RAW reflection = the angle brackets survived unencoded (`<blxss7q3z>`),
+        # i.e. a real XSS candidate. If only the encoded form (`&lt;blxss7q3z&gt;`)
+        # is present, the app escaped it — low severity, verify context.
+        raw = _XSS_CANARY in html
         sev = Severity.HIGH if raw else Severity.LOW
         out.append(Finding(
             title=f"Reflected input in the DOM via '{p}'",
@@ -139,6 +146,8 @@ def _host(url: str) -> str:
 
 
 def _is_external(src: str, host: str) -> bool:
+    if not src:
+        return False
     if src.startswith("//") or src.startswith("http"):
         return _host(src if "://" in src else "http:" + src) != host
     return False

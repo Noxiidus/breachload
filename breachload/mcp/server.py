@@ -37,8 +37,9 @@ def _tool_parse_nmap(args: dict) -> dict:
     from ..tools.nmap import NmapAdapter
     st = EngagementState(name="mcp")
     a = NmapAdapter()
-    a.parse(ToolResult(exit_code=0, stdout="", stderr="",
-                       duration_s=0.0, output_file=args.get("xml", "")), st)
+    # NmapAdapter.parse reads the XML from stdout, not output_file.
+    a.parse(ToolResult(exit_code=0, stdout=args.get("xml", ""), stderr="",
+                       duration_s=0.0), st)
     return _content(json.dumps(st.model_dump(), default=str)[:60000])
 
 
@@ -52,9 +53,11 @@ def _tool_fingerprint_cve(args: dict) -> dict:
                              product=args.get("product"),
                              notes=[args.get("fingerprint", "")]))
     findings = WebCveMatcher.default().findings_for(st)
+    if not findings:
+        return _content("no known-CVE leads for that fingerprint")
     return _content(json.dumps([{"title": f.title, "cve": f.cve, "severity":
                                  f.severity.value, "exploit": f.exploit}
-                                for f in findings], indent=2) or "no leads")
+                                for f in findings], indent=2))
 
 
 def _tool_ad_killchain(args: dict) -> dict:

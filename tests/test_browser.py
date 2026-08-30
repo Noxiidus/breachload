@@ -57,24 +57,24 @@ class TestAnalyzePage:
 
 class TestReflectedXss:
     def test_unescaped_reflection_is_high(self):
-        canary_page = RenderedPage(url="http://x/?q=blxss7q3z",
-                                   html="<div>blxss7q3z</div>")
-        drv = _FakeDriver({"q=blxss7q3z": canary_page})
+        # angle brackets survive raw -> real XSS candidate
+        canary_page = RenderedPage(url="http://x/", html="<div><blxss7q3z></div>")
+        drv = _FakeDriver({"blxss7q3z": canary_page})
         findings = probe_reflected_xss(drv, "http://x/?q=hi", ["q"])
         assert findings and findings[0].severity.value == "high"
         # exploit is a ready URL with the payload URL-encoded
         assert "%3Cscript%3E" in findings[0].exploit and "q=" in findings[0].exploit
 
     def test_encoded_reflection_is_low(self):
-        page = RenderedPage(url="http://x/?q=blxss7q3z",
-                            html="<div>&lt;blxss7q3z&gt;</div>")
-        drv = _FakeDriver({"q=blxss7q3z": page})
+        # only the HTML-encoded form present -> app escaped it -> low
+        page = RenderedPage(url="http://x/", html="<div>&lt;blxss7q3z&gt;</div>")
+        drv = _FakeDriver({"blxss7q3z": page})
         findings = probe_reflected_xss(drv, "http://x/?q=hi", ["q"])
         assert findings and findings[0].severity.value == "low"
 
     def test_no_reflection_no_finding(self):
-        page = RenderedPage(url="http://x/?q=blxss7q3z", html="<div>nothing</div>")
-        drv = _FakeDriver({"q=blxss7q3z": page})
+        page = RenderedPage(url="http://x/", html="<div>nothing</div>")
+        drv = _FakeDriver({"blxss7q3z": page})
         assert probe_reflected_xss(drv, "http://x/?q=hi", ["q"]) == []
 
 
@@ -83,9 +83,8 @@ class TestBrowserScan:
         base = RenderedPage(url="http://x/?name=hi", forms=[
             {"action": "/login", "method": "post",
              "inputs": [{"name": "p", "type": "password"}], "has_csrf": False}])
-        reflected = RenderedPage(url="http://x/?name=blxss7q3z",
-                                 html="<p>blxss7q3z</p>")
-        drv = _FakeDriver({"name=blxss7q3z": reflected})
+        reflected = RenderedPage(url="http://x/", html="<p><blxss7q3z></p>")
+        drv = _FakeDriver({"blxss7q3z": reflected})
         drv.default = base
         findings = BrowserScan(drv).scan("http://x/?name=hi")
         titles = [f.title for f in findings]
