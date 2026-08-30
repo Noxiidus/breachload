@@ -1,0 +1,30 @@
+# Live integration targets for breachload's auto-foothold modules.
+#
+# These are intentionally-vulnerable application versions, run locally and only
+# ever bound to 127.0.0.1, so the foothold modules can be exercised end-to-end
+# against real software instead of a hand-written stub. Bring them up with:
+#
+#     docker compose -f tests/live/docker-compose.yml up -d
+#     BREACHLOAD_LIVE=1 pytest tests/live -m live
+#     docker compose -f tests/live/docker-compose.yml down
+#
+# NEVER expose these ports beyond localhost — they are deliberately exploitable.
+services:
+  # Metabase < 0.46.6.1 — CVE-2023-38646 pre-auth H2 JDBC RCE.
+  metabase:
+    image: metabase/metabase:v0.46.6
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # GLPI 10.0.2 — CVE-2022-35914 htmLawed pre-auth RCE.
+  glpi:
+    image: diouxx/glpi:10.0.2
+    ports:
+      - "127.0.0.1:8081:80"
+    environment:
+      - TIMEZONE=UTC

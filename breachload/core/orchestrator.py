@@ -312,9 +312,12 @@ class Orchestrator:
             return
         domain = next((t.split(":", 1)[1] for t in dc.tags
                        if t.startswith("domain:")), "")
-        cred = next((c for c in self.state.credentials
-                     if c.kind == "password" and c.username and c.secret
-                     and (c.validated or True)), None)
+        # Prefer a validated password credential, but fall back to any password we
+        # hold (roasting is cheap and non-destructive — worth a try).
+        pw_creds = [c for c in self.state.credentials
+                    if c.kind == "password" and c.username and c.secret]
+        cred = next((c for c in pw_creds if c.validated), None) or \
+            (pw_creds[0] if pw_creds else None)
         if not domain or cred is None:
             return
 

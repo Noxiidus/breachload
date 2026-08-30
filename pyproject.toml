@@ -1,6 +1,6 @@
 [project]
 name = "breachload"
-version = "0.18.0"
+version = "0.19.0"
 description = "Autonomous pentest copilot for Linux — guides recon-to-report, runs tools, analyzes output."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -54,3 +54,8 @@ no_strict_optional = true
 # Adapter subclasses narrow the base's **kwargs signature by design; we do not
 # want that legitimate pattern flagged.
 disable_error_code = ["override"]
+
+[tool.pytest.ini_options]
+markers = [
+    "live: integration tests that need live Docker containers (opt-in via BREACHLOAD_LIVE=1)",
+]

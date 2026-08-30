@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-30
+
 ### Added
+- **Live integration harness** (`tests/live/`): a docker-compose of intentionally-vulnerable
+  containers (Metabase CVE-2023-38646, GLPI CVE-2022-35914, bound to 127.0.0.1) plus opt-in
+  `@pytest.mark.live` tests that fire the real auto-foothold modules against them — proving the
+  chains land in the wild, the one thing the mocked unit tests can't. Skipped unless
+  `BREACHLOAD_LIVE=1` and the target answers, so a normal run/CI never needs Docker.
+- **`Session.upload()`** — stage a local file onto a foothold: a base64 command-channel default
+  (works over any webshell) with native `scp` (ssh) and PowerShell `WriteAllBytes` (winrm)
+  overrides. The Windows autonomous escalation now **auto-stages** its helper binaries
+  (`config.tool_paths`, e.g. PrintSpoofer) before firing the vector, so the chain runs unattended.
+- **Autonomous Kerberoast loop** — in the POST phase, a held domain credential + a known DC triggers
+  `impacket-GetUserSPNs`, and the recovered `$krb5tgs$` hashes land as crackable credentials for the
+  `crack` loop. Scope-checked and audited.
+- **IPv6 support** (`core/netutil`): IPv6-safe URL/host builders (`http://[::1]:80`) wired into the
+  fingerprint path; scope already handled IPv6 networks/literals.
+- **CLI command grouping**: the 32 commands are now organised into 7 `--help` panels (Setup, Recon,
+  Exploitation, Post-exploitation, Active Directory, Reporting, Learn) — invocation is unchanged.
+  `doctor` now also checks `dig`, the impacket roasting scripts, and the pivoting tools.
+- **Richer reporting**: a **tamper-evident, SHA-256 hash-chained audit log** (`audit verify` command;
+  any post-hoc edit/deletion breaks the chain and is reported), a **CVSS score/band** on every finding
+  in the MD+HTML reports (real base score when the KB has one, severity band otherwise), and an
+  **audit-integrity section** in the report.
+
+### Added (prior, still unreleased)
 - **Runtime-error harness** — three complementary safety nets so bugs surface offline,
   not on a live engagement:
   - **`doctor --self-test`**: runs every registered adapter's `build_command` through

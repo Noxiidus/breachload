@@ -34,24 +34,31 @@ class AuditLog:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._tip: str | None = None      # cached hash of the last written record
 
     def _last_hash(self) -> str:
-        """The hash of the final existing record, or the genesis hash."""
-        if not self.path.exists():
-            return _GENESIS
+        """The hash of the final existing record, or the genesis hash.
+
+        Cached after the first read so a long engagement doesn't re-scan the whole
+        log on every write (O(n) per write -> O(1) after warm-up).
+        """
+        if self._tip is not None:
+            return self._tip
         last = _GENESIS
-        try:
-            with self.path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        last = json.loads(line).get("hash", last)
-                    except json.JSONDecodeError:
-                        continue
-        except OSError:
-            return _GENESIS
+        if self.path.exists():
+            try:
+                with self.path.open("r", encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            last = json.loads(line).get("hash", last)
+                        except json.JSONDecodeError:
+                            continue
+            except OSError:
+                last = _GENESIS
+        self._tip = last
         return last
 
     def write(self, event: str, **fields: Any) -> None:
@@ -64,6 +71,7 @@ class AuditLog:
         record["hash"] = _record_hash(record, record["prev"])
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, default=str) + "\n")
+        self._tip = record["hash"]        # advance the cached tip
 
 
 @dataclass
