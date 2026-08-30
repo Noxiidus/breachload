@@ -73,6 +73,8 @@ _SIGNATURES: list[_Sig] = [
     _Sig("WSO2", [r"WSO2", r"wso2", r"carbon"], None),
     _Sig("FortiOS", [r"/remote/login", r"FortiGate", r"fortinet"], None),
     _Sig("Laravel", [r"laravel_session", r"Laravel", r"/_ignition/"], None),
+    _Sig("Apache NiFi", [r"<title>NiFi</title>", r"/nifi/images/nifi16\.ico", r"/nifi-api/"],
+         None),
 ]
 
 

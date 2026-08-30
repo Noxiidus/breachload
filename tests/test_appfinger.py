@@ -94,3 +94,26 @@ class TestExpandedSignatures:
     def test_resilient_command_shape(self):
         argv = AppFingerAdapter().build_command("http://10.10.10.20")
         assert "-r" in argv and "--retry" in argv and "-i" in argv
+
+
+class TestNifiDetection:
+    def test_detects_nifi(self):
+        a = AppFingerAdapter()
+        a.build_command("http://flow.helix.htb")
+        body = ('HTTP/1.1 200 OK\r\n\r\n<!DOCTYPE html><html><head>'
+                '<link rel="shortcut icon" href="/nifi/images/nifi16.ico"/>'
+                '<title>NiFi</title></head></html>')
+        st = EngagementState(name="t")
+        notes = a.parse(_result(body), st)
+        assert any("Apache NiFi" in n for n in notes)
+        svc = st.hosts["flow.helix.htb"].services["80/tcp"]
+        assert any("webapp: Apache NiFi" in n for n in svc.notes)
+
+    def test_nifi_webcve_lead(self):
+        # The fingerprint note must feed the web-CVE matcher into a NiFi RCE lead.
+        st = EngagementState(name="t")
+        h = st.upsert_host("10.10.11.9")
+        h.upsert_service(Service(port=80, name="http", notes=["webapp: Apache NiFi"]))
+        findings = WebCveMatcher.default().findings_for(st)
+        assert any("NiFi" in f.title and "CVE-2023-34468" in " ".join(f.cve)
+                   for f in findings)

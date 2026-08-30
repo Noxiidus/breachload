@@ -20,7 +20,10 @@ from ..core.state import EngagementState, Finding, Service, Severity
 from ..safety.validator import Risk
 from .base import ToolAdapter, ToolResult
 
-_DEFAULT_WORDLIST = "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
+# The 20k list catches common-but-not-top-5k subdomains (e.g. `flow`, `dev`, `hmi`)
+# that a real target hides its interesting app behind. A too-small list is the
+# classic reason a vhost-gated app (NiFi on flow.<domain>) is missed entirely.
+_DEFAULT_WORDLIST = "/usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt"
 
 
 @dataclass

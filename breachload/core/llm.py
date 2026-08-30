@@ -345,6 +345,7 @@ _NUCLEI_TAG_MAP = {
     "werkzeug": "werkzeug", "symfony": "symfony", "prometheus": "prometheus",
     "harbor": "harbor", "minio": "minio", "consul": "consul", "traefik": "traefik",
     "ivanti": "ivanti", "sonicwall": "sonicwall", "papercut": "papercut", "phpinfo": "phpinfo",
+    "nifi": "apache-nifi",
 }
 
 # nuclei can target one template by CVE id (`-id CVE-...`). We pull ids out of the
