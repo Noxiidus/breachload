@@ -34,10 +34,18 @@ ENUM_COMMANDS = [
     "ls -la /var/run/docker.sock /.dockerenv 2>/dev/null; grep -i cap /proc/1/status 2>/dev/null",
     "ls -la /var/run/secrets/kubernetes.io/serviceaccount/ 2>/dev/null",
     "ls -la /root/.ssh /home/*/.ssh 2>/dev/null; cat /home/*/.ssh/id_* 2>/dev/null",
-    "find / -writable -type f 2>/dev/null | grep -vE '^/(proc|sys|dev|run)' | head -40",
+    "find / -writable -type f 2>/dev/null | grep -vE '^/(proc|sys|dev|run)' | head -60",
     "grep -rhiE 'password|passwd|secret|api[_-]?key' /var/www /etc 2>/dev/null | head -25",
     "env 2>/dev/null | grep -iE 'pass|key|token|secret'",
     "cat /proc/version 2>/dev/null",
+    # Files that root runs/sources -> to cross with the writable set (generalized
+    # "root reads a file I can write" privesc, the NiFi/dahdi class).
+    "cat /etc/systemd/system/*.service /lib/systemd/system/*.service 2>/dev/null "
+    "| grep -iE 'ExecStart' | head -60",
+    "cat /etc/init.d/* 2>/dev/null | grep -E '(^|[[:space:]])(\\.|source)[[:space:]]+/' "
+    "| head -40",
+    "cat /etc/cron.d/* /var/spool/cron/crontabs/* /etc/crontab 2>/dev/null "
+    "| grep -vE '^[[:space:]]*#' | head -60",
 ]
 
 _ROOT_PROOF = "/root/root.txt"
@@ -64,6 +72,10 @@ def run_enum(session: Session, *, runner=None) -> tuple[list[Finding], list[Cred
         chunks.append(f"$ {cmd}\n{out}")
     combined = "\n".join(chunks)
     findings, creds = loot(combined)
+    # Generalized "root reads a file I can write" class (NiFi/dahdi lesson, no
+    # per-app code): cross the writable set with files root runs/sources.
+    from .writable_root_paths import find_writable_root_exec
+    findings += find_writable_root_exec(combined)
     return findings, creds, combined
 
 
