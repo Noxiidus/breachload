@@ -1324,6 +1324,33 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command(rich_help_panel="Recon, enum & planning")
+def secrets(scan: Path = typer.Option(None, "--scan", help="file to scan for secrets"),
+            text: str = typer.Option(None, "--text", help="text to scan for secrets"),
+            discover: str = typer.Option(None, "--discover",
+                                         help="base URL: print sensitive-content probe commands")):
+    """Scan text/files for secrets, or print sensitive-content discovery probes for a URL."""
+    from .analysis.secretscan import content_discovery_commands, scan_secrets
+    if discover:
+        console.print(f"[bold]sensitive-content probes[/] for {discover}:")
+        for c in content_discovery_commands(discover):
+            console.print("  " + c, markup=False)
+        return
+    blob = ""
+    if scan and Path(scan).is_file():
+        blob += Path(scan).read_text(encoding="utf-8", errors="replace")
+    if text:
+        blob += "\n" + text
+    if not blob.strip():
+        console.print("[yellow]nothing to scan - pass --scan <file>, --text, "
+                      "or --discover <url>[/]")
+        raise typer.Exit(1)
+    findings, creds = scan_secrets(blob)
+    console.print(f"[bold green]secrets[/] {len(findings)} secret(s), {len(creds)} credential(s)\n")
+    for f in findings:
+        console.print(f"  [{f.severity.value}] {escape(f.title)}: {escape(f.evidence[:80])}")
+
+
+@app.command(rich_help_panel="Recon, enum & planning")
 def browser(url: str = typer.Argument(..., help="URL to render and analyse (client-side)"),
             config: Path = typer.Option(None, help="engagement YAML to record findings into")):
     """Headless-browser client-side scan: auth forms, CSRF, DOM-XSS sinks, reflected XSS.
