@@ -68,3 +68,29 @@ class TestPlannerRunsAppfinger:
                                           command=[tool, "http://10.10.10.5:80"]))
         plan = Planner()._heuristic(st, _tools())
         assert plan.tool == "appfinger"
+
+
+class TestExpandedSignatures:
+    def _detect(self, body: str):
+        a = AppFingerAdapter()
+        a.build_command("http://10.10.10.20")
+        st = EngagementState(name="t")
+        notes = a.parse(_result(body), st)
+        return notes, st.hosts["10.10.10.20"].services["80/tcp"].notes
+
+    def test_detects_glpi(self):
+        notes, svc = self._detect('HTTP/1.1 200 OK\r\n\r\n<title>GLPI</title> GLPI 10.0.6')
+        assert any("GLPI" in n for n in notes)
+        assert any("webapp: GLPI 10.0.6" in n for n in svc)
+
+    def test_detects_nextcloud(self):
+        notes, _ = self._detect('<html data-requesttoken="x">Nextcloud 27.1.2</html>')
+        assert any("Nextcloud" in n for n in notes)
+
+    def test_detects_pfsense(self):
+        notes, _ = self._detect('<form>__csrf_magic</form> pfSense 2.6')
+        assert any("pfSense" in n for n in notes)
+
+    def test_resilient_command_shape(self):
+        argv = AppFingerAdapter().build_command("http://10.10.10.20")
+        assert "-r" in argv and "--retry" in argv and "-i" in argv
