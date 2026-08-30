@@ -129,6 +129,8 @@ def _finding_block(f: Finding) -> list[str]:
     out = [f"<div class='finding' style='border-left-color:{color}'>",
            f"<h3><span class='badge' style='background:{color}'>"
            f"{_esc(f.severity.value.upper())}</span> {_esc(f.title)}</h3>"]
+    from .scoring import score_label
+    out.append(f"<p class='muted'>CVSS: {_esc(score_label(f))}</p>")
     if loc:
         out.append(f"<p class='muted'>Location: {_esc(loc)}</p>")
     if f.cve:

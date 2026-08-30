@@ -104,6 +104,9 @@ class Finding(BaseModel):
     # finding (filled by the web-CVE matcher / guided-exploitation KB). It is a
     # reviewed lead for the operator, never auto-fired.
     exploit: str = ""
+    # Optional CVSS v3.1 base score (0.0-10.0) when the KB knows it; the report
+    # falls back to a severity->band label when this is absent.
+    cvss: float | None = None
     discovered_at: str = Field(default_factory=_now)
 
 

@@ -26,7 +26,7 @@ def _cell(value: object) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ").replace("\r", " ")
 
 
-def render_markdown(state: EngagementState) -> str:
+def render_markdown(state: EngagementState, *, audit_path=None) -> str:
     out: list[str] = []
     out += _header(state)
     out += _summary(state)
@@ -36,7 +36,27 @@ def render_markdown(state: EngagementState) -> str:
     out += _credentials(state)
     out += _artifacts(state)
     out += _timeline(state)
+    out += _audit_integrity(audit_path)
     return "\n".join(out).rstrip() + "\n"
+
+
+def _audit_integrity(audit_path) -> list[str]:
+    """A tamper-evidence statement from the audit hash chain, if the log exists."""
+    if not audit_path:
+        return []
+    from pathlib import Path
+
+    from ..safety.audit import verify_chain
+    res = verify_chain(Path(audit_path))
+    if res.records == 0:
+        return []
+    status = ("intact — no tampering detected" if res.ok
+              else f"BROKEN at line {res.broken_at} ({res.detail})")
+    return ["## Audit integrity", "",
+            f"- Records: **{res.records}**",
+            f"- Hash chain: **{status}**",
+            "", "*Each audit record is SHA-256-chained to the previous one; any "
+            "post-hoc edit or deletion breaks the chain.*", ""]
 
 
 def _header(state: EngagementState) -> list[str]:
@@ -148,8 +168,10 @@ def _findings(state: EngagementState) -> list[str]:
 
 
 def _finding_block(f: Finding, state: EngagementState) -> list[str]:
+    from .scoring import score_label
     loc = " · ".join(x for x in (f.host, f.service_key) if x)
     out = [f"### [{f.severity.value.upper()}] {f.title}", ""]
+    out.append(f"**CVSS:** {score_label(f)}  ")
     if loc:
         out.append(f"**Location:** {loc}  ")
     if f.cve:

@@ -1324,6 +1324,28 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command()
+def audit(config: Path = typer.Argument(..., help="engagement YAML"),
+          verify: bool = typer.Option(True, "--verify/--no-verify",
+                                      help="verify the audit hash chain")):
+    """Verify the tamper-evident audit log's hash chain."""
+    from .safety.audit import verify_chain
+    cfg = _load_config(config)
+    audit_path = ENGAGEMENTS / cfg.name / "audit.jsonl"
+    if verify:
+        res = verify_chain(audit_path)
+        if res.records == 0:
+            console.print("[yellow]no audit records yet[/]")
+            return
+        if res.ok:
+            console.print(f"[bold green]audit chain intact[/] — {res.records} records, "
+                          "no tampering detected")
+        else:
+            console.print(f"[bold red]audit chain BROKEN[/] at line {res.broken_at}: "
+                          f"{escape(res.detail)}")
+            raise typer.Exit(1)
+
+
+@app.command()
 def status(config: Path = typer.Argument(..., help="engagement YAML")):
     """Show current known state for an engagement."""
     cfg = _load_config(config)
@@ -1469,7 +1491,7 @@ def report(config: Path = typer.Argument(..., help="engagement YAML"),
         raise typer.Exit(1)
 
     state = _load_state(state_path)
-    markdown = render_markdown(state)
+    markdown = render_markdown(state, audit_path=work / "audit.jsonl")
     out_path = output or (work / "report.md")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(markdown, encoding="utf-8")
