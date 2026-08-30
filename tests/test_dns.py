@@ -1,15 +1,15 @@
 """DNS adapter — zone transfer harvest."""
 
 from breachload.core.state import EngagementState, Service
-from breachload.tools.dns import DnsAdapter
 from breachload.tools.base import ToolResult
+from breachload.tools.dns import DnsAdapter
 
 
 def _res(stdout: str, code: int = 0) -> ToolResult:
     return ToolResult(exit_code=code, stdout=stdout, stderr="", duration_s=0.1)
 
 
-_ZONE = """connected.htb.\t\t604800\tIN\tSOA\tns1.connected.htb. admin.connected.htb. 2 604800 86400 2419200 604800
+_ZONE = """connected.htb.\t\t604800\tIN\tSOA\tns1.connected.htb. admin.connected.htb. 2 604800
 connected.htb.\t\t604800\tIN\tNS\tns1.connected.htb.
 connected.htb.\t\t604800\tIN\tA\t10.10.11.5
 www.connected.htb.\t604800\tIN\tA\t10.10.11.5
