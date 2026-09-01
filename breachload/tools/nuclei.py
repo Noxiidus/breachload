@@ -68,10 +68,18 @@ class NucleiAdapter(ToolAdapter):
             matched = m.get("matched-at") or m.get("host") or ""
             host_name = urlparse(_as_url(matched)).hostname or matched
             title = info.get("name") or m.get("template-id") or "nuclei match"
+            classification = info.get("classification", {}) or {}
             # classification.cve-id may be a list or a single string - normalize,
             # so we never iterate over the characters of a bare CVE string.
-            raw_cve = (info.get("classification", {}) or {}).get("cve-id") or []
+            raw_cve = classification.get("cve-id") or []
             cve_ids = [raw_cve] if isinstance(raw_cve, str) else list(raw_cve)
+            # nuclei carries the CVSS base score when the template knows one -
+            # feed it straight into the report scoring layer.
+            cvss_raw = classification.get("cvss-score")
+            try:
+                cvss = float(cvss_raw) if cvss_raw is not None else None
+            except (TypeError, ValueError):
+                cvss = None
 
             if host_name:
                 state.upsert_host(host_name)
@@ -82,6 +90,11 @@ class NucleiAdapter(ToolAdapter):
                 description=info.get("description", "") or "",
                 evidence=matched,
                 cve=[c.upper() for c in cve_ids],
+                cvss=cvss,
+                # A nuclei match is a template that ACTUALLY hit against the
+                # target - that is proof, not a guess.
+                validation="confirmed",
+                proof=f"nuclei template {m.get('template-id') or '?'} matched",
             ))
             notes.append(f"[{sev.value}] {title} @ {matched}")
         return notes or ["nuclei: no matches"]

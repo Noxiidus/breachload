@@ -1323,6 +1323,106 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
                   f"run `crack` to attack the hashes.")
 
 
+@app.command(rich_help_panel="Recon, enum & planning")
+def nucleiscan(config: Path = typer.Argument(..., help="engagement YAML"),
+               severity: str = typer.Option("medium,high,critical", "--severity",
+                                            help="severity bands for the broad pass"),
+               dry_run: bool = typer.Option(False, "--dry-run",
+                                            help="print commands, do not run")):
+    """Full nuclei orchestration across every HTTP service: tag pass + severity pass + CVE-id pass.
+
+    Uses the fingerprint the recon phase already collected (nuclei tags, KB CVEs)
+    to run three complementary passes per host:port so nothing that generalises
+    across boxes is missed. Findings are appended to state with proof + CVSS.
+    """
+    import subprocess
+
+    from .core.llm import _nuclei_cve_ids, _nuclei_tags
+    from .core.state import Service
+    from .tools.nuclei import NucleiAdapter
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet - run recon first[/]")
+        raise typer.Exit(1)
+    state = _load_state(state_path)
+    adapter = NucleiAdapter()
+
+    _HTTPS_PORTS = {443, 8443, 4443}
+
+    def _svc_url(host, svc: Service) -> str:
+        from .core.netutil import host_url
+        scheme = "https" if (svc.name or "").lower() in ("https", "ssl/http") \
+            or svc.port in _HTTPS_PORTS else "http"
+        return host_url(host, svc.port, scheme)
+
+    total_cmds = 0
+    for host in list(state.hosts.values()):
+        for svc in list(host.services.values()):
+            n = (svc.name or "").lower()
+            if "http" not in n and svc.port not in (80, 443, 8080, 8000, 8443, 3000, 5000):
+                continue
+            url = _svc_url(host.address, svc)
+            tags = _nuclei_tags(svc)
+            cve_ids = _nuclei_cve_ids(svc)
+            passes: list[tuple[str, list[str]]] = []
+            if tags:
+                passes.append((f"tags={tags}", adapter.build_command(url, tags=tags)))
+            passes.append((f"severity={severity}",
+                           adapter.build_command(url, severity=severity)))
+            for cid in cve_ids:
+                passes.append((f"id={cid}", adapter.build_command(url, template_id=cid)))
+            for label, argv in passes:
+                total_cmds += 1
+                console.print(f"[bold]# {escape(url)}[/]  [dim]{escape(label)}[/]")
+                console.print("  " + " ".join(argv), markup=False)
+                if dry_run:
+                    continue
+                try:
+                    p = subprocess.run(argv, capture_output=True, text=True, timeout=900)
+                    from .tools.base import ToolResult
+                    notes = adapter.parse(ToolResult(exit_code=p.returncode,
+                                                    stdout=p.stdout, stderr=p.stderr,
+                                                    duration_s=0.0), state)
+                    for n_ in notes[:10]:
+                        console.print(f"    {escape(n_)}")
+                except (OSError, subprocess.SubprocessError) as exc:
+                    console.print(f"    [yellow]nuclei run failed: {escape(str(exc))}[/]")
+    if not dry_run:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state.save(state_path)
+    console.print(f"\n[bold green]nucleiscan[/] {total_cmds} pass(es) "
+                  f"{'planned' if dry_run else 'executed'}")
+
+
+@app.command(rich_help_panel="Exploitation")
+def deser(config: Path = typer.Argument(None, help="engagement YAML (state-driven mode)"),
+          fingerprint: str = typer.Option(None, "--fingerprint",
+                                          help="stack tokens (e.g. 'tomcat spring')"),
+          cmd: str = typer.Option("bash -c 'id'", help="command the payload should run")):
+    """Deserialization payload commands per detected stack (ysoserial / phpggc / ysoserial.net)."""
+    from .analysis.deserialization import payload_commands, payload_commands_for_state
+    rows: list[tuple[str | None, str, str, list[str]]]
+    if fingerprint:
+        rows = [(None, lang, gadget, argv)
+                for lang, gadget, argv in payload_commands(cmd, fingerprint)]
+    else:
+        if not config:
+            console.print("[yellow]pass --fingerprint '<tokens>' or a config YAML[/]")
+            raise typer.Exit(1)
+        cfg = _load_config(config)
+        state_path = ENGAGEMENTS / cfg.name / "state.json"
+        if not state_path.exists():
+            console.print("[yellow]no state yet - run recon first[/]")
+            raise typer.Exit(1)
+        rows = payload_commands_for_state(cmd, _load_state(state_path))
+    console.print(f"[bold green]deser[/] {len(rows)} payload command(s)\n")
+    for host, lang, gadget, argv in rows:
+        prefix = f"{host} " if host else ""
+        console.print(f"  [{lang}] {prefix}{gadget}")
+        console.print("    " + " ".join(argv), markup=False)
+
+
 @app.command(rich_help_panel="Exploitation")
 def lfi(url: str = typer.Argument(..., help="URL with the LFI param, e.g. http://x/?f=x"),
         param: str = typer.Argument(..., help="LFI parameter name (e.g. 'f' / 'page')")):

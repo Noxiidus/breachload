@@ -276,3 +276,40 @@ class TestRegistry:
             cmd = adapter.build_command("10.10.10.5")
             d = v.check(cmd, adapter.risk)
             assert d.allowed, f"{adapter.name} produced an unrunnable command: {d.reason}"
+
+
+class TestNucleiCvssAndProof:
+    def test_cvss_score_and_confirmed_marker(self):
+        import json
+
+        from breachload.core.state import EngagementState
+        from breachload.tools.base import ToolResult
+        from breachload.tools.nuclei import NucleiAdapter
+        match = {
+            "template-id": "CVE-2021-44228",
+            "info": {"name": "Log4Shell", "severity": "critical",
+                     "description": "log4j RCE",
+                     "classification": {"cve-id": ["CVE-2021-44228"],
+                                        "cvss-score": 10.0}},
+            "matched-at": "http://10.10.10.5:8080/",
+            "host": "10.10.10.5"}
+        result = ToolResult(exit_code=0, stdout=json.dumps(match) + "\n",
+                            stderr="", duration_s=0.0)
+        st = EngagementState(name="t")
+        NucleiAdapter().parse(result, st)
+        assert st.findings and st.findings[0].cvss == 10.0
+        assert st.findings[0].validation == "confirmed"
+        assert "CVE-2021-44228" in st.findings[0].cve
+
+    def test_cvss_missing_is_none(self):
+        import json
+
+        from breachload.core.state import EngagementState
+        from breachload.tools.base import ToolResult
+        from breachload.tools.nuclei import NucleiAdapter
+        match = {"template-id": "x", "info": {"name": "x", "severity": "low"},
+                 "matched-at": "http://x/"}
+        st = EngagementState(name="t")
+        NucleiAdapter().parse(ToolResult(exit_code=0, stdout=json.dumps(match),
+                                         stderr="", duration_s=0.0), st)
+        assert st.findings and st.findings[0].cvss is None
