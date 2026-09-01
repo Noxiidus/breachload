@@ -74,8 +74,12 @@ def run_enum(session: Session, *, runner=None) -> tuple[list[Finding], list[Cred
     findings, creds = loot(combined)
     # Generalized "root reads a file I can write" class (NiFi/dahdi lesson, no
     # per-app code): cross the writable set with files root runs/sources.
+    from .privesc_classes import find_all as find_privesc_classes
     from .writable_root_paths import find_writable_root_exec
     findings += find_writable_root_exec(combined)
+    # More classes on the same enum blob: PATH hijack, writable service unit,
+    # writable SUID root binary. All pure, all generalized.
+    findings += find_privesc_classes(combined)
     return findings, creds, combined
 
 
