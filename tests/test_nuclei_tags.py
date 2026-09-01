@@ -27,11 +27,16 @@ class TestNucleiTags:
         plan = Planner()._heuristic(st, _tools())
         assert plan.tool == "nuclei" and "grafana" in plan.args.get("tags", "")
 
-    def test_planner_no_tags_when_unknown(self):
+    def test_planner_safety_net_when_unknown(self):
+        # No stack token matched -> the planner falls back to a broad but
+        # bounded 'cve, severity=high,critical' sweep so an unknown app still
+        # gets a known-CVE pass instead of nothing.
         st = EngagementState(name="t", phase=Phase.VULN)
         st.upsert_host("10.10.10.9").upsert_service(Service(port=80, name="http"))
         plan = Planner()._heuristic(st, _tools())
-        assert plan.tool == "nuclei" and plan.args.get("tags") is None
+        assert plan.tool == "nuclei"
+        assert plan.args.get("tags") == "cve"
+        assert plan.args.get("severity") == "high,critical"
 
     def test_tags_reach_the_command(self):
         st = EngagementState(name="t", phase=Phase.VULN)

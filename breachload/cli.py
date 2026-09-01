@@ -1324,6 +1324,30 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command(rich_help_panel="Recon, enum & planning")
+def authlogin(url: str = typer.Argument(..., help="base URL to try login against"),
+              user: str = typer.Argument(..., help="username"),
+              password: str = typer.Argument(..., help="password"),
+              parse_file: Path = typer.Option(None, "--parse-file",
+                                              help="parse a saved login response")):
+    """Try common login endpoints and extract a session cookie for auth-aware recon."""
+    from .analysis.auth_crawl import extract_session, looks_like_success, try_login_ladder
+    if parse_file and Path(parse_file).is_file():
+        blob = Path(parse_file).read_text(encoding="utf-8", errors="replace")
+        sess = extract_session(blob)
+        console.print(f"[bold green]authlogin[/] parsed: success={looks_like_success(blob)}")
+        for k, v in sess.items():
+            console.print(f"  {k}: {escape(v[:120])}")
+        if sess.get("cookie"):
+            console.print("\n[dim]feed it to ffuf: --cookie '"
+                          + escape(sess['cookie']) + "'[/]")
+        return
+    console.print(f"[bold]auth-login ladder[/] for {url} as {user} (review then run):")
+    for label, argv in try_login_ladder(url, user, password):
+        console.print(f"  # {label}")
+        console.print("    " + " ".join(argv), markup=False)
+
+
+@app.command(rich_help_panel="Recon, enum & planning")
 def nucleiscan(config: Path = typer.Argument(..., help="engagement YAML"),
                severity: str = typer.Option("medium,high,critical", "--severity",
                                             help="severity bands for the broad pass"),

@@ -59,4 +59,5 @@ disable_error_code = ["override"]
 [tool.pytest.ini_options]
 markers = [
     "live: integration tests that need live Docker containers (opt-in via BREACHLOAD_LIVE=1)",
+    "held_out: dogfood held-out coverage tests against real state.json snapshots (opt-in)",
 ]

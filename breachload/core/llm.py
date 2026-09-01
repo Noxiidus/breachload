@@ -248,8 +248,12 @@ class Planner:
                             args = {"tags": tags}
                             why = f"Scan the web service with nuclei (tags: {tags})."
                         else:
-                            args = {}
-                            why = "Scan the web service for known vulnerabilities."
+                            # Safety net: no stack tokens matched -> at least run
+                            # the high/critical CVE templates so an unknown app
+                            # still gets a broad known-CVE sweep instead of nothing.
+                            args = {"tags": "cve", "severity": "high,critical"}
+                            why = ("No stack tokens matched; safety-net CVE sweep "
+                                   "(nuclei -tags cve -severity high,critical).")
                         return Plan("run", "nuclei", _svc_url(host.address, svc), args, why)
             return Plan("phase_complete", rationale="Vulnerability scan complete.")
 
