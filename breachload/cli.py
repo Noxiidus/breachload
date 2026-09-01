@@ -1323,6 +1323,26 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
                   f"run `crack` to attack the hashes.")
 
 
+@app.command(rich_help_panel="Exploitation")
+def lfi(url: str = typer.Argument(..., help="URL with the LFI param, e.g. http://x/?f=x"),
+        param: str = typer.Argument(..., help="LFI parameter name (e.g. 'f' / 'page')")):
+    """Print the LFI -> RCE ladder (wrappers, log/session/environ poison) for a param."""
+    from .analysis.webrce_ladders import lfi_to_rce_ladder
+    for tech, cmd in lfi_to_rce_ladder(url, param):
+        console.print(f"[bold]# {escape(tech)}[/]")
+        console.print("  " + cmd, markup=False)
+
+
+@app.command(rich_help_panel="Exploitation")
+def uploadfuzz(upload_url: str = typer.Argument(..., help="POST endpoint that accepts uploads"),
+               field: str = typer.Option("file", help="multipart form field name")):
+    """Print upload-bypass extension ladder + polyglot for a suspected upload endpoint."""
+    from .analysis.webrce_ladders import upload_bypass_requests
+    for tech, argv in upload_bypass_requests(upload_url, field):
+        console.print(f"[bold]# {escape(tech)}[/]")
+        console.print("  " + " ".join(argv), markup=False)
+
+
 @app.command(rich_help_panel="Post-exploitation")
 def appsecrets(app: str = typer.Argument(None, help="app token (nifi, laravel, ...)"),
                decrypt: str = typer.Option(None, "--decrypt",
