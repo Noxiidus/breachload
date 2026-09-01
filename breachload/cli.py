@@ -1468,6 +1468,47 @@ def uploadfuzz(upload_url: str = typer.Argument(..., help="POST endpoint that ac
 
 
 @app.command(rich_help_panel="Post-exploitation")
+def cloud(config: Path = typer.Argument(None, help="engagement YAML (state-driven)"),
+          provider: str = typer.Option(None, help="aws | gcp | azure (skip config)")):
+    """Cloud-service enumeration commands per provider (AWS/GCP/Azure)."""
+    from .analysis.cloud import commands_for_state, enum_commands
+    if provider:
+        rows = [(provider, label, argv)
+                for label, argv in enum_commands(provider)]
+    else:
+        if not config:
+            console.print("[yellow]pass --provider aws|gcp|azure OR a config[/]")
+            raise typer.Exit(1)
+        cfg = _load_config(config)
+        state_path = ENGAGEMENTS / cfg.name / "state.json"
+        if not state_path.exists():
+            console.print("[yellow]no state yet[/]")
+            raise typer.Exit(1)
+        rows = commands_for_state(_load_state(state_path))
+    console.print(f"[bold green]cloud[/] {len(rows)} enum command(s)\n")
+    for prov, label, argv in rows:
+        console.print(f"  [{prov}] {label}")
+        console.print("    " + " ".join(argv), markup=False)
+
+
+@app.command(rich_help_panel="Post-exploitation")
+def lateral(config: Path = typer.Argument(..., help="engagement YAML")):
+    """Windows lateral-movement command ladder for every Windows host x usable cred."""
+    from .analysis.windows_lateral import lateral_commands
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet[/]")
+        raise typer.Exit(1)
+    state = _load_state(state_path)
+    rows = lateral_commands(state)
+    console.print(f"[bold green]lateral[/] {len(rows)} attempt(s)\n")
+    for host, tech, argv in rows:
+        console.print(f"  [{tech}] {host}")
+        console.print("    " + " ".join(argv), markup=False)
+
+
+@app.command(rich_help_panel="Post-exploitation")
 def appsecrets(app: str = typer.Argument(None, help="app token (nifi, laravel, ...)"),
                decrypt: str = typer.Option(None, "--decrypt",
                                            help="ciphertext to decrypt with --key"),

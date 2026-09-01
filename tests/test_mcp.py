@@ -79,6 +79,49 @@ class TestTools:
         out = _call("fingerprint_to_cve", {"fingerprint": "totally unknown app 9.9"})
         assert "no known-CVE leads" in out
 
+    def test_next_step_returns_planner_decision(self):
+        from breachload.core.state import EngagementState
+        st = EngagementState(name="x")
+        out = _call("next_step", {"state": st.model_dump_json()})
+        # Any valid planner decision - action is one of run/phase_complete/...
+        assert '"action":' in out
+
+    def test_suggest_over_serialized_state(self):
+        from breachload.core.state import EngagementState, Finding, Severity
+        st = EngagementState(name="x")
+        st.add_finding(Finding(title="Kerberoastable account: svc",
+                               severity=Severity.HIGH))
+        out = _call("suggest", {"state": st.model_dump_json(), "lhost": "10.10.14.2"})
+        assert "actions" in out
+
+    def test_render_report_markdown_and_html(self):
+        from breachload.core.state import EngagementState
+        st = EngagementState(name="mcp-report")
+        md = _call("render_report", {"state": st.model_dump_json(),
+                                     "format": "markdown"})
+        html = _call("render_report", {"state": st.model_dump_json(),
+                                       "format": "html"})
+        assert "# Engagement report" in md
+        assert html.startswith("<!doctype html>")
+
+    def test_secret_scan_finds_aws_key(self):
+        out = _call("secret_scan", {"text": "AKIAIOSFODNN7EXAMPLE"})
+        assert "AWS access key" in out
+
+    def test_default_creds_from_state(self):
+        from breachload.core.state import EngagementState, Service
+        st = EngagementState(name="x")
+        st.upsert_host("10.10.10.5").upsert_service(Service(port=3306, name="mysql"))
+        out = _call("default_creds", {"state": st.model_dump_json()})
+        assert "mysql" in out
+
+    def test_privesc_classes_from_enum_blob(self):
+        enum = ("$ env\nPATH=/tmp/user_bin:/usr/bin\n"
+                "$ find / -writable -type d\n/tmp/user_bin\n"
+                "$ cat /etc/crontab\n*/5 * * * * root backup.sh\n")
+        out = _call("privesc_classes", {"enum": enum})
+        assert "PATH hijack" in out
+
     def test_tool_error_is_reported_not_raised(self):
         # Missing required arg -> handled as isError content, not a crash.
         resp = handle({"jsonrpc": "2.0", "id": 9, "method": "tools/call",

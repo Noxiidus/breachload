@@ -56,8 +56,15 @@ class Planner:
         # extensions; optional so the planner still works standalone/in tests.
         self.config = config
         self._client = None
+        # Local-model backend (Ollama / LM Studio): set BREACHLOAD_LOCAL_LLM_URL
+        # to a base URL like http://127.0.0.1:11434 (Ollama) or
+        # http://127.0.0.1:1234/v1 (LM Studio). BREACHLOAD_LOCAL_LLM_MODEL picks
+        # the model name. This takes priority over Claude when set, so users can
+        # opt into fully-offline decisions without touching a cloud API.
+        self._local_url = os.environ.get("BREACHLOAD_LOCAL_LLM_URL")
+        self._local_model = os.environ.get("BREACHLOAD_LOCAL_LLM_MODEL", "llama3")
         key = os.environ.get("ANTHROPIC_API_KEY")
-        if key:
+        if key and not self._local_url:
             try:
                 import anthropic
                 self._client = anthropic.Anthropic(api_key=key)
@@ -66,10 +73,45 @@ class Planner:
 
     @property
     def online(self) -> bool:
-        return self._client is not None
+        return self._client is not None or bool(self._local_url)
+
+    def _call_local_llm(self, user: str) -> str | None:
+        """Call an OpenAI-compatible local endpoint (Ollama/LM Studio) for a plan.
+
+        Returns the assistant's text response, or None on any failure so we fall
+        back to the deterministic heuristic. All-stdlib (`urllib.request`) so no
+        new dependency to pull in.
+        """
+        import urllib.error
+        import urllib.request
+        base = self._local_url.rstrip("/")
+        body = json.dumps({
+            "model": self._local_model,
+            "messages": [{"role": "system", "content": SYSTEM_PROMPT},
+                         {"role": "user", "content": user}],
+            "temperature": 0, "stream": False,
+        }).encode()
+        # /api/chat is Ollama; /v1/chat/completions is OpenAI-compatible (LM Studio,
+        # llama.cpp server, vLLM). Try the OpenAI shape first - most local
+        # servers now expose it.
+        for path in ("/v1/chat/completions", "/api/chat"):
+            req = urllib.request.Request(base + path, data=body,
+                                         headers={"Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    payload = json.loads(r.read())
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+                continue
+            # OpenAI shape.
+            if "choices" in payload:
+                return (payload["choices"][0].get("message") or {}).get("content", "")
+            # Ollama /api/chat shape.
+            if "message" in payload:
+                return payload["message"].get("content", "")
+        return None
 
     def next_action(self, state: EngagementState, tools: list[dict]) -> Plan:
-        if self._client is None:
+        if self._client is None and not self._local_url:
             return self._heuristic(state, tools)
         user = json.dumps({
             "state": state.summary(),
@@ -78,17 +120,21 @@ class Planner:
         }, indent=2)
         # Any API failure (network, rate limit, auth) falls back to the
         # deterministic heuristic so the engagement keeps moving.
-        try:
-            msg = self._client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user}],
-            )
-            # The first content block of a text response is a TextBlock; guard the
-            # access so the block-type union (thinking/tool-use/...) type-checks.
-            text = getattr(msg.content[0], "text", "").strip()
-        except Exception:  # noqa: BLE001 - resilience: never let the planner crash the run
+        text: str | None = None
+        if self._local_url:
+            text = self._call_local_llm(user)
+        elif self._client is not None:
+            try:
+                msg = self._client.messages.create(
+                    model=self.model,
+                    max_tokens=512,
+                    system=SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": user}],
+                )
+                text = getattr(msg.content[0], "text", "").strip()
+            except Exception:  # noqa: BLE001 - resilience: never crash the run
+                text = None
+        if not text:
             return self._heuristic(state, tools)
         return self._parse_plan(text, state, tools)
 

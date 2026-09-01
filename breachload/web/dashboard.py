@@ -55,7 +55,19 @@ DASHBOARD_HTML = """<!doctype html>
   <section><h2>Live stream</h2><div class="body" id="log"></div></section>
   <section>
     <h2>Hosts &amp; services</h2><div class="body" id="hosts"></div>
-    <h2>Findings</h2><div class="body" id="findings"></div>
+    <h2>Findings <span id="fcount" style="opacity:.7"></span>
+      <span style="float:right;font-weight:normal">
+        <label style="opacity:.7">show:
+          <select id="sev-filter" style="background:#0d1117;color:#c9d1d9;
+                                          border:1px solid #30363d;padding:2px 4px">
+            <option value="all">all</option>
+            <option value="confirmed">confirmed only</option>
+            <option value="critical">critical+high</option>
+          </select>
+        </label>
+      </span>
+    </h2>
+    <div class="body" id="findings"></div>
   </section>
 </main>
 <div id="confirm"><div class="box">
@@ -95,6 +107,7 @@ DASHBOARD_HTML = """<!doctype html>
 
   function renderState(s) {
     if (!s) return;
+    window._lastState = s;   // cached so the sev-filter can re-render live
     document.getElementById('phase').textContent = s.phase ? 'phase: ' + s.phase : '';
     var flags = s.flags || [];
     document.getElementById('flags').textContent = flags.length ? ('flags: ' + flags.join('  ')) : '';
@@ -109,13 +122,33 @@ DASHBOARD_HTML = """<!doctype html>
     document.getElementById('hosts').innerHTML = rows + '</table>';
 
     var fs = s.findings || [];
-    var f = '<table><tr><th>Sev</th><th>Title</th><th>Host</th></tr>';
-    fs.forEach(function (x) {
-      f += '<tr><td class="sev-' + esc(x.severity) + '">' + esc(x.severity) + '</td><td>' +
-           esc(x.title) + '</td><td>' + esc(x.host || '') + '</td></tr>';
+    var mode = document.getElementById('sev-filter').value;
+    var shown = fs.filter(function (x) {
+      if (mode === 'confirmed') return x.validation === 'confirmed';
+      if (mode === 'critical') return x.severity === 'critical' || x.severity === 'high';
+      return true;
+    });
+    var confirmed = fs.filter(function (x) { return x.validation === 'confirmed'; }).length;
+    document.getElementById('fcount').textContent =
+      '(' + confirmed + ' confirmed / ' + fs.length + ' total)';
+    var f = '<table><tr><th>Sev</th><th>Status</th><th>Title</th><th>Host</th></tr>';
+    shown.forEach(function (x) {
+      var badge = x.validation === 'confirmed'
+        ? '<span style="color:#3fb950">CONFIRMED</span>'
+        : '<span style="opacity:.6">suspected</span>';
+      f += '<tr><td class="sev-' + esc(x.severity) + '">' + esc(x.severity) + '</td>' +
+           '<td>' + badge + '</td><td>' + esc(x.title) + '</td>' +
+           '<td>' + esc(x.host || '') + '</td></tr>';
     });
     document.getElementById('findings').innerHTML = f + '</table>';
   }
+
+  // Re-render on filter change so the user's choice takes effect immediately.
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'sev-filter' && window._lastState) {
+      renderState(window._lastState);
+    }
+  });
 
   function connect() {
     var proto = location.protocol === 'https:' ? 'wss' : 'ws';

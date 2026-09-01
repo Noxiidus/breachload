@@ -115,6 +115,96 @@ def _tool_gtfobins(args: dict) -> dict:
     return _content(json.dumps(entry, indent=2) if entry else "no GTFOBins entry")
 
 
+def _tool_next_step(args: dict) -> dict:
+    """Given a state.json blob, return the heuristic planner's next action.
+
+    The agent hands us a serialized EngagementState (as JSON), we run the
+    deterministic planner over it, and return the rendered next step. No I/O,
+    no target contact - just the decision.
+    """
+    from ..core.llm import Planner
+    from ..core.state import EngagementState
+    from ..tools.registry import default_registry
+    try:
+        state = EngagementState.model_validate_json(args.get("state", "{}"))
+    except Exception as exc:  # noqa: BLE001
+        return _content(f"invalid state: {exc}")
+    tools = [{"name": a.name, "risk": a.risk.name, "capabilities": a.capabilities}
+             for a in default_registry(load_plugins=False).values()]
+    plan = Planner()._heuristic(state, tools)
+    return _content(json.dumps({
+        "action": plan.action, "tool": plan.tool, "target": plan.target,
+        "args": plan.args, "rationale": plan.rationale,
+    }, indent=2, default=str))
+
+
+def _tool_suggest(args: dict) -> dict:
+    """Render the rule-based SuggestionEngine plan for a state - no API key needed."""
+    from ..analysis.suggest import SuggestionEngine
+    from ..core.state import EngagementState
+    try:
+        state = EngagementState.model_validate_json(args.get("state", "{}"))
+    except Exception as exc:  # noqa: BLE001
+        return _content(f"invalid state: {exc}")
+    lhost = args.get("lhost", "LHOST")
+    lport = int(args.get("lport", 4444) or 4444)
+    plan = SuggestionEngine().suggest(state, lhost=lhost, lport=lport)
+    return _content(json.dumps([{
+        "title": s.title, "why": s.why, "actions": s.actions,
+    } for s in plan], indent=2))
+
+
+def _tool_render_report(args: dict) -> dict:
+    """Render the Markdown or HTML report for a state - one-shot deliverable."""
+    from ..core.state import EngagementState
+    from ..report.engine import render_markdown
+    from ..report.html import render_html
+    try:
+        state = EngagementState.model_validate_json(args.get("state", "{}"))
+    except Exception as exc:  # noqa: BLE001
+        return _content(f"invalid state: {exc}")
+    fmt = (args.get("format") or "markdown").lower()
+    if fmt == "html":
+        return _content(render_html(state))
+    return _content(render_markdown(state))
+
+
+def _tool_secret_scan(args: dict) -> dict:
+    """Scan arbitrary text for secrets (AWS keys, JWT, DB URIs, ...)."""
+    from ..analysis.secretscan import scan_secrets
+    findings, creds = scan_secrets(args.get("text", ""))
+    return _content(json.dumps({
+        "findings": [{"title": f.title, "evidence": f.evidence[:200]}
+                     for f in findings],
+        "credentials": [{"kind": c.kind, "secret": (c.secret or "")[:120],
+                         "source": c.source} for c in creds],
+    }, indent=2))
+
+
+def _tool_default_creds(args: dict) -> dict:
+    """Emit the default-credential sweep argvs for a state."""
+    from ..analysis.defaultcreds import sweep_commands
+    from ..core.state import EngagementState
+    try:
+        state = EngagementState.model_validate_json(args.get("state", "{}"))
+    except Exception as exc:  # noqa: BLE001
+        return _content(f"invalid state: {exc}")
+    return _content(json.dumps(
+        [{"host": h, "technique": t, "argv": a} for h, t, a in sweep_commands(state)],
+        indent=2))
+
+
+def _tool_privesc_classes(args: dict) -> dict:
+    """Run generalized Linux privesc-class detectors over a shell-enum blob."""
+    from ..analysis.privesc_classes import find_all as pc
+    from ..analysis.writable_root_paths import find_writable_root_exec
+    text = args.get("enum", "")
+    findings = pc(text) + find_writable_root_exec(text)
+    return _content(json.dumps([{
+        "title": f.title, "severity": f.severity.value, "exploit": f.exploit,
+    } for f in findings], indent=2) or "no privesc-class hits")
+
+
 TOOLS: dict[str, tuple[str, dict, Callable[[dict], dict]]] = {
     "fingerprint_to_cve": (
         "Map a web-app fingerprint (product/version/banner) to known-CVE leads with "
@@ -165,6 +255,41 @@ TOOLS: dict[str, tuple[str, dict, Callable[[dict], dict]]] = {
         {"type": "object", "properties": {"xml": {"type": "string"}},
          "required": ["xml"]},
         _tool_parse_nmap),
+    "next_step": (
+        "Deterministic planner: given a serialized EngagementState, return the "
+        "next action (tool/target/rationale).",
+        {"type": "object", "properties": {"state": {"type": "string"}},
+         "required": ["state"]},
+        _tool_next_step),
+    "suggest": (
+        "Rule-based SuggestionEngine plan over a serialized state - no API key.",
+        {"type": "object", "properties": {
+            "state": {"type": "string"}, "lhost": {"type": "string"},
+            "lport": {"type": "integer"}}, "required": ["state"]},
+        _tool_suggest),
+    "render_report": (
+        "Render the Markdown or HTML report for a serialized state.",
+        {"type": "object", "properties": {
+            "state": {"type": "string"},
+            "format": {"type": "string", "enum": ["markdown", "html"]}},
+         "required": ["state"]},
+        _tool_render_report),
+    "secret_scan": (
+        "Scan arbitrary text for secrets (cloud keys, JWT, DB URIs, passwords).",
+        {"type": "object", "properties": {"text": {"type": "string"}},
+         "required": ["text"]},
+        _tool_secret_scan),
+    "default_creds": (
+        "Default-credential sweep argvs for every service in a serialized state.",
+        {"type": "object", "properties": {"state": {"type": "string"}},
+         "required": ["state"]},
+        _tool_default_creds),
+    "privesc_classes": (
+        "Run generalized Linux privesc-class detectors on a shell-enum blob "
+        "(writable-root-path, PATH hijack, writable systemd unit, writable SUID).",
+        {"type": "object", "properties": {"enum": {"type": "string"}},
+         "required": ["enum"]},
+        _tool_privesc_classes),
 }
 
 
