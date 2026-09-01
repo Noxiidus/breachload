@@ -44,3 +44,12 @@ class TestUploadLadder:
     def test_custom_field(self):
         reqs = upload_bypass_requests("http://x/u", field="avatar")
         assert any("avatar=@-" in " ".join(a) for _t, a in reqs)
+
+    def test_no_null_byte_in_argv(self):
+        # Regression: a literal NUL in a filename crashes subprocess argv on POSIX
+        # (ValueError: embedded null character). Every argv token must be
+        # NUL-free so `uploadfuzz` can actually run every rung.
+        reqs = upload_bypass_requests("http://x/upload")
+        for _tech, argv in reqs:
+            for tok in argv:
+                assert "\x00" not in tok, f"null byte in argv token: {tok!r}"
