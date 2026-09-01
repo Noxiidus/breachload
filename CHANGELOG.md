@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-01
+
+Full technique-map buildout + priority-list sweep.
+
+### Added — generalized class detectors (no per-app code)
+- `writable_root_paths.find_writable_root_exec` - the NiFi/dahdi "root reads a file I can
+  write" class over any enum blob.
+- `secretscan` - regex library (AWS/GH/JWT/DB-URI/private-key/password) + sensitive-path
+  content discovery (`.git`/`.env`/`.bak`/actuator/heapdump), wired into `loot`.
+- `unauth_api` - marker-regex-confirmed unauth-admin/API detector (Spring actuator, ES,
+  K8s API, Docker Engine, Consul, Vault, Jenkins, Swagger, NiFi).
+- `defaultcreds` - argv sweep across 8 services + 30+ web-app default logins.
+- `app_secrets` - 15 app profiles (where + how) + built-in NiFi PBKDF2-AES-GCM and
+  Laravel AES-CBC decoders.
+- `privesc_classes` - PATH hijack in root cron/systemd, writable systemd unit,
+  writable SUID root, all from the shell-enum blob.
+- `ssrf_imds` - AWS/GCP/Azure metadata token extraction with `parse_imds()` +
+  `imds_probes()` for the SSRF payload set.
+- `winprivesc_classes` - GPP cpassword decrypt with Microsoft's published key,
+  writable-scheduled-task action, weak service ACL (accesschk).
+- `webrce_ladders` - LFI-to-RCE ladder (wrappers, log/session/environ/SSH poison)
+  and file-upload bypass extension matrix.
+- `deserialization` - ysoserial/phpggc/ysoserial.net payload command generation
+  keyed on the detected stack.
+- `windows_lateral` - winrm/wmi/psexec/smbexec chain + Pass-the-Hash variants for
+  every Windows host x usable credential.
+- `cloud` - AWS/GCP/Azure enumeration command library keyed on held credentials.
+- `auth_crawl` - login ladder + session/bearer extraction for auth-aware recon.
+- `coverage` - held-out coverage measurement primitives + `tests/held_out/` marker.
+
+### Added — autonomy
+- `_autonomous_adcs` - POST-phase certipy req for ESC1 findings + domain creds.
+- Nuclei safety-net fallback (`-tags cve -severity high,critical`) when no stack
+  token matched, so an unknown app still gets a bounded known-CVE sweep.
+- Full nuclei orchestration CLI (`nucleiscan`): tags + severity + CVE-id passes;
+  CVSS score and `confirmed`+proof marker on every match.
+- Local-LLM planner backend (Ollama / LM Studio / any OpenAI-compatible endpoint)
+  via `BREACHLOAD_LOCAL_LLM_URL` + `_MODEL`. Takes precedence over Claude when set.
+
+### Added — MCP surface
+- New tools: `next_step`, `suggest`, `render_report`, `secret_scan`,
+  `default_creds`, `privesc_classes`. The MCP layer now covers planning +
+  reporting + all generalized detectors, not just lookup.
+
+### Added — quality / dogfood
+- Strict push gate: `ruff + mypy + pytest` all green before every push (fixed the
+  CI-fail email churn).
+- `docs/DOGFOOD.md` + `docs/dogfood-scores.csv` - reproducible live-box workflow
+  with a 3-axis score (recon coverage / guided fit / autonomous hit).
+- `docs/TECHNIQUE-COVERAGE.md` - the aggregated technique-class map + build-to-
+  the-class discipline.
+- Multi-round bug hunts (`docs/BUGHUNT-2026-08-30c.md`, `BUGHUNT-2026-09-01.md`).
+- Dashboard: severity filter + confirmed-only view + confirmed-count badge.
+
+### Fixed
+- Upload-bypass ladder no longer carries a literal NUL byte in a filename
+  (subprocess argv crash on POSIX).
+- Kerberoast TGS regex preserves the trailing `$` on machine-account names.
+- MCP `parse_nmap_xml` was wired to the wrong field (fixed).
+- Reflected-XSS canary now uses angle brackets so escaped vs. raw is
+  distinguishable.
+
+
 ## [0.20.0] - 2026-08-30
 
 Competitor-inspired capabilities (Strix / HexStrike-AI), plus the live-test learnings
