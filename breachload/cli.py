@@ -1323,6 +1323,42 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
                   f"run `crack` to attack the hashes.")
 
 
+@app.command(rich_help_panel="Post-exploitation")
+def appsecrets(app: str = typer.Argument(None, help="app token (nifi, laravel, ...)"),
+               decrypt: str = typer.Option(None, "--decrypt",
+                                           help="ciphertext to decrypt with --key"),
+               key: str = typer.Option(None, "--key",
+                                       help="app-specific master key (e.g. sensitive.props.key)")):
+    """Where an app class stores secrets + how to decode them (generalized library)."""
+    from .analysis.app_secrets import (
+        decrypt as _decrypt,
+    )
+    from .analysis.app_secrets import (
+        discovery_commands,
+        profile,
+    )
+    if not app:
+        from .analysis.app_secrets import _PROFILES
+        console.print("[bold]known app-secret profiles[/]:")
+        for k, p in _PROFILES.items():
+            console.print(f"  {k:<12} {p.app}")
+        return
+    prof = profile(app)
+    if not prof:
+        console.print(f"[yellow]no profile for '{app}'[/]")
+        raise typer.Exit(1)
+    if decrypt and key:
+        out = _decrypt(app, decrypt, key)
+        console.print(escape(out) if out else "[yellow]decrypt failed / no decoder[/]")
+        return
+    console.print(f"[bold]{prof.app}[/] - scheme: {prof.scheme or '(no built-in decoder)'}\n")
+    if prof.notes:
+        console.print(f"[dim]{escape(prof.notes)}[/]\n")
+    console.print("[bold]discovery commands[/] (run on the compromised host):")
+    for c in discovery_commands(prof):
+        console.print("  " + c, markup=False)
+
+
 @app.command(rich_help_panel="Recon, enum & planning")
 def defaultcreds(config: Path = typer.Argument(..., help="engagement YAML")):
     """Print default-credential sweep commands for every service in state (review-then-run)."""
