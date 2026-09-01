@@ -1,39 +1,41 @@
 # breachload wiki
 
-The user-facing, tutorial-first documentation. Every page is written so someone
-who has never used breachload (or a pentest tool at all) can follow along.
+The user-facing, tutorial-first documentation. Every page is written so
+someone who has never used breachload (or a pentest tool at all) can
+follow along.
 
 ## Start here
 
-- [Getting Started](Getting-Started) - install, first run, what you'll see
-- [Your First Engagement](Your-First-Engagement) - a walkthrough on a lab target
-- [Command Reference](Command-Reference) - every CLI command, one-line + example
+- [Getting Started](Getting-Started) — install, first run, what you'll see
+- [Your First Engagement](Your-First-Engagement) — a walkthrough on a lab box
+- [Command Reference](Command-Reference) — every CLI command with an example
 
 ## By task
 
-- [Recon & fingerprinting](Recon-and-Fingerprinting) - what breachload maps, how
-- [Guided exploitation](Guided-Exploitation) - taking a lead from fingerprint to a shell
-- [Post-exploitation](Post-Exploitation) - loot, privesc, lateral, cloud, pivot
-- [Active Directory](Active-Directory) - BloodHound, Kerberoast, ADCS, kill-chain
-- [Reporting & audit](Reporting) - MD/HTML/PDF, CVSS, tamper-evident log
+- [Recon & Fingerprinting](Recon-and-Fingerprinting) — what breachload maps, how
+- [Guided Exploitation](Guided-Exploitation) — from a finding to a shell
+- [Post-Exploitation](Post-Exploitation) — loot, privesc, lateral, cloud, pivot
+- [Active Directory](Active-Directory) — BloodHound, ADCS, Kerberoast, kill-chain
+- [Reporting & Audit](Reporting) — MD/HTML/PDF + tamper-evident audit log
 
 ## Concepts
 
-- [The safety model](Safety-Model) - scope, argv-only, confirm-gates, auto-exploit
-- [State + findings](State-and-Findings) - the typed record every action writes to
-- [Suspected vs confirmed](Suspected-vs-Confirmed) - proof-based findings
-- [Sessions](Sessions) - webshell / ssh / winrm channels + auto-staging
+- [Safety Model](Safety-Model) — scope, argv-only, confirm-gates, auto-exploit
+- [Architecture](Architecture) — the internal layout
+- [State + Findings](State-and-Findings) — the typed record every action writes to
+- [Suspected vs Confirmed](Suspected-vs-Confirmed) — the proof model
+- [Sessions](Sessions) — webshell / ssh / winrm channels + auto-staging
 
 ## Integration
 
-- [MCP server (any LLM agent)](MCP-Server) - Claude Code, Claude Desktop, etc.
-- [Live web dashboard](Web-Dashboard) - the FastAPI/WebSocket UI
-- [Local-first (Ollama / LM Studio)](Local-LLM) - offline planner backend
-- [Extending with a custom adapter](Custom-Adapters) - plugin entry-point
+- [MCP Server](MCP-Server) — using breachload from any LLM agent (Claude Code, …)
+- [Web Dashboard](Web-Dashboard) — the FastAPI/WebSocket live view
+- [Local-first (Ollama / LM Studio)](Local-LLM) — offline planner backend
+- [Custom Adapters](Custom-Adapters) — plugin entry-point (also see Writing-Adapters)
 
 ## Advanced
 
-- [Auto-exploit mode](Auto-Exploit) - the operator-gated autonomous chain
-- [Bug hunt workflow](Bug-Hunt) - fuzz, self-test, held-out coverage
-- [Live dogfood harness](Live-Dogfood) - reproducible per-box scoring
-- [Release process](Release-Process) - version bump, tag, release, README update
+- [Auto-Exploit](Auto-Exploit) — the operator-gated autonomous chain
+- [Bug-Hunt Workflow](Bug-Hunt) — fuzz, self-test, held-out coverage
+- [Live Dogfood](Live-Dogfood) — reproducible per-box scoring
+- [Release Process](Release-Process) — version bump → tag → release → README update
