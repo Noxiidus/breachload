@@ -1324,6 +1324,23 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command(rich_help_panel="Recon, enum & planning")
+def defaultcreds(config: Path = typer.Argument(..., help="engagement YAML")):
+    """Print default-credential sweep commands for every service in state (review-then-run)."""
+    from .analysis.defaultcreds import sweep_commands
+    cfg = _load_config(config)
+    state_path = ENGAGEMENTS / cfg.name / "state.json"
+    if not state_path.exists():
+        console.print("[yellow]no state yet - run recon first[/]")
+        raise typer.Exit(1)
+    state = _load_state(state_path)
+    cmds = sweep_commands(state)
+    console.print(f"[bold green]defaultcreds[/] {len(cmds)} attempt(s) generated\n")
+    for host, tech, argv in cmds:
+        console.print(f"  [{tech}] {host}")
+        console.print("    " + " ".join(argv), markup=False)
+
+
+@app.command(rich_help_panel="Recon, enum & planning")
 def unauthapi(url: str = typer.Argument(..., help="base URL to probe"),
               parse_file: Path = typer.Option(None, "--parse-file",
                                               help="parse a saved probe transcript")):
