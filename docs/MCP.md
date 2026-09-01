@@ -46,6 +46,12 @@ apply.
 | `explain_term` | A security term (ssti, kerberoast, esc1, …) → a plain-language explanation |
 | `gtfobins` | A SUID/sudo binary → GTFOBins escalation techniques |
 | `parse_nmap_xml` | nmap XML → structured hosts/services/findings |
+| `next_step` | Serialized `EngagementState` → the deterministic planner's next action |
+| `suggest` | Serialized state → rule-based SuggestionEngine plan (no API key needed) |
+| `render_report` | Serialized state → Markdown or HTML report (one-shot deliverable) |
+| `secret_scan` | Arbitrary text → cloud keys / JWT / DB URIs / passwords found |
+| `default_creds` | Serialized state → default-credential sweep argvs per service |
+| `privesc_classes` | A shell-enum blob → PATH-hijack / writable systemd unit / writable SUID / writable-root-path findings |
 
 ## Protocol walk-through
 
@@ -62,7 +68,7 @@ Then it's a normal MCP handshake. Example (requests you send ▶, responses ◀)
 ◀ {"jsonrpc":"2.0","id":1,"result":{
      "protocolVersion":"2024-11-05",
      "capabilities":{"tools":{}},
-     "serverInfo":{"name":"breachload","version":"0.20.0"}}}
+     "serverInfo":{"name":"breachload","version":"0.21.0"}}}
 
 ▶ {"jsonrpc":"2.0","id":2,"method":"tools/list"}
 ◀ {"jsonrpc":"2.0","id":2,"result":{"tools":[

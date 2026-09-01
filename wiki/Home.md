@@ -1,24 +1,39 @@
 # breachload wiki
 
-Autonomous pentest copilot for Linux — guides an engagement from recon to report,
-runs tools, parses their output into structured state, decides the next step, and
-generates findings, while a deterministic safety layer keeps every action inside
-the authorized scope.
+The user-facing, tutorial-first documentation. Every page is written so someone
+who has never used breachload (or a pentest tool at all) can follow along.
 
-> ⚠️ For **authorized** testing only — pentests you have permission for, CTF/labs,
-> and research. See [[Safety-Model]].
+## Start here
 
-## Pages
+- [Getting Started](Getting-Started) - install, first run, what you'll see
+- [Your First Engagement](Your-First-Engagement) - a walkthrough on a lab target
+- [Command Reference](Command-Reference) - every CLI command, one-line + example
 
-- **[[Getting-Started]]** — install and run your first engagement
-- **[[Architecture]]** — how the pieces fit together
-- **[[Safety-Model]]** — scope, risk classes, and what full-auto really does
-- **[[Writing-Adapters]]** — the main extension point
-- **[Roadmap](https://github.com/Noxiidus/breachload/blob/main/ROADMAP.md)** — versioned milestones
+## By task
 
-## The one rule
+- [Recon & fingerprinting](Recon-and-Fingerprinting) - what breachload maps, how
+- [Guided exploitation](Guided-Exploitation) - taking a lead from fingerprint to a shell
+- [Post-exploitation](Post-Exploitation) - loot, privesc, lateral, cloud, pivot
+- [Active Directory](Active-Directory) - BloodHound, Kerberoast, ADCS, kill-chain
+- [Reporting & audit](Reporting) - MD/HTML/PDF, CVSS, tamper-evident log
 
-> The deterministic core owns the truth. The LLM only decides and explains.
+## Concepts
 
-Parsing, scope, and state are code. Claude decides the next action and explains
-why — it never parses raw output and never bypasses the safety layer.
+- [The safety model](Safety-Model) - scope, argv-only, confirm-gates, auto-exploit
+- [State + findings](State-and-Findings) - the typed record every action writes to
+- [Suspected vs confirmed](Suspected-vs-Confirmed) - proof-based findings
+- [Sessions](Sessions) - webshell / ssh / winrm channels + auto-staging
+
+## Integration
+
+- [MCP server (any LLM agent)](MCP-Server) - Claude Code, Claude Desktop, etc.
+- [Live web dashboard](Web-Dashboard) - the FastAPI/WebSocket UI
+- [Local-first (Ollama / LM Studio)](Local-LLM) - offline planner backend
+- [Extending with a custom adapter](Custom-Adapters) - plugin entry-point
+
+## Advanced
+
+- [Auto-exploit mode](Auto-Exploit) - the operator-gated autonomous chain
+- [Bug hunt workflow](Bug-Hunt) - fuzz, self-test, held-out coverage
+- [Live dogfood harness](Live-Dogfood) - reproducible per-box scoring
+- [Release process](Release-Process) - version bump, tag, release, README update
