@@ -1324,6 +1324,25 @@ def kerberos(config: Path = typer.Argument(..., help="engagement YAML"),
 
 
 @app.command(rich_help_panel="Recon, enum & planning")
+def unauthapi(url: str = typer.Argument(..., help="base URL to probe"),
+              parse_file: Path = typer.Option(None, "--parse-file",
+                                              help="parse a saved probe transcript")):
+    """Probe or parse unauth admin/API endpoints (the NiFi supportsLogin:false class)."""
+    from .analysis.unauth_api import classify_probes, probe_commands
+    if parse_file and Path(parse_file).is_file():
+        findings = classify_probes(Path(parse_file).read_text(encoding="utf-8",
+                                                              errors="replace"), url)
+        console.print(f"[bold green]unauth-api[/] {len(findings)} finding(s)\n")
+        for f in findings:
+            console.print(f"  [{f.severity.value}] {escape(f.title)}")
+        return
+    console.print(f"[bold]unauth-api probes[/] for {url} (review then run):")
+    for c in probe_commands(url):
+        console.print("  " + c, markup=False)
+    console.print("\n[dim]save the transcript and re-run with --parse-file <path>[/]")
+
+
+@app.command(rich_help_panel="Recon, enum & planning")
 def secrets(scan: Path = typer.Option(None, "--scan", help="file to scan for secrets"),
             text: str = typer.Option(None, "--text", help="text to scan for secrets"),
             discover: str = typer.Option(None, "--discover",
